@@ -57,6 +57,11 @@ RFC/
 │   ├── 4.1-fluxo-de-navegacao.md
 │   ├── 4.2-wireframes-das-telas.md
 │   ├── 4.3-fluxo-de-interação.md
+├── capitulo-5/
+│   ├── 5.1-diagrama-c4.md
+│   ├── 5.2-modelo-de-dados.md
+│   ├── 5.3-principais-componentes.md
+│   ├── 5.4-stack-tecnologica.md
 ```
 
 ---

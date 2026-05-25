@@ -45,4 +45,15 @@
 
 ---
 
+## Capítulo 5 — Arquitetura do Sistema
+ 
+| Seção | Descrição |
+|-------|-----------|
+| [5.1 Diagrama C4](capitulo-5/5.1-diagrama-c4.md) | Diagramas de Contexto, Container e Componentes |
+| [5.2 Modelo de Dados](capitulo-5/5.2-modelo-de-dados.md) | DER, descrição das entidades e estrutura jsonb dos diagramas |
+| [5.3 Principais Componentes](capitulo-5/5.3-principais-componentes.md) | Módulos do sistema e suas responsabilidades |
+| [5.4 Stack Tecnológica](capitulo-5/5.4-stack-tecnologica.md) | Tecnologias utilizadas e justificativas |
+
+---
+
 [← Voltar ao README](../README.md)
