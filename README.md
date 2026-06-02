@@ -62,6 +62,18 @@ RFC/
 │   ├── 5.2-modelo-de-dados.md
 │   ├── 5.3-principais-componentes.md
 │   ├── 5.4-stack-tecnologica.md
+├── capitulo-6/
+│   ├── 6.1-seguranca-e-privacidade.md
+├── capitulo-7/
+│   └── 7.1-planejamento.md
+├── capitulo-8/
+│   └── 8.1-referencias.md
+├── capitulo-9/
+│   └── 9.1-apendices.md
+└── capitulo-10/
+    ├── 10.1-avaliador-1.md
+    ├── 10.2-avaliador-2.md
+    └── 10.3-avaliador-3.md
 ```
 
 ---
