@@ -78,6 +78,19 @@ RFC/
 
 ---
 
+## Estrutura da Aplicação
+
+Além da documentação, este repositório contém o código-fonte da aplicação, dividido em dois projetos independentes (deploy separado):
+
+```
+frontend/    # React + React Flow — hospedado no GitHub Pages
+backend/     # Node.js + Express + PostgreSQL — hospedado no Railway
+```
+
+Cada diretório possui seu próprio `package.json` e README com instruções específicas de setup.
+
+---
+
 ## Como Navegar
 
 Comece pelo **[Sumário](RFC/sumario.md)** para ter uma visão geral de toda a documentação e acessar qualquer seção diretamente.
