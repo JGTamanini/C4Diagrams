@@ -19,10 +19,6 @@ defaults:
 jobs:
   test-and-migrate:
     runs-on: ubuntu-latest
-
-    # Sobe um PostgreSQL real como serviço do job, só para esse workflow.
-    # Isso valida as migrations contra um banco de verdade a cada push/PR,
-    # não apenas contra a sintaxe do SQL.
     services:
       postgres:
         image: postgres:18
@@ -47,7 +43,7 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # clone completo, necessário para a relevância da análise do SonarQube Cloud
+          fetch-depth: 0 
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
