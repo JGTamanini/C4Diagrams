@@ -24,7 +24,7 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # clone completo, necessário para a relevância da análise do SonarQube Cloud
+          fetch-depth: 0 
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
