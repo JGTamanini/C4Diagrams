@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -39,3 +41,10 @@ jobs:
 
       - name: Build de produção
         run: npm run build
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: frontend

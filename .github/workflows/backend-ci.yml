@@ -19,10 +19,6 @@ defaults:
 jobs:
   test-and-migrate:
     runs-on: ubuntu-latest
-
-    # Sobe um PostgreSQL real como serviço do job, só para esse workflow.
-    # Isso valida as migrations contra um banco de verdade a cada push/PR,
-    # não apenas contra a sintaxe do SQL.
     services:
       postgres:
         image: postgres:18
@@ -46,6 +42,8 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -65,3 +63,10 @@ jobs:
           npm start &
           npx wait-on http://localhost:3000/api/health --timeout 15000
           curl -sf http://localhost:3000/api/health | tee /dev/stderr | grep '"database":"connected"'
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: backend
