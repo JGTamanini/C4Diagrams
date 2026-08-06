@@ -1,12 +1,5 @@
-/* eslint-disable camelcase */
-
 exports.shorthands = undefined;
 
-/**
- * Tabela PROJECT — RF04-RF07 (CRUD de projetos)
- * Regra de negócio: exclusão em cascata (deletar projeto remove os diagramas).
- * Regra de negócio: projeto deve ter um nome (notNull).
- */
 exports.up = (pgm) => {
   pgm.createTable('projects', {
     id: {

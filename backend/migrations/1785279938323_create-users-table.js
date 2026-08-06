@@ -1,10 +1,5 @@
-/* eslint-disable camelcase */
-
 exports.shorthands = undefined;
 
-/**
- * Tabela USER — RF01/RF02/RF03 (autenticação: cadastro, login, recuperação)
- */
 exports.up = (pgm) => {
   pgm.createExtension('pgcrypto', { ifNotExists: true });
 
