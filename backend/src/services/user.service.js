@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const userRepository = require('../repositories/user.repository');
 const { EmailAlreadyExistsError, WeakPasswordError } = require('../errors/user.errors');
