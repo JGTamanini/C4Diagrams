@@ -74,4 +74,18 @@ describe('Register', () => {
 
     expect(await screen.findByText(/e-mail já cadastrado/i)).toBeInTheDocument();
   });
+
+  it('deve exibir mensagem de erro genérica quando não há resposta do servidor', async () => {
+    const user = userEvent.setup();
+    api.post.mockRejectedValue(new Error('Network Error'));
+
+    renderWithRouter(<Register />);
+
+    await user.type(screen.getByLabelText(/nome/i), 'João');
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'senha12345');
+    await user.click(screen.getByRole('button', { name: /cadastrar/i }));
+
+    expect(await screen.findByText(/erro ao cadastrar/i)).toBeInTheDocument();
+  });
 });
