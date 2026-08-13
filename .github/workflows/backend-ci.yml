@@ -48,7 +48,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.15.0'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -57,6 +57,9 @@ jobs:
 
       - name: Rodar migrations
         run: npm run migrate:up
+
+      - name: Rodar testes com cobertura
+        run: npm run test:coverage
 
       - name: Subir servidor e checar /api/health
         run: |
