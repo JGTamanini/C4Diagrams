@@ -1,18 +1,22 @@
 jest.mock('../../src/repositories/user.repository');
 jest.mock('bcryptjs');
-jest.mock('crypto');
+jest.mock('node:crypto');
 
 const userRepository = require('../../src/repositories/user.repository');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const userService = require('../../src/services/user.service');
-const { EmailAlreadyExistsError } = require('../../src/errors/user.errors');
+const {
+  EmailAlreadyExistsError,
+  WeakPasswordError,
+  MissingFieldError,
+} = require('../../src/errors/user.errors');
 
 describe('UserService', () => {
   const inputData = {
     name: 'João Tamanini',
     email: 'joao@example.com',
-    password: 'senha12345',
+    password: 'Senha@12345',
   };
 
   beforeEach(() => {
@@ -21,7 +25,7 @@ describe('UserService', () => {
 
   describe('register', () => {
     it('deve registrar um usuário com senha hasheada e token de verificação', async () => {
-      userRepository.findByEmail.mockResolvedValue(undefined); // e-mail livre
+      userRepository.findByEmail.mockResolvedValue(undefined);
       bcrypt.hash.mockResolvedValue('hashed_password_mock');
       crypto.randomBytes.mockReturnValue({ toString: () => 'mocked_token_hex' });
       userRepository.create.mockResolvedValue({
@@ -56,11 +60,51 @@ describe('UserService', () => {
       expect(userRepository.create).not.toHaveBeenCalled();
     });
 
-    it('deve rejeitar senha com menos de 8 caracteres', async () => {
-      const weakPasswordData = { ...inputData, password: '1234567' };
+    // --- Campos obrigatórios ---
+    it('deve rejeitar registro sem o campo name', async () => {
+      const { name, ...dataSemName } = inputData;
+      await expect(userService.register(dataSemName)).rejects.toThrow(MissingFieldError);
+    });
 
-      await expect(userService.register(weakPasswordData)).rejects.toThrow();
+    it('deve rejeitar registro sem o campo email', async () => {
+      const { email, ...dataSemEmail } = inputData;
+      await expect(userService.register(dataSemEmail)).rejects.toThrow(MissingFieldError);
+    });
+
+    it('deve rejeitar registro sem o campo password', async () => {
+      const { password, ...dataSemPassword } = inputData;
+      await expect(userService.register(dataSemPassword)).rejects.toThrow(WeakPasswordError);
+    });
+
+    // --- Política de senha ---
+    it('deve rejeitar senha com menos de 8 caracteres', async () => {
+      const data = { ...inputData, password: 'Ab@1234' };
+      await expect(userService.register(data)).rejects.toThrow(WeakPasswordError);
       expect(userRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('deve rejeitar senha sem letra maiúscula', async () => {
+      const data = { ...inputData, password: 'senha@12345' };
+      await expect(userService.register(data)).rejects.toThrow(WeakPasswordError);
+    });
+
+    it('deve rejeitar senha sem letra minúscula', async () => {
+      const data = { ...inputData, password: 'SENHA@12345' };
+      await expect(userService.register(data)).rejects.toThrow(WeakPasswordError);
+    });
+
+    it('deve rejeitar senha sem caractere especial', async () => {
+      const data = { ...inputData, password: 'Senha12345' };
+      await expect(userService.register(data)).rejects.toThrow(WeakPasswordError);
+    });
+
+    it('deve aceitar senha que atende todos os critérios', async () => {
+      userRepository.findByEmail.mockResolvedValue(undefined);
+      bcrypt.hash.mockResolvedValue('hashed_password_mock');
+      crypto.randomBytes.mockReturnValue({ toString: () => 'mocked_token_hex' });
+      userRepository.create.mockResolvedValue({ id: 'uuid-mock', email: inputData.email });
+
+      await expect(userService.register(inputData)).resolves.toBeDefined();
     });
   });
 });

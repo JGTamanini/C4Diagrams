@@ -1,7 +1,7 @@
-const { EmailAlreadyExistsError, WeakPasswordError } = require('../errors/user.errors');
+const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
 
 function errorHandler(err, req, res, next) {
-  if (err instanceof WeakPasswordError) {
+  if (err instanceof WeakPasswordError || err instanceof MissingFieldError) {
     return res.status(400).json({ message: err.message });
   }
 
