@@ -19,7 +19,7 @@ describe('POST /api/auth/register', () => {
       .send({
         name: 'E2E Test User',
         email: testEmail,
-        password: 'senha12345',
+        password: 'Senha@12345',
       });
 
     expect(response.status).toBe(201);
@@ -47,13 +47,13 @@ describe('POST /api/auth/register', () => {
     await request(app).post('/api/auth/register').send({
       name: 'E2E Test User',
       email: testEmail,
-      password: 'senha12345',
+      password: 'Senha@12345',
     });
 
     const response = await request(app).post('/api/auth/register').send({
       name: 'Another Name',
       email: testEmail,
-      password: 'outrasenha123',
+      password: 'OutraSenha@123',
     });
 
     expect(response.status).toBe(409);

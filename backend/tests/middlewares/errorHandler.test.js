@@ -1,4 +1,5 @@
 const errorHandler = require('../../src/middlewares/errorHandler');
+const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 
 describe('errorHandler', () => {
   function mockRes() {
@@ -7,6 +8,36 @@ describe('errorHandler', () => {
     res.json = jest.fn().mockReturnValue(res);
     return res;
   }
+
+  it('deve retornar 400 para WeakPasswordError', () => {
+    const err = new WeakPasswordError();
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 400 para MissingFieldError', () => {
+    const err = new MissingFieldError('email');
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 409 para EmailAlreadyExistsError', () => {
+    const err = new EmailAlreadyExistsError('teste@example.com');
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
 
   it('deve retornar 500 para erros não reconhecidos', () => {
     const err = new Error('Algo inesperado aconteceu');
