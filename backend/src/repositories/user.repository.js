@@ -19,7 +19,8 @@ async function create(user) {
 async function findByEmail(email) {
   const query = `
     SELECT id, name, email, password_hash, email_verified, verification_token,
-           verification_token_expires_at, created_at, updated_at
+           verification_token_expires_at, failed_login_attempts, locked_until,
+           created_at, updated_at
     FROM users
     WHERE email = $1
   `;
@@ -29,7 +30,43 @@ async function findByEmail(email) {
   return result.rows[0];
 }
 
+async function incrementFailedAttempts(userId) {
+  const query = `
+    UPDATE users
+    SET failed_login_attempts = failed_login_attempts + 1
+    WHERE id = $1
+    RETURNING failed_login_attempts
+  `;
+
+  const result = await pool.query(query, [userId]);
+
+  return result.rows[0].failed_login_attempts;
+}
+
+async function resetFailedAttempts(userId) {
+  const query = `
+    UPDATE users
+    SET failed_login_attempts = 0, locked_until = NULL
+    WHERE id = $1
+  `;
+
+  await pool.query(query, [userId]);
+}
+
+async function lockAccount(userId, lockedUntil) {
+  const query = `
+    UPDATE users
+    SET locked_until = $2
+    WHERE id = $1
+  `;
+
+  await pool.query(query, [userId, lockedUntil]);
+}
+
 module.exports = {
   create,
   findByEmail,
+  incrementFailedAttempts,
+  resetFailedAttempts,
+  lockAccount,
 };

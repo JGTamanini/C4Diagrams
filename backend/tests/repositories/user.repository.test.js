@@ -52,4 +52,50 @@ describe('UserRepository', () => {
       expect(foundUser).toBeUndefined();
     });
   });
+  
+  describe('incrementFailedAttempts', () => {
+    it('deve incrementar failed_login_attempts e retornar o novo valor', async () => {
+      const createdUser = await userRepository.create(testUser);
+
+      const attempts = await userRepository.incrementFailedAttempts(createdUser.id);
+
+      expect(attempts).toBe(1);
+    });
+
+    it('deve incrementar corretamente em chamadas sucessivas', async () => {
+      const createdUser = await userRepository.create(testUser);
+
+      await userRepository.incrementFailedAttempts(createdUser.id);
+      await userRepository.incrementFailedAttempts(createdUser.id);
+      const attempts = await userRepository.incrementFailedAttempts(createdUser.id);
+
+      expect(attempts).toBe(3);
+    });
+  });
+
+  describe('resetFailedAttempts', () => {
+    it('deve zerar failed_login_attempts e limpar locked_until', async () => {
+      const createdUser = await userRepository.create(testUser);
+      await userRepository.incrementFailedAttempts(createdUser.id);
+      await userRepository.lockAccount(createdUser.id, new Date(Date.now() + 5 * 60 * 1000));
+
+      await userRepository.resetFailedAttempts(createdUser.id);
+
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.failed_login_attempts).toBe(0);
+      expect(user.locked_until).toBeNull();
+    });
+  });
+
+  describe('lockAccount', () => {
+    it('deve definir locked_until com a data informada', async () => {
+      const createdUser = await userRepository.create(testUser);
+      const lockedUntil = new Date(Date.now() + 5 * 60 * 1000);
+
+      await userRepository.lockAccount(createdUser.id, lockedUntil);
+
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(new Date(user.locked_until).getTime()).toBe(lockedUntil.getTime());
+    });
+  });
 });
