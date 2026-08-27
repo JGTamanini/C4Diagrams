@@ -31,14 +31,14 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'senha12345');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/auth/register', {
         name: 'João',
         email: 'joao@example.com',
-        password: 'senha12345',
+        password: 'Senha@12345',
       });
     });
   });
@@ -53,7 +53,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'senha12345');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByText(/verifique seu e-mail/i)).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'senha12345');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByText(/e-mail já cadastrado/i)).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'senha12345');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByText(/erro ao cadastrar/i)).toBeInTheDocument();
