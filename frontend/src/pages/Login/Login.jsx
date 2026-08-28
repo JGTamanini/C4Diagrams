@@ -14,7 +14,13 @@ function Login() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      localStorage.setItem('token', response.data.token);
+      const { token } = response.data;
+
+      if (typeof token !== 'string' || token.length === 0) {
+        throw new Error('Token inválido recebido do servidor.');
+      }
+
+      localStorage.setItem('token', token);
       navigate('/canvas-test');
     } catch (err) {
       const message = err.response?.data?.message || 'Erro ao entrar. Tente novamente.';
