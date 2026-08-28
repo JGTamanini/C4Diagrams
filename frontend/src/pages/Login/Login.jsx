@@ -7,6 +7,7 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -16,7 +17,7 @@ function Login() {
       const response = await api.post('/auth/login', { email, password });
       const { token } = response.data;
 
-      if (typeof token !== 'string' || token.length === 0) {
+      if (!JWT_FORMAT_REGEX.test(token)) {
         throw new Error('Token inválido recebido do servidor.');
       }
 

@@ -15,7 +15,7 @@ async function login({ email, password }) {
 
   if (user.locked_until && new Date(user.locked_until) > new Date()) {
     const minutesRemaining = Math.ceil(
-      (new Date(user.locked_until) - new Date()) / (60 * 1000)
+      (new Date(user.locked_until) - Date.now()) / (60 * 1000)
     );
     throw new AccountLockedError(minutesRemaining);
   }

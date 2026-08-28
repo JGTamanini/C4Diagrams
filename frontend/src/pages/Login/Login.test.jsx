@@ -37,7 +37,7 @@ describe('Login', () => {
   it('deve autenticar, salvar o token e redirecionar para /canvas-test', async () => {
     const user = userEvent.setup();
     api.post.mockResolvedValue({
-      data: { token: 'fake-jwt-token', user: { id: '1', email: 'joao@example.com' } },
+      data: { token: 'header.payload.signature', user: { id: '1', email: 'joao@example.com' } },
     });
 
     renderWithRouter(<Login />);
@@ -47,7 +47,7 @@ describe('Login', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
-      expect(localStorage.getItem('token')).toBe('fake-jwt-token');
+      expect(localStorage.getItem('token')).toBe('header.payload.signature');
     });
     expect(mockNavigate).toHaveBeenCalledWith('/canvas-test');
   });
