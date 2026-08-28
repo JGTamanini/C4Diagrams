@@ -24,7 +24,7 @@ function Login() {
       localStorage.setItem('token', token);
       navigate('/canvas-test');
     } catch (err) {
-      const message = err.response?.data?.message || 'Erro ao entrar. Tente novamente.';
+      const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);
     }
   }

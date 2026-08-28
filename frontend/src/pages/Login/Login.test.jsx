@@ -85,4 +85,21 @@ describe('Login', () => {
 
     expect(await screen.findByText(/bloqueada.*5 minuto/i)).toBeInTheDocument();
   });
+
+  it('deve exibir erro quando o token retornado tem formato inválido', async () => {
+    const user = userEvent.setup();
+    api.post.mockResolvedValue({
+      data: { token: 'token-mal-formado', user: { id: '1', email: 'joao@example.com' } },
+    });
+
+    renderWithRouter(<Login />);
+
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.click(screen.getByRole('button', { name: /entrar/i }));
+
+    expect(await screen.findByText(/token inválido/i)).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 });
