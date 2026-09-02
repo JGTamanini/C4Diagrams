@@ -38,6 +38,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c4diagrams_test
       PORT: 3000
       NODE_ENV: test
+      JWT_SECRET: test_secret_apenas_para_ci_nao_usar_em_producao
+      JWT_EXPIRES_IN: 1h
 
     steps:
       - name: Checkout código

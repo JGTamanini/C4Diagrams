@@ -1,0 +1,19 @@
+exports.shorthands = undefined;
+
+exports.up = (pgm) => {
+  pgm.addColumns('users', {
+    failed_login_attempts: {
+      type: 'integer',
+      notNull: true,
+      default: 0,
+    },
+    locked_until: {
+      type: 'timestamp',
+      notNull: false,
+    },
+  });
+};
+
+exports.down = (pgm) => {
+  pgm.dropColumns('users', ['failed_login_attempts', 'locked_until']);
+};
