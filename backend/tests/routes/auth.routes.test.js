@@ -1,3 +1,5 @@
+jest.mock('../../src/services/email.service');
+
 const request = require('supertest');
 const app = require('../../src/app');
 const { pool } = require('../../src/config/database');
@@ -122,5 +124,46 @@ describe('POST /api/auth/login', () => {
 
     expect(response.status).toBe(423);
     expect(response.body).toHaveProperty('minutesRemaining');
+  });
+});
+
+describe('POST /api/auth/verify-email', () => {
+  const verifyTestEmail = 'e2e.verify@example.com';
+
+  afterEach(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [verifyTestEmail]);
+  });
+
+  it('deve verificar o e-mail com um token válido', async () => {
+    await request(app).post('/api/auth/register').send({
+      name: 'Verify Test User',
+      email: verifyTestEmail,
+      password: 'Senha@12345',
+    });
+
+    const result = await pool.query(
+      'SELECT verification_token FROM users WHERE email = $1',
+      [verifyTestEmail]
+    );
+    const token = result.rows[0].verification_token;
+
+    const response = await request(app).post('/api/auth/verify-email').send({ token });
+
+    expect(response.status).toBe(200);
+
+    const updated = await pool.query(
+      'SELECT email_verified, verification_token FROM users WHERE email = $1',
+      [verifyTestEmail]
+    );
+    expect(updated.rows[0].email_verified).toBe(true);
+    expect(updated.rows[0].verification_token).toBeNull();
+  });
+
+  it('deve retornar 400 para token inválido', async () => {
+    const response = await request(app).post('/api/auth/verify-email').send({
+      token: 'token-que-nao-existe',
+    });
+
+    expect(response.status).toBe(400);
   });
 });

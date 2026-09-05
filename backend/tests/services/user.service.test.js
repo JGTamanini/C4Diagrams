@@ -1,16 +1,19 @@
 jest.mock('../../src/repositories/user.repository');
 jest.mock('bcryptjs');
 jest.mock('node:crypto');
+jest.mock('../../src/services/email.service');
 
 const userRepository = require('../../src/repositories/user.repository');
 const bcrypt = require('bcryptjs');
 const crypto = require('node:crypto');
+const emailService = require('../../src/services/email.service');
 const userService = require('../../src/services/user.service');
 const {
   EmailAlreadyExistsError,
   WeakPasswordError,
   MissingFieldError,
 } = require('../../src/errors/user.errors');
+const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
 
 describe('UserService', () => {
   const inputData = {
@@ -105,6 +108,55 @@ describe('UserService', () => {
       userRepository.create.mockResolvedValue({ id: 'uuid-mock', email: inputData.email });
 
       await expect(userService.register(inputData)).resolves.toBeDefined();
+    });
+
+    // --- Envio de e-mail de verificação ---
+    it('deve disparar o envio do e-mail de verificação após o cadastro', async () => {
+      userRepository.findByEmail.mockResolvedValue(undefined);
+      bcrypt.hash.mockResolvedValue('hashed_password_mock');
+      crypto.randomBytes.mockReturnValue({ toString: () => 'mocked_token_hex' });
+      userRepository.create.mockResolvedValue({ id: 'uuid-mock', email: inputData.email });
+
+      await userService.register(inputData);
+
+      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
+        inputData.email,
+        'mocked_token_hex'
+      );
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('deve verificar o e-mail quando o token é válido e não expirado', async () => {
+      userRepository.findByVerificationToken.mockResolvedValue({
+        id: 'uuid-mock',
+        verification_token_expires_at: new Date(Date.now() + 60 * 60 * 1000),
+      });
+
+      await userService.verifyEmail('token-valido');
+
+      expect(userRepository.markEmailAsVerified).toHaveBeenCalledWith('uuid-mock');
+    });
+
+    it('deve rejeitar quando o token não existe', async () => {
+      userRepository.findByVerificationToken.mockResolvedValue(undefined);
+
+      await expect(userService.verifyEmail('token-invalido')).rejects.toThrow(
+        InvalidOrExpiredTokenError
+      );
+      expect(userRepository.markEmailAsVerified).not.toHaveBeenCalled();
+    });
+
+    it('deve rejeitar quando o token já expirou', async () => {
+      userRepository.findByVerificationToken.mockResolvedValue({
+        id: 'uuid-mock',
+        verification_token_expires_at: new Date(Date.now() - 60 * 1000),
+      });
+
+      await expect(userService.verifyEmail('token-expirado')).rejects.toThrow(
+        InvalidOrExpiredTokenError
+      );
+      expect(userRepository.markEmailAsVerified).not.toHaveBeenCalled();
     });
   });
 });

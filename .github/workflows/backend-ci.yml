@@ -40,6 +40,9 @@ jobs:
       NODE_ENV: test
       JWT_SECRET: test_secret_apenas_para_ci_nao_usar_em_producao
       JWT_EXPIRES_IN: 1h
+      RESEND_API_KEY: re_fake_key_apenas_para_ci
+      EMAIL_FROM: onboarding@resend.dev
+      FRONTEND_URL: http://localhost:5173
 
     steps:
       - name: Checkout código

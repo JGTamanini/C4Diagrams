@@ -63,10 +63,36 @@ async function lockAccount(userId, lockedUntil) {
   await pool.query(query, [userId, lockedUntil]);
 }
 
+async function findByVerificationToken(token) {
+  const query = `
+    SELECT id, name, email, password_hash, email_verified, verification_token,
+           verification_token_expires_at, failed_login_attempts, locked_until,
+           created_at, updated_at
+    FROM users
+    WHERE verification_token = $1
+  `;
+
+  const result = await pool.query(query, [token]);
+
+  return result.rows[0];
+}
+
+async function markEmailAsVerified(userId) {
+  const query = `
+    UPDATE users
+    SET email_verified = true, verification_token = NULL, verification_token_expires_at = NULL
+    WHERE id = $1
+  `;
+
+  await pool.query(query, [userId]);
+}
+
 module.exports = {
   create,
   findByEmail,
   incrementFailedAttempts,
   resetFailedAttempts,
   lockAccount,
+  findByVerificationToken,
+  markEmailAsVerified,
 };

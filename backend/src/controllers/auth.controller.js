@@ -14,4 +14,10 @@ const login = asyncHandler(async (req, res) => {
   res.status(200).json(result);
 });
 
-module.exports = { register, login };
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  await userService.verifyEmail(token);
+  res.status(200).json({ message: 'E-mail verificado com sucesso.' });
+});
+
+module.exports = { register, login, verifyEmail };
