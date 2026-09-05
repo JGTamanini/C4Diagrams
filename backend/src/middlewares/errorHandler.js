@@ -1,8 +1,9 @@
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
 const { InvalidCredentialsError, AccountLockedError } = require('../errors/auth.errors');
+const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 
 function errorHandler(err, req, res, next) {
-  if (err instanceof WeakPasswordError || err instanceof MissingFieldError) {
+  if (err instanceof WeakPasswordError || err instanceof MissingFieldError || err instanceof InvalidOrExpiredTokenError) {
     return res.status(400).json({ message: err.message });
   }
 

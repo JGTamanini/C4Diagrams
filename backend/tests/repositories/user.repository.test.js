@@ -98,4 +98,34 @@ describe('UserRepository', () => {
       expect(new Date(user.locked_until).getTime()).toBe(lockedUntil.getTime());
     });
   });
+
+  describe('findByVerificationToken', () => {
+    it('deve retornar o usuário quando o token existe', async () => {
+      const createdUser = await userRepository.create(testUser);
+
+      const foundUser = await userRepository.findByVerificationToken(testUser.verificationToken);
+
+      expect(foundUser).not.toBeNull();
+      expect(foundUser.id).toBe(createdUser.id);
+    });
+
+    it('deve retornar undefined quando o token não existe', async () => {
+      const foundUser = await userRepository.findByVerificationToken('token-que-nao-existe');
+
+      expect(foundUser).toBeUndefined();
+    });
+  });
+
+  describe('markEmailAsVerified', () => {
+    it('deve marcar email_verified como true e limpar os campos de token', async () => {
+      const createdUser = await userRepository.create(testUser);
+
+      await userRepository.markEmailAsVerified(createdUser.id);
+
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.email_verified).toBe(true);
+      expect(user.verification_token).toBeNull();
+      expect(user.verification_token_expires_at).toBeNull();
+    });
+  });
 });

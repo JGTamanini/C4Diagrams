@@ -1,7 +1,9 @@
 const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const userRepository = require('../repositories/user.repository');
+const emailService = require('./email.service');
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
+const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 
 const SALT_ROUNDS = 10;
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
@@ -33,7 +35,23 @@ async function register({ name, email, password }) {
     verificationTokenExpiresAt,
   });
 
+  await emailService.sendVerificationEmail(email, verificationToken);
+
   return createdUser;
 }
 
-module.exports = { register };
+async function verifyEmail(token) {
+  const user = await userRepository.findByVerificationToken(token);
+
+  if (!user) {
+    throw new InvalidOrExpiredTokenError();
+  }
+
+  if (new Date(user.verification_token_expires_at) < Date.now()) {
+    throw new InvalidOrExpiredTokenError();
+  }
+
+  await userRepository.markEmailAsVerified(user.id);
+}
+
+module.exports = { register, verifyEmail };
