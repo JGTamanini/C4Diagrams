@@ -159,4 +159,79 @@ describe('UserService', () => {
       expect(userRepository.markEmailAsVerified).not.toHaveBeenCalled();
     });
   });
+
+  describe('requestPasswordReset', () => {
+  it('deve gerar token e enviar e-mail quando o usuário existe', async () => {
+    userRepository.findByEmail.mockResolvedValue({ id: 'uuid-mock', email: inputData.email });
+    crypto.randomBytes.mockReturnValue({ toString: () => 'mocked_reset_token' });
+
+    await userService.requestPasswordReset(inputData.email);
+
+    expect(userRepository.setPasswordResetToken).toHaveBeenCalledWith(
+      'uuid-mock',
+      'mocked_reset_token',
+      expect.any(Date)
+    );
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+      inputData.email,
+      'mocked_reset_token'
+    );
+  });
+
+  it('não deve lançar erro nem gerar token quando o e-mail não existe (resposta genérica)', async () => {
+    userRepository.findByEmail.mockResolvedValue(undefined);
+
+    await expect(userService.requestPasswordReset('naoexiste@example.com')).resolves.not.toThrow();
+    expect(userRepository.setPasswordResetToken).not.toHaveBeenCalled();
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('resetPassword', () => {
+  const validToken = 'reset-token-valido';
+
+  it('deve redefinir a senha quando o token é válido e não expirado', async () => {
+    userRepository.findByPasswordResetToken.mockResolvedValue({
+      id: 'uuid-mock',
+      password_reset_token_expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    });
+    bcrypt.hash.mockResolvedValue('novo_hash_mock');
+
+    await userService.resetPassword(validToken, 'NovaSenha@123');
+
+    expect(bcrypt.hash).toHaveBeenCalledWith('NovaSenha@123', 10);
+    expect(userRepository.updatePassword).toHaveBeenCalledWith('uuid-mock', 'novo_hash_mock');
+  });
+
+  it('deve rejeitar quando o token não existe', async () => {
+    userRepository.findByPasswordResetToken.mockResolvedValue(undefined);
+
+    await expect(userService.resetPassword('token-invalido', 'NovaSenha@123')).rejects.toThrow(
+      InvalidOrExpiredTokenError
+    );
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it('deve rejeitar quando o token já expirou', async () => {
+    userRepository.findByPasswordResetToken.mockResolvedValue({
+      id: 'uuid-mock',
+      password_reset_token_expires_at: new Date(Date.now() - 60 * 1000),
+    });
+
+    await expect(userService.resetPassword(validToken, 'NovaSenha@123')).rejects.toThrow(
+      InvalidOrExpiredTokenError
+    );
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it('deve rejeitar quando a nova senha não atende a política', async () => {
+    userRepository.findByPasswordResetToken.mockResolvedValue({
+      id: 'uuid-mock',
+      password_reset_token_expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    await expect(userService.resetPassword(validToken, 'fraca')).rejects.toThrow(WeakPasswordError);
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+});
 });

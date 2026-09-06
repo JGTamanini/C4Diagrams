@@ -167,3 +167,87 @@ describe('POST /api/auth/verify-email', () => {
     expect(response.status).toBe(400);
   });
 });
+
+describe('POST /api/auth/forgot-password', () => {
+  const forgotTestEmail = 'e2e.forgot@example.com';
+
+  afterEach(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [forgotTestEmail]);
+  });
+
+  it('deve retornar 200 com mensagem genérica quando o e-mail existe', async () => {
+    await request(app).post('/api/auth/register').send({
+      name: 'Forgot Test User',
+      email: forgotTestEmail,
+      password: 'Senha@12345',
+    });
+
+    const response = await request(app).post('/api/auth/forgot-password').send({
+      email: forgotTestEmail,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message');
+
+    const result = await pool.query(
+      'SELECT password_reset_token FROM users WHERE email = $1',
+      [forgotTestEmail]
+    );
+    expect(result.rows[0].password_reset_token).not.toBeNull();
+  });
+
+  it('deve retornar 200 com a MESMA mensagem quando o e-mail não existe', async () => {
+    const response = await request(app).post('/api/auth/forgot-password').send({
+      email: 'naoexiste@example.com',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('message');
+  });
+});
+
+describe('POST /api/auth/reset-password', () => {
+  const resetTestEmail = 'e2e.reset@example.com';
+
+  afterEach(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [resetTestEmail]);
+  });
+
+  it('deve redefinir a senha com um token válido', async () => {
+    await request(app).post('/api/auth/register').send({
+      name: 'Reset Test User',
+      email: resetTestEmail,
+      password: 'SenhaAntiga@123',
+    });
+
+    await request(app).post('/api/auth/forgot-password').send({ email: resetTestEmail });
+
+    const result = await pool.query(
+      'SELECT password_reset_token FROM users WHERE email = $1',
+      [resetTestEmail]
+    );
+    const token = result.rows[0].password_reset_token;
+
+    const response = await request(app).post('/api/auth/reset-password').send({
+      token,
+      newPassword: 'SenhaNova@456',
+    });
+
+    expect(response.status).toBe(200);
+
+    const loginResponse = await request(app).post('/api/auth/login').send({
+      email: resetTestEmail,
+      password: 'SenhaNova@456',
+    });
+    expect(loginResponse.status).toBe(200);
+  });
+
+  it('deve retornar 400 para token inválido', async () => {
+    const response = await request(app).post('/api/auth/reset-password').send({
+      token: 'token-que-nao-existe',
+      newPassword: 'SenhaNova@456',
+    });
+
+    expect(response.status).toBe(400);
+  });
+});

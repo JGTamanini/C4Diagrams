@@ -25,4 +25,25 @@ async function sendVerificationEmail(email, token) {
   }
 }
 
-module.exports = { sendVerificationEmail };
+async function sendPasswordResetEmail(email, token) {
+  const resend = getResendClient();
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  try {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: 'Redefinição de senha — C4Diagrams',
+      html: `
+        <p>Olá!</p>
+        <p>Recebemos um pedido para redefinir sua senha. Clique no link abaixo:</p>
+        <p><a href="${resetLink}">${resetLink}</a></p>
+        <p>Este link expira em 10 minutos. Se você não solicitou isso, ignore este e-mail.</p>
+      `,
+    });
+  } catch (err) {
+    console.error('Falha ao enviar e-mail de redefinição de senha:', err.message);
+  }
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail };

@@ -128,4 +128,87 @@ describe('UserRepository', () => {
       expect(user.verification_token_expires_at).toBeNull();
     });
   });
+
+  describe('setPasswordResetToken', () => {
+  it('deve definir o token de recuperação e sua expiração', async () => {
+    const createdUser = await userRepository.create(testUser);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await userRepository.setPasswordResetToken(createdUser.id, 'reset-token-abc', expiresAt);
+
+    const user = await userRepository.findByEmail(testUser.email);
+    expect(user.password_reset_token).toBe('reset-token-abc');
+    expect(new Date(user.password_reset_token_expires_at).getTime()).toBe(expiresAt.getTime());
+  });
+});
+
+describe('findByPasswordResetToken', () => {
+  it('deve retornar o usuário quando o token existe', async () => {
+    const createdUser = await userRepository.create(testUser);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await userRepository.setPasswordResetToken(createdUser.id, 'reset-token-abc', expiresAt);
+
+    const foundUser = await userRepository.findByPasswordResetToken('reset-token-abc');
+
+    expect(foundUser).not.toBeNull();
+    expect(foundUser.id).toBe(createdUser.id);
+  });
+
+  it('deve retornar undefined quando o token não existe', async () => {
+    const foundUser = await userRepository.findByPasswordResetToken('token-que-nao-existe');
+
+    expect(foundUser).toBeUndefined();
+  });
+});
+
+describe('setPasswordResetToken', () => {
+  it('deve definir o token de recuperação e sua expiração', async () => {
+    const createdUser = await userRepository.create(testUser);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await userRepository.setPasswordResetToken(createdUser.id, 'reset-token-abc', expiresAt);
+
+    const user = await userRepository.findByEmail(testUser.email);
+    expect(user.password_reset_token).toBe('reset-token-abc');
+    expect(new Date(user.password_reset_token_expires_at).getTime()).toBe(expiresAt.getTime());
+  });
+});
+
+describe('findByPasswordResetToken', () => {
+  it('deve retornar o usuário quando o token existe', async () => {
+    const createdUser = await userRepository.create(testUser);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await userRepository.setPasswordResetToken(createdUser.id, 'reset-token-abc', expiresAt);
+
+    const foundUser = await userRepository.findByPasswordResetToken('reset-token-abc');
+
+    expect(foundUser).not.toBeNull();
+    expect(foundUser.id).toBe(createdUser.id);
+  });
+
+  it('deve retornar undefined quando o token não existe', async () => {
+    const foundUser = await userRepository.findByPasswordResetToken('token-que-nao-existe');
+
+    expect(foundUser).toBeUndefined();
+  });
+});
+
+describe('updatePassword', () => {
+  it('deve atualizar a senha, limpar o token e resetar o bloqueio de login', async () => {
+    const createdUser = await userRepository.create(testUser);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await userRepository.setPasswordResetToken(createdUser.id, 'reset-token-abc', expiresAt);
+    await userRepository.incrementFailedAttempts(createdUser.id);
+    await userRepository.lockAccount(createdUser.id, new Date(Date.now() + 5 * 60 * 1000));
+
+    await userRepository.updatePassword(createdUser.id, 'novo_hash_de_senha');
+
+    const user = await userRepository.findByEmail(testUser.email);
+    expect(user.password_hash).toBe('novo_hash_de_senha');
+    expect(user.password_reset_token).toBeNull();
+    expect(user.password_reset_token_expires_at).toBeNull();
+    expect(user.failed_login_attempts).toBe(0);
+    expect(user.locked_until).toBeNull();
+  });
+});
 });

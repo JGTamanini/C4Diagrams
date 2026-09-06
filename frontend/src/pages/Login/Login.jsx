@@ -55,8 +55,9 @@ function Login() {
       </form>
 
       {errorMessage && <p role="alert">{errorMessage}</p>}
-
       <Link to="/cadastro">Não tem conta? Cadastre-se</Link>
+      <br />
+      <Link to="/forgot-password">Esqueci minha senha</Link>
     </div>
   );
 }

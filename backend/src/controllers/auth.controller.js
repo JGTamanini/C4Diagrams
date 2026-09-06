@@ -20,4 +20,16 @@ const verifyEmail = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'E-mail verificado com sucesso.' });
 });
 
-module.exports = { register, login, verifyEmail };
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  await userService.requestPasswordReset(email);
+  res.status(200).json({ message: 'Se esse e-mail estiver cadastrado, um link de recuperação foi enviado.' });
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body;
+  await userService.resetPassword(token, newPassword);
+  res.status(200).json({ message: 'Senha redefinida com sucesso.' });
+});
+
+module.exports = { register, login, verifyEmail, forgotPassword, resetPassword };
