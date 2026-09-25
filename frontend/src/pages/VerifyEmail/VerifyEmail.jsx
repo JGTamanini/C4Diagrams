@@ -73,9 +73,9 @@ function VerifyEmail() {
 
       {status === 'success' && (
         <>
-          <p role="status" className="mb-4 max-w-xs text-sm text-text-secondary">
+          <output className="mb-4 max-w-xs text-sm text-text-secondary">
             {message}
-          </p>
+          </output>
           <Link to="/login" className="text-sm text-accent">
             Ir para o login
           </Link>

@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
 const loginNodes = [
-  { x: 70, y: 0, label: 'API', sublabel: '[Container]', borderColor: '#58A6FF', labelColor: '#58A6FF' },
-  { x: 0, y: 75, label: 'Database', sublabel: '[Container]', borderColor: '#3FB950', labelColor: '#3FB950' },
-  { x: 140, y: 75, label: 'Serviço IA', sublabel: '[Externo]', borderColor: '#6E7681', labelColor: '#8B949E', dashed: true },
+  { x: 70, y: 0, label: 'API', sublabel: '[Container]', ...NODE_TYPES.container },
+  { x: 0, y: 75, label: 'Database', sublabel: '[Container]', ...NODE_TYPES.database },
+  { x: 140, y: 75, label: 'Serviço IA', sublabel: '[Externo]', ...NODE_TYPES.external },
 ];
 
 const loginConnections = [
-  { x1: 95, y1: 45, x2: 60, y2: 80, color: '#30363D' },
-  { x1: 145, y1: 45, x2: 190, y2: 80, color: '#30363D' },
+  { x1: 95, y1: 45, x2: 60, y2: 80, color: 'var(--color-line)' },
+  { x1: 145, y1: 45, x2: 190, y2: 80, color: 'var(--color-line)' },
 ];
 
 function Login() {

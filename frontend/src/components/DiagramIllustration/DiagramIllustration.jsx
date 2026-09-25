@@ -30,14 +30,14 @@ function DiagramIllustration({ nodes, connections }) {
         style={{ transform: 'rotateX(55deg) rotateZ(-38deg)' }}
       >
         <g transform={`translate(${offsetX}, ${offsetY})`}>
-          {connections.map((conn, i) => (
+          {connections.map((conn) => (
             <line
-              key={i}
+              key={`${conn.x1}-${conn.y1}-${conn.x2}-${conn.y2}`}
               x1={conn.x1}
               y1={conn.y1}
               x2={conn.x2}
               y2={conn.y2}
-              stroke={conn.color || '#30363D'}
+              stroke={conn.color || 'var(--color-line)'}
               strokeWidth="1.5"
             />
           ))}
@@ -50,14 +50,14 @@ function DiagramIllustration({ nodes, connections }) {
                 width={NODE_WIDTH}
                 height={NODE_HEIGHT}
                 rx="6"
-                fill="#161B22"
+                fill="var(--color-surface)"
                 stroke={node.borderColor}
                 strokeDasharray={node.dashed ? '4 3' : undefined}
               />
               <text x={node.x + 10} y={node.y + 22} className="font-mono text-[11px]" fill={node.labelColor}>
                 {node.label}
               </text>
-              <text x={node.x + 10} y={node.y + 38} className="text-[10px]" fill="#6E7681">
+              <text x={node.x + 10} y={node.y + 38} className="text-[10px]" fill="var(--color-text-muted)">
                 {node.sublabel}
               </text>
             </g>

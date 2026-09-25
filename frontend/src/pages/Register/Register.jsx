@@ -1,25 +1,26 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
 const registerNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Novo usuário', borderColor: '#F0F6FC', labelColor: '#F0F6FC' },
-  { x: 10, y: 75, label: 'Web App', sublabel: '[Container]', borderColor: '#58A6FF', labelColor: '#58A6FF' },
-  { x: 140, y: 75, label: 'Database', sublabel: '[Container]', borderColor: '#3FB950', labelColor: '#3FB950' },
+  { x: 75, y: 0, label: 'Person', sublabel: 'Novo usuário', ...NODE_TYPES.person },
+  { x: 10, y: 75, label: 'Web App', sublabel: '[Container]', ...NODE_TYPES.container },
+  { x: 140, y: 75, label: 'Database', sublabel: '[Container]', ...NODE_TYPES.database },
 ];
 
 const registerConnections = [
-  { x1: 100, y1: 45, x2: 65, y2: 80, color: '#30363D' },
-  { x1: 150, y1: 45, x2: 195, y2: 80, color: '#30363D' },
+  { x1: 100, y1: 45, x2: 65, y2: 80, color: 'var(--color-line)' },
+  { x1: 150, y1: 45, x2: 195, y2: 80, color: 'var(--color-line)' },
 ];
 
 const emailSentNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Novo usuário', borderColor: '#F0F6FC', labelColor: '#F0F6FC' },
-  { x: 75, y: 75, label: 'Serviço e-mail', sublabel: '[Externo]', borderColor: '#3FB950', labelColor: '#3FB950', dashed: true },
+  { x: 75, y: 0, label: 'Person', sublabel: 'Novo usuário', ...NODE_TYPES.person },
+  { x: 75, y: 75, label: 'Serviço e-mail', sublabel: '[Externo]', ...NODE_TYPES.emailService },
 ];
 
-const emailSentConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: '#3FB950' }];
+const emailSentConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: 'var(--color-success)' }];
 
 function Register() {
   const [name, setName] = useState('');
@@ -56,9 +57,9 @@ function Register() {
             </div>
 
             <h1 className="mb-2 text-2xl font-medium text-text-primary">Verifique seu e-mail</h1>
-            <p role="status" className="max-w-sm text-sm leading-relaxed text-text-secondary">
+            <output className="max-w-sm text-sm leading-relaxed text-text-secondary">
               {successMessage}
-            </p>
+            </output>
           </div>
         </div>
 

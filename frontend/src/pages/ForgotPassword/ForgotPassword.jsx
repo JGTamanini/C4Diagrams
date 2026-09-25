@@ -2,30 +2,34 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 
 const formNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Usuário', borderColor: '#F0F6FC', labelColor: '#F0F6FC' },
-  { x: 75, y: 75, label: 'Serviço e-mail', sublabel: '[Externo]', borderColor: '#3FB950', labelColor: '#3FB950', dashed: true },
+  { x: 75, y: 0, label: 'Person', sublabel: 'Usuário', ...NODE_TYPES.person },
+  { x: 75, y: 75, label: 'Serviço e-mail', sublabel: '[Externo]', ...NODE_TYPES.emailService },
 ];
 
-const formConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: '#3FB950' }];
+const formConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: 'var(--color-success)' }];
 
 function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const response = await api.post('/auth/forgot-password', { email });
-      setMessage(response.data.message);
+      setSuccessMessage(response.data.message);
     } catch {
-      setMessage('Ocorreu um erro. Tente novamente.');
+      setErrorMessage('Ocorreu um erro. Tente novamente.');
     }
   }
 
-  if (message) {
+  if (successMessage) {
     return (
       <div className="grid min-h-screen grid-cols-1 bg-canvas font-sans md:grid-cols-2">
         <div className="flex items-center justify-center px-8 py-16 md:px-16">
@@ -39,9 +43,9 @@ function ForgotPassword() {
             </div>
 
             <h1 className="mb-2 text-2xl font-medium text-text-primary">Verifique seu e-mail</h1>
-            <p role="status" className="max-w-sm text-sm leading-relaxed text-text-secondary">
-              {message}
-            </p>
+            <output className="max-w-sm text-sm leading-relaxed text-text-secondary">
+              {successMessage}
+            </output>
           </div>
         </div>
 
@@ -81,6 +85,12 @@ function ForgotPassword() {
               Enviar link de recuperação
             </button>
           </form>
+
+          {errorMessage && (
+            <p role="alert" className="mb-4 text-center text-sm text-danger">
+              {errorMessage}
+            </p>
+          )}
 
           <p className="text-center text-sm">
             <Link to="/login" className="text-accent">

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
 const homeNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Engenheiro', borderColor: '#F0F6FC', labelColor: '#F0F6FC' },
-  { x: 20, y: 70, label: 'Web App', sublabel: '[Container]', borderColor: '#58A6FF', labelColor: '#58A6FF' },
-  { x: 165, y: 70, label: 'API', sublabel: '[Container]', borderColor: '#58A6FF', labelColor: '#58A6FF' },
-  { x: 90, y: 140, label: 'Database', sublabel: '[Container]', borderColor: '#3FB950', labelColor: '#3FB950' },
-  { x: 250, y: 30, label: 'Serviço IA', sublabel: '[Externo]', borderColor: '#6E7681', labelColor: '#8B949E', dashed: true },
+  { x: 75, y: 0, label: 'Person', sublabel: 'Engenheiro', ...NODE_TYPES.person },
+  { x: 20, y: 70, label: 'Web App', sublabel: '[Container]', ...NODE_TYPES.container },
+  { x: 165, y: 70, label: 'API', sublabel: '[Container]', ...NODE_TYPES.container },
+  { x: 90, y: 140, label: 'Database', sublabel: '[Container]', ...NODE_TYPES.database },
+  { x: 250, y: 30, label: 'Serviço IA', sublabel: '[Externo]', ...NODE_TYPES.external },
 ];
 
 const homeConnections = [

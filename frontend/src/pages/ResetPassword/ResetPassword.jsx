@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
 const resetNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Usuário', borderColor: '#F0F6FC', labelColor: '#F0F6FC' },
-  { x: 75, y: 75, label: 'Database', sublabel: '[Container]', borderColor: '#3FB950', labelColor: '#3FB950' },
+  { x: 75, y: 0, label: 'Person', sublabel: 'Usuário', ...NODE_TYPES.person },
+  { x: 75, y: 75, label: 'Database', sublabel: '[Container]', ...NODE_TYPES.database },
 ];
 
-const resetConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: '#30363D' }];
+const resetConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: 'var(--color-line)' }];
 
 function ResetPassword() {
   const navigate = useNavigate();
