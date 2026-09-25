@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
-import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
+import AuthCard from '../../components/AuthCard/AuthCard';
+import Brand from '../../components/Brand/Brand';
+import FormInput from '../../components/FormInput/FormInput';
+import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 
 const loginNodes = [
   { x: 70, y: 0, label: 'API', sublabel: '[Container]', ...NODE_TYPES.container },
@@ -15,13 +19,13 @@ const loginConnections = [
   { x1: 145, y1: 45, x2: 190, y2: 80, color: 'var(--color-line)' },
 ];
 
+const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
 function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
-  const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -45,59 +49,38 @@ function Login() {
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-canvas font-sans md:grid-cols-2">
-      <div className="flex items-center justify-center px-8 py-16 md:px-16">
-        <div className="relative z-10 w-full max-w-lg rounded-xl border border-line bg-surface/90 p-10 shadow-2xl shadow-black/50">
-          <span className="mb-10 block font-mono text-sm font-medium text-text-primary">C4//diagrams</span>
+      <AuthCard>
+        <Brand />
 
-          <h1 className="mb-2 text-3xl font-medium text-text-primary">Entrar</h1>
-          <p className="mb-8 text-sm text-text-secondary">Continue de onde parou.</p>
+        <h1 className="mb-2 text-3xl font-medium text-text-primary">Entrar</h1>
+        <p className="mb-8 text-sm text-text-secondary">Continue de onde parou.</p>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-1">
-            <label htmlFor="email" className="mb-1 text-sm text-text-secondary">
-              E-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mb-4 h-11 rounded-md border border-line bg-canvas-deep px-3 text-text-primary outline-none focus:border-accent"
-            />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-1">
+          <FormInput id="email" label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mb-4" />
+          <FormInput id="password" label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mb-2" />
 
-            <label htmlFor="password" className="mb-1 text-sm text-text-secondary">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mb-2 h-11 rounded-md border border-line bg-canvas-deep px-3 text-text-primary outline-none focus:border-accent"
-            />
+          <div className="mb-6 text-right">
+            <Link to="/forgot-password" className="text-sm text-accent">
+              Esqueci minha senha
+            </Link>
+          </div>
 
-            <div className="mb-6 text-right">
-              <Link to="/forgot-password" className="text-sm text-accent">
-                Esqueci minha senha
-              </Link>
-            </div>
+          <PrimaryButton>Entrar</PrimaryButton>
+        </form>
 
-            <button
-              type="submit"
-              className="mb-6 rounded-md bg-accent py-3 text-sm font-medium text-accent-fg"
-            >
-              Entrar
-            </button>
-          </form>
+        {errorMessage && (
+          <p role="alert" className="mb-4 text-center text-sm text-danger">
+            {errorMessage}
+          </p>
+        )}
 
-          {errorMessage && (
-            <p role="alert" className="mt-4 text-center text-sm text-danger">
-              {errorMessage}
-            </p>
-          )}
-        </div>
-      </div>
+        <p className="text-center text-sm text-text-secondary">
+          Não tem conta?{' '}
+          <Link to="/cadastro" className="text-accent">
+            Cadastre-se
+          </Link>
+        </p>
+      </AuthCard>
 
       <DiagramIllustration nodes={loginNodes} connections={loginConnections} />
     </div>
