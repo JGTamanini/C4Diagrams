@@ -56,7 +56,7 @@ describe('Register', () => {
     await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
-    expect(await screen.findByText(/verifique seu e-mail/i)).toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(/verifique seu e-mail/i);
   });
 
   it('deve exibir mensagem de erro quando o e-mail já existe (409)', async () => {

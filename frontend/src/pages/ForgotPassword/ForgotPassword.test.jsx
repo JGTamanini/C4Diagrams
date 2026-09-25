@@ -33,4 +33,17 @@ describe('ForgotPassword', () => {
     expect(api.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'joao@example.com' });
     expect(await screen.findByText(/se esse e-mail estiver cadastrado/i)).toBeInTheDocument();
   });
+
+  it('não deve exibir a tela de sucesso quando a API falha', async () => {
+    const user = userEvent.setup();
+    api.post.mockRejectedValue(new Error('Erro de rede'));
+
+    renderWithRouter(<ForgotPassword />);
+
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.click(screen.getByRole('button', { name: /enviar/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ocorreu um erro/i);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 });
