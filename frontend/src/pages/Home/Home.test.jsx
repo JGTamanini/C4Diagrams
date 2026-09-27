@@ -7,23 +7,25 @@ function renderWithRouter(ui) {
 }
 
 describe('Home', () => {
-  it('deve exibir o título da aplicação', () => {
+  it('deve exibir o título principal da página', () => {
     renderWithRouter(<Home />);
 
-    expect(screen.getByRole('heading', { name: /c4diagrams/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /documente a arquitetura/i })
+    ).toBeInTheDocument();
   });
 
   it('deve exibir link para a página de cadastro', () => {
     renderWithRouter(<Home />);
 
-    const link = screen.getByRole('link', { name: /cadastro/i });
+    const link = screen.getByRole('link', { name: /começar agora/i });
     expect(link).toHaveAttribute('href', '/cadastro');
   });
 
   it('deve exibir link para a página de login', () => {
     renderWithRouter(<Home />);
 
-    const link = screen.getByRole('link', { name: /login/i });
+    const link = screen.getByRole('link', { name: /entrar/i });
     expect(link).toHaveAttribute('href', '/login');
   });
 });
