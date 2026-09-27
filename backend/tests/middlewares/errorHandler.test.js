@@ -1,6 +1,7 @@
 const errorHandler = require('../../src/middlewares/errorHandler');
 const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
+const { UnauthorizedError } = require('../../src/errors/auth.errors');
 
 describe('errorHandler', () => {
   function mockRes() {
@@ -60,6 +61,18 @@ describe('errorHandler', () => {
     errorHandler(err, {}, res, jest.fn());
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 401 com header WWW-Authenticate para UnauthorizedError', () => {
+    const err = new UnauthorizedError('Autenticação necessária. Faça login para continuar.');
+    const res = mockRes();
+    res.set = jest.fn().mockReturnValue(res);
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.set).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer');
+    expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ message: err.message });
   });
 });

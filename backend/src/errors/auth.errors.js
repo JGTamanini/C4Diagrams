@@ -13,4 +13,11 @@ class AccountLockedError extends Error {
   }
 }
 
-module.exports = { InvalidCredentialsError, AccountLockedError };
+class UnauthorizedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+module.exports = { InvalidCredentialsError, AccountLockedError, UnauthorizedError };

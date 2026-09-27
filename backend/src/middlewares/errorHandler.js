@@ -1,5 +1,5 @@
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
-const { InvalidCredentialsError, AccountLockedError } = require('../errors/auth.errors');
+const { InvalidCredentialsError, AccountLockedError, UnauthorizedError } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 
 function errorHandler(err, req, res, next) {
@@ -9,6 +9,10 @@ function errorHandler(err, req, res, next) {
 
   if (err instanceof InvalidCredentialsError) {
     return res.status(401).json({ message: err.message });
+  }
+
+  if (err instanceof UnauthorizedError) {
+    return res.set('WWW-Authenticate', 'Bearer').status(401).json({ message: err.message });
   }
 
   if (err instanceof EmailAlreadyExistsError) {
