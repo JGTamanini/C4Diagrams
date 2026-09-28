@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -11,6 +12,7 @@ app.use(express.json());
 
 app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Nota: Sempre última chamada antes de modules.exports é do errorHandler
 app.use(errorHandler);
