@@ -13,7 +13,7 @@ function normalizeProjectInput({ name, description }) {
 
   const trimmedDescription = typeof description === 'string' ? description.trim() : '';
 
-  return { name: trimmedName, description: trimmedDescription ? description : null };
+  return { name: trimmedName, description: trimmedDescription || null };
 }
 
 // Nota: id fora do formato UUID recebe o mesmo 404 de "não existe" — não revela nada e evita erro 500 do Postgres

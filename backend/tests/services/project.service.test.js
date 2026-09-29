@@ -47,6 +47,20 @@ describe('ProjectService', () => {
       });
     });
 
+    it('deve remover espaços das pontas da descrição, preservando quebras de linha internas', async () => {
+      projectRepository.create.mockResolvedValue(storedProject);
+
+      await projectService.createProject(userId, {
+        name: 'Projeto',
+        description: ' Diagrama de contexto\ndo sistema ',
+      });
+
+      expect(projectRepository.create).toHaveBeenCalledWith(userId, {
+        name: 'Projeto',
+        description: 'Diagrama de contexto\ndo sistema',
+      });
+    });
+
     it('deve gravar descrição vazia ou só com espaços como null', async () => {
       projectRepository.create.mockResolvedValue(storedProject);
 
