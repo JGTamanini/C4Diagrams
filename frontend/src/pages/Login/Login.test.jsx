@@ -34,10 +34,26 @@ describe('Login', () => {
     expect(screen.getByRole('button', { name: /entrar/i })).toBeInTheDocument();
   });
 
-  it('deve autenticar, salvar o token e redirecionar para /canvas-test', async () => {
+  it('deve exibir aviso de sessão expirada quando redirecionado após 401', () => {
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/login', state: { sessionExpired: true } }]}>
+        <Login />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Sua sessão expirou. Faça login novamente.');
+  });
+
+  it('não deve exibir aviso de sessão expirada em um acesso normal', () => {
+    renderWithRouter(<Login />);
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('deve autenticar, salvar a sessão e redirecionar para /projetos', async () => {
     const user = userEvent.setup();
     api.post.mockResolvedValue({
-      data: { token: 'header.payload.signature', user: { id: '1', email: 'joao@example.com' } },
+      data: { token: 'header.payload.signature', user: { id: '1', name: 'João Tamanini', email: 'joao@example.com' } },
     });
 
     renderWithRouter(<Login />);
@@ -49,7 +65,8 @@ describe('Login', () => {
     await waitFor(() => {
       expect(localStorage.getItem('token')).toBe('header.payload.signature');
     });
-    expect(mockNavigate).toHaveBeenCalledWith('/canvas-test');
+    expect(JSON.parse(localStorage.getItem('user'))).toEqual({ name: 'João Tamanini', email: 'joao@example.com' });
+    expect(mockNavigate).toHaveBeenCalledWith('/projetos');
   });
 
   it('deve exibir mensagem de erro para credenciais inválidas (401)', async () => {
