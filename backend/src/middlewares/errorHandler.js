@@ -1,14 +1,15 @@
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
 const { InvalidCredentialsError, AccountLockedError, UnauthorizedError } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
-const { ProjectNotFoundError, FieldTooLongError } = require('../errors/project.errors');
+const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
 
 function errorHandler(err, req, res, next) {
   if (
     err instanceof WeakPasswordError ||
     err instanceof MissingFieldError ||
     err instanceof InvalidOrExpiredTokenError ||
-    err instanceof FieldTooLongError
+    err instanceof FieldTooLongError ||
+    err instanceof NoFieldsToUpdateError
   ) {
     return res.status(400).json({ message: err.message });
   }

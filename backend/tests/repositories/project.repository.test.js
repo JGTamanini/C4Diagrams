@@ -121,11 +121,30 @@ describe('ProjectRepository', () => {
       expect(new Date(updated.updated_at).getTime()).toBeGreaterThan(new Date(before.updated_at).getTime());
     });
 
-    it('deve limpar a descrição quando não informada', async () => {
+    it('deve manter a descrição quando apenas o nome for informado', async () => {
       const created = await projectRepository.create(ownerId, { name: 'Original', description: 'Antes' });
 
-      const updated = await projectRepository.update(created.id, ownerId, { name: 'Original' });
+      const updated = await projectRepository.update(created.id, ownerId, { name: 'Editado' });
 
+      expect(updated.name).toBe('Editado');
+      expect(updated.description).toBe('Antes');
+    });
+
+    it('deve manter o nome quando apenas a descrição for informada', async () => {
+      const created = await projectRepository.create(ownerId, { name: 'Original', description: 'Antes' });
+
+      const updated = await projectRepository.update(created.id, ownerId, { description: 'Depois' });
+
+      expect(updated.name).toBe('Original');
+      expect(updated.description).toBe('Depois');
+    });
+
+    it('deve limpar a descrição quando informada explicitamente como null', async () => {
+      const created = await projectRepository.create(ownerId, { name: 'Original', description: 'Antes' });
+
+      const updated = await projectRepository.update(created.id, ownerId, { description: null });
+
+      expect(updated.name).toBe('Original');
       expect(updated.description).toBeNull();
     });
 

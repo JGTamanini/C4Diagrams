@@ -56,7 +56,7 @@ describe('Rotas de projetos /api/projects', () => {
       ['post', '/api/projects'],
       ['get', '/api/projects'],
       ['get', `/api/projects/${anyId}`],
-      ['put', `/api/projects/${anyId}`],
+      ['patch', `/api/projects/${anyId}`],
       ['delete', `/api/projects/${anyId}`],
     ])('deve retornar 401 em %s %s sem token', async (method, url) => {
       const response = await request(app)[method](url);
@@ -150,12 +150,12 @@ describe('Rotas de projetos /api/projects', () => {
     });
   });
 
-  describe('PUT /api/projects/:id (RF05)', () => {
+  describe('PATCH /api/projects/:id (RF05)', () => {
     it('deve atualizar o projeto e retornar 200', async () => {
       const mine = await insertProject(owner.id, 'Original');
 
       const response = await request(app)
-        .put(`/api/projects/${mine.id}`)
+        .patch(`/api/projects/${mine.id}`)
         .set('Authorization', auth)
         .send({ name: 'Editado', description: 'Nova descrição' });
 
@@ -164,19 +164,41 @@ describe('Rotas de projetos /api/projects', () => {
       expect(response.body.description).toBe('Nova descrição');
     });
 
+    it('deve atualizar apenas os campos enviados, mantendo os demais', async () => {
+      const mine = await insertProject(owner.id, 'Original');
+
+      const response = await request(app)
+        .patch(`/api/projects/${mine.id}`)
+        .set('Authorization', auth)
+        .send({ description: 'Só a descrição' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.name).toBe('Original');
+      expect(response.body.description).toBe('Só a descrição');
+    });
+
     it('deve retornar 400 quando o nome for vazio (RN04)', async () => {
       const mine = await insertProject(owner.id, 'Original');
 
-      const response = await request(app).put(`/api/projects/${mine.id}`).set('Authorization', auth).send({ name: '' });
+      const response = await request(app).patch(`/api/projects/${mine.id}`).set('Authorization', auth).send({ name: '' });
 
       expect(response.status).toBe(400);
+    });
+
+    it('deve retornar 400 quando nenhum campo for enviado', async () => {
+      const mine = await insertProject(owner.id, 'Original');
+
+      const response = await request(app).patch(`/api/projects/${mine.id}`).set('Authorization', auth).send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message');
     });
 
     it('deve retornar 404 e não alterar o projeto de outro usuário (RN02)', async () => {
       const theirs = await insertProject(otherUser.id, 'Projeto alheio');
 
       const response = await request(app)
-        .put(`/api/projects/${theirs.id}`)
+        .patch(`/api/projects/${theirs.id}`)
         .set('Authorization', auth)
         .send({ name: 'Invadido' });
 

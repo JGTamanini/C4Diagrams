@@ -12,4 +12,11 @@ class FieldTooLongError extends Error {
   }
 }
 
-module.exports = { ProjectNotFoundError, FieldTooLongError };
+class NoFieldsToUpdateError extends Error {
+  constructor() {
+    super('Informe ao menos um campo para atualizar: "name" ou "description".');
+    this.name = 'NoFieldsToUpdateError';
+  }
+}
+
+module.exports = { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError };

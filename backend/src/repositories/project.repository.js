@@ -42,17 +42,23 @@ async function findById(id, userId) {
   return result.rows[0];
 }
 
-async function update(id, userId, project) {
-  const { name, description } = project;
+// Nota: atualização parcial (PATCH) — só altera as chaves presentes em changes.
+// name nunca é nulo, então COALESCE basta; description usa flag para distinguir "limpar" (null) de "não enviado"
+async function update(id, userId, changes) {
+  const hasDescription = Object.hasOwn(changes, 'description');
 
   const query = `
     UPDATE projects
-    SET name = $3, description = $4, updated_at = now()
+    SET name = COALESCE($3, name),
+        description = CASE WHEN $4::boolean THEN $5 ELSE description END,
+        updated_at = now()
     WHERE id = $1 AND user_id = $2
     RETURNING ${PUBLIC_COLUMNS}
   `;
 
-  const result = await pool.query(query, [id, userId, name, description ?? null]);
+  const values = [id, userId, changes.name ?? null, hasDescription, hasDescription ? changes.description : null];
+
+  const result = await pool.query(query, values);
 
   return result.rows[0];
 }

@@ -3,7 +3,7 @@ jest.mock('../../src/repositories/project.repository');
 const projectRepository = require('../../src/repositories/project.repository');
 const projectService = require('../../src/services/project.service');
 const { MissingFieldError } = require('../../src/errors/user.errors');
-const { ProjectNotFoundError, FieldTooLongError } = require('../../src/errors/project.errors');
+const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../../src/errors/project.errors');
 
 describe('ProjectService', () => {
   const userId = '8f14e45f-ceea-467a-9575-6f1c8e3b2a10';
@@ -138,10 +138,40 @@ describe('ProjectService', () => {
       expect(result).toEqual(storedProject);
     });
 
-    it('deve lançar MissingFieldError quando o nome estiver vazio (RN04)', async () => {
-      await expect(projectService.updateProject(projectId, userId, { name: ' ' })).rejects.toThrow(
-        MissingFieldError
-      );
+    it('deve enviar ao repositório apenas o nome quando só ele for informado', async () => {
+      projectRepository.update.mockResolvedValue(storedProject);
+
+      await projectService.updateProject(projectId, userId, { name: ' Editado ' });
+
+      expect(projectRepository.update).toHaveBeenCalledWith(projectId, userId, { name: 'Editado' });
+    });
+
+    it('deve enviar ao repositório apenas a descrição quando só ela for informada', async () => {
+      projectRepository.update.mockResolvedValue(storedProject);
+
+      await projectService.updateProject(projectId, userId, { description: ' Nova descrição ' });
+
+      expect(projectRepository.update).toHaveBeenCalledWith(projectId, userId, { description: 'Nova descrição' });
+    });
+
+    it('deve permitir limpar a descrição enviando null', async () => {
+      projectRepository.update.mockResolvedValue(storedProject);
+
+      await projectService.updateProject(projectId, userId, { description: null });
+
+      expect(projectRepository.update).toHaveBeenCalledWith(projectId, userId, { description: null });
+    });
+
+    it.each([
+      ['vazio', ' '],
+      ['null', null],
+    ])('deve lançar MissingFieldError quando o nome for informado %s (RN04)', async (_, name) => {
+      await expect(projectService.updateProject(projectId, userId, { name })).rejects.toThrow(MissingFieldError);
+      expect(projectRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar NoFieldsToUpdateError quando nenhum campo for informado', async () => {
+      await expect(projectService.updateProject(projectId, userId, {})).rejects.toThrow(NoFieldsToUpdateError);
       expect(projectRepository.update).not.toHaveBeenCalled();
     });
 

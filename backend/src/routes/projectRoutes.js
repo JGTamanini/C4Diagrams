@@ -9,7 +9,7 @@ router.use(authenticate);
 router.post('/', projectController.create);
 router.get('/', projectController.list);
 router.get('/:id', projectController.getById);
-router.put('/:id', projectController.update);
+router.patch('/:id', projectController.update);
 router.delete('/:id', projectController.remove);
 
 module.exports = router;

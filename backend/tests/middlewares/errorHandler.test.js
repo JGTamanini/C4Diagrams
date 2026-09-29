@@ -2,7 +2,7 @@ const errorHandler = require('../../src/middlewares/errorHandler');
 const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
 const { UnauthorizedError } = require('../../src/errors/auth.errors');
-const { ProjectNotFoundError, FieldTooLongError } = require('../../src/errors/project.errors');
+const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../../src/errors/project.errors');
 
 describe('errorHandler', () => {
   function mockRes() {
@@ -84,6 +84,16 @@ describe('errorHandler', () => {
     errorHandler(err, {}, res, jest.fn());
 
     expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 400 para NoFieldsToUpdateError', () => {
+    const err = new NoFieldsToUpdateError();
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ message: err.message });
   });
 

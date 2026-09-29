@@ -1,19 +1,35 @@
 const projectRepository = require('../repositories/project.repository');
 const { MissingFieldError } = require('../errors/user.errors');
-const { ProjectNotFoundError, FieldTooLongError } = require('../errors/project.errors');
+const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
 
 const NAME_MAX_LENGTH = 255;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function normalizeProjectInput({ name, description }) {
+function normalizeName(name) {
   const trimmedName = typeof name === 'string' ? name.trim() : '';
 
   if (!trimmedName) throw new MissingFieldError('name');
   if (trimmedName.length > NAME_MAX_LENGTH) throw new FieldTooLongError('name', NAME_MAX_LENGTH);
 
+  return trimmedName;
+}
+
+function normalizeDescription(description) {
   const trimmedDescription = typeof description === 'string' ? description.trim() : '';
 
-  return { name: trimmedName, description: trimmedDescription || null };
+  return trimmedDescription || null;
+}
+
+// Nota: PATCH — só os campos enviados entram em changes; description null limpa, ausente mantém
+function buildChanges({ name, description }) {
+  const changes = {};
+
+  if (name !== undefined) changes.name = normalizeName(name);
+  if (description !== undefined) changes.description = normalizeDescription(description);
+
+  if (Object.keys(changes).length === 0) throw new NoFieldsToUpdateError();
+
+  return changes;
 }
 
 // Nota: id fora do formato UUID recebe o mesmo 404 de "não existe" — não revela nada e evita erro 500 do Postgres
@@ -21,8 +37,11 @@ function assertValidId(id) {
   if (!UUID_REGEX.test(id)) throw new ProjectNotFoundError();
 }
 
-async function createProject(userId, input) {
-  return projectRepository.create(userId, normalizeProjectInput(input));
+async function createProject(userId, { name, description }) {
+  return projectRepository.create(userId, {
+    name: normalizeName(name),
+    description: normalizeDescription(description),
+  });
 }
 
 async function listProjects(userId) {
@@ -41,7 +60,7 @@ async function getProject(id, userId) {
 async function updateProject(id, userId, input) {
   assertValidId(id);
 
-  const project = await projectRepository.update(id, userId, normalizeProjectInput(input));
+  const project = await projectRepository.update(id, userId, buildChanges(input));
   if (!project) throw new ProjectNotFoundError();
 
   return project;
