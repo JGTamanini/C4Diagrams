@@ -51,7 +51,7 @@ function VerifyEmail() {
       }
     }
 
-    verify();
+    void verify();
   }, [searchParams]);
 
   const config = STATUS_CONFIG[status];

@@ -47,9 +47,7 @@ function ResendVerification({ email: knownEmail }) {
       </button>
 
       {statusMessage && (
-        <p role="status" className="mt-3 text-center text-sm text-text-secondary">
-          {statusMessage}
-        </p>
+        <output className="mt-3 text-center text-sm text-text-secondary">{statusMessage}</output>
       )}
       {errorMessage && (
         <p role="alert" className="mt-3 text-center text-sm text-danger">
