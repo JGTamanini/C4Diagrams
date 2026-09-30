@@ -101,9 +101,9 @@ function Dashboard() {
         )}
 
         {status === 'loading' && (
-          <p role="status" className="text-sm text-text-secondary">
+          <output className="block text-sm text-text-secondary">
             Carregando projetos...
-          </p>
+          </output>
         )}
 
         {status === 'error' && (

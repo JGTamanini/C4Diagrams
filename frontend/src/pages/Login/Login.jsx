@@ -59,9 +59,9 @@ function Login() {
         <p className="mb-8 text-sm text-text-secondary">Continue de onde parou.</p>
 
         {sessionExpired && (
-          <p role="status" className="mb-6 rounded-md border border-line bg-surface px-3 py-2 text-sm text-text-secondary">
+          <output className="block mb-6 rounded-md border border-line bg-surface px-3 py-2 text-sm text-text-secondary">
             Sua sessão expirou. Faça login novamente.
-          </p>
+          </output>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-1">

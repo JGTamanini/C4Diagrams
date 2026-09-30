@@ -36,9 +36,9 @@ function ProjectPage() {
       <AppHeader />
 
       {!project && !errorMessage && (
-        <p role="status" className="p-6 text-sm text-text-secondary">
+        <output className="block p-6 text-sm text-text-secondary">
           Carregando projeto...
-        </p>
+        </output>
       )}
 
       {errorMessage && (
