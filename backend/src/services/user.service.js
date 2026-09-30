@@ -7,6 +7,7 @@ const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 
 const SALT_ROUNDS = 10;
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const PASSWORD_RESET_TOKEN_TTL_MINUTES = 10;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/;
 
@@ -14,6 +15,21 @@ function validatePasswordStrength(password) {
   if (!PASSWORD_REGEX.test(password || '')) {
     throw new WeakPasswordError();
   }
+}
+
+function generateVerificationToken() {
+  return {
+    token: crypto.randomBytes(32).toString('hex'),
+    expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_TTL_HOURS * 60 * 60 * 1000),
+  };
+}
+
+// Nota: o último envio é deduzido da expiração do token (expiração − TTL), sem coluna extra no banco
+function isWithinResendCooldown(user) {
+  if (!user.verification_token_expires_at) return false;
+
+  const lastSentAt = new Date(user.verification_token_expires_at).getTime() - VERIFICATION_TOKEN_TTL_HOURS * 60 * 60 * 1000;
+  return Date.now() - lastSentAt < VERIFICATION_RESEND_COOLDOWN_MS;
 }
 
 async function register({ name, email, password }) {
@@ -27,10 +43,7 @@ async function register({ name, email, password }) {
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const verificationToken = crypto.randomBytes(32).toString('hex');
-  const verificationTokenExpiresAt = new Date(
-    Date.now() + VERIFICATION_TOKEN_TTL_HOURS * 60 * 60 * 1000
-  );
+  const { token: verificationToken, expiresAt: verificationTokenExpiresAt } = generateVerificationToken();
 
   const createdUser = await userRepository.create({
     name,
@@ -57,6 +70,20 @@ async function verifyEmail(token) {
   }
 
   await userRepository.markEmailAsVerified(user.id);
+}
+
+async function resendVerificationEmail(email) {
+  const user = await userRepository.findByEmail(email);
+
+  // Nota: todos os casos terminam na mesma resposta genérica do Controller (anti-enumeração)
+  if (!user || user.email_verified || isWithinResendCooldown(user)) {
+    return;
+  }
+
+  const { token, expiresAt } = generateVerificationToken();
+
+  await userRepository.setVerificationToken(user.id, token, expiresAt);
+  await emailService.sendVerificationEmail(email, token);
 }
 
 async function requestPasswordReset(email) {
@@ -90,4 +117,4 @@ async function resetPassword(token, newPassword) {
   await userRepository.updatePassword(user.id, passwordHash);
 }
 
-module.exports = { register, verifyEmail, requestPasswordReset, resetPassword };
+module.exports = { register, verifyEmail, resendVerificationEmail, requestPasswordReset, resetPassword };

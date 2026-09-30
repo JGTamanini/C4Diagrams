@@ -129,6 +129,20 @@ describe('UserRepository', () => {
     });
   });
 
+  describe('setVerificationToken', () => {
+    it('deve substituir o token de verificação e sua expiração', async () => {
+      const createdUser = await userRepository.create(testUser);
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await userRepository.setVerificationToken(createdUser.id, 'novo-token-verificacao', expiresAt);
+
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.verification_token).toBe('novo-token-verificacao');
+      expect(new Date(user.verification_token_expires_at).getTime()).toBe(expiresAt.getTime());
+      expect(user.email_verified).toBe(false);
+    });
+  });
+
   describe('setPasswordResetToken', () => {
   it('deve definir o token de recuperação e sua expiração', async () => {
     const createdUser = await userRepository.create(testUser);

@@ -88,6 +88,16 @@ async function markEmailAsVerified(userId) {
   await pool.query(query, [userId]);
 }
 
+async function setVerificationToken(userId, token, expiresAt) {
+  const query = `
+    UPDATE users
+    SET verification_token = $2, verification_token_expires_at = $3
+    WHERE id = $1
+  `;
+
+  await pool.query(query, [userId, token, expiresAt]);
+}
+
 async function setPasswordResetToken(userId, token, expiresAt) {
   const query = `
     UPDATE users
@@ -135,6 +145,7 @@ module.exports = {
   lockAccount,
   findByVerificationToken,
   markEmailAsVerified,
+  setVerificationToken,
   setPasswordResetToken,
   findByPasswordResetToken,
   updatePassword,
