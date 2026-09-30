@@ -29,3 +29,25 @@ describe('Home', () => {
     expect(link).toHaveAttribute('href', '/login');
   });
 });
+describe('Home com usuário logado', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('token', 'header.payload.signature');
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('deve trocar os atalhos de cadastro e login por "Ir para meus projetos"', () => {
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('link', { name: 'Ir para meus projetos' })).toHaveAttribute('href', '/projetos');
+    expect(screen.queryByRole('link', { name: /começar agora/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^entrar$/i })).not.toBeInTheDocument();
+  });
+});

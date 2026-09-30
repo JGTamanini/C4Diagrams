@@ -45,3 +45,30 @@ describe('App - rotas de projetos', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Loja Online' })).toBeInTheDocument();
   });
 });
+
+describe('App - telas públicas com usuário logado', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('token', 'header.payload.signature');
+    listProjects.mockResolvedValue([]);
+  });
+
+  it.each(['/login', '/cadastro', '/forgot-password'])('deve levar %s para /projetos', async (path) => {
+    renderAt(path);
+
+    expect(await screen.findByRole('heading', { name: 'Meus Projetos' })).toBeInTheDocument();
+  });
+
+  it('deve manter /reset-password acessível, pois é aberta por link de e-mail', () => {
+    renderAt('/reset-password?token=abc');
+
+    expect(screen.getByRole('heading', { name: 'Redefinir senha' })).toBeInTheDocument();
+  });
+
+  it('deve manter /verify-email acessível, pois é aberta por link de e-mail', () => {
+    renderAt('/verify-email?token=abc');
+
+    expect(screen.getByText('Verificando...')).toBeInTheDocument();
+  });
+});

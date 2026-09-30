@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { getToken } from '../../services/session';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
@@ -33,18 +34,29 @@ function Home() {
         </p>
 
         <nav className="mt-4 flex gap-4">
-          <Link
-            to="/cadastro"
-            className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"
-          >
-            Começar agora
-          </Link>
-          <Link
-            to="/login"
-            className="rounded-md px-6 py-3 text-sm font-medium text-text-secondary"
-          >
-            Entrar
-          </Link>
+          {getToken() ? (
+            <Link
+              to="/projetos"
+              className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"
+            >
+              Ir para meus projetos
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/cadastro"
+                className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"
+              >
+                Começar agora
+              </Link>
+              <Link
+                to="/login"
+                className="rounded-md px-6 py-3 text-sm font-medium text-text-secondary"
+              >
+                Entrar
+              </Link>
+            </>
+          )}
         </nav>
       </div>
 
