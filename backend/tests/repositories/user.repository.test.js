@@ -129,17 +129,68 @@ describe('UserRepository', () => {
     });
   });
 
-  describe('setVerificationToken', () => {
-    it('deve substituir o token de verificação e sua expiração', async () => {
-      const createdUser = await userRepository.create(testUser);
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  describe('renewVerificationToken', () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const COOLDOWN_MS = 60 * 1000;
 
-      await userRepository.setVerificationToken(createdUser.id, 'novo-token-verificacao', expiresAt);
+    // Simula o último envio feito há `msAgo` (a expiração é sempre envio + 24h)
+    async function createUserSentAgo(msAgo) {
+      const createdUser = await userRepository.create({
+        ...testUser,
+        verificationTokenExpiresAt: new Date(Date.now() + DAY_MS - msAgo),
+      });
+      return createdUser.id;
+    }
 
+    function renewArgs(token) {
+      return [token, new Date(Date.now() + DAY_MS), new Date(Date.now() + DAY_MS - COOLDOWN_MS)];
+    }
+
+    it('deve renovar o token quando o último envio passou do intervalo mínimo', async () => {
+      const userId = await createUserSentAgo(2 * 60 * 1000);
+      const [token, expiresAt, notSentAfter] = renewArgs('novo-token-verificacao');
+
+      const renewed = await userRepository.renewVerificationToken(userId, token, expiresAt, notSentAfter);
+
+      expect(renewed).toBe(true);
       const user = await userRepository.findByEmail(testUser.email);
       expect(user.verification_token).toBe('novo-token-verificacao');
       expect(new Date(user.verification_token_expires_at).getTime()).toBe(expiresAt.getTime());
-      expect(user.email_verified).toBe(false);
+    });
+
+    it('não deve renovar dentro do intervalo mínimo', async () => {
+      const userId = await createUserSentAgo(30 * 1000);
+
+      const renewed = await userRepository.renewVerificationToken(userId, ...renewArgs('novo-token-verificacao'));
+
+      expect(renewed).toBe(false);
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.verification_token).toBe(testUser.verificationToken);
+    });
+
+    it('não deve renovar quando a conta já estiver verificada', async () => {
+      const userId = await createUserSentAgo(2 * 60 * 1000);
+      await userRepository.markEmailAsVerified(userId);
+
+      const renewed = await userRepository.renewVerificationToken(userId, ...renewArgs('novo-token-verificacao'));
+
+      expect(renewed).toBe(false);
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.verification_token).toBeNull();
+    });
+
+    it('deve permitir apenas uma renovação quando duas chegam ao mesmo tempo', async () => {
+      const userId = await createUserSentAgo(2 * 60 * 1000);
+
+      const results = await Promise.all([
+        userRepository.renewVerificationToken(userId, ...renewArgs('token-requisicao-a')),
+        userRepository.renewVerificationToken(userId, ...renewArgs('token-requisicao-b')),
+      ]);
+
+      expect(results.filter(Boolean)).toHaveLength(1);
+      const winner = results[0] ? 'token-requisicao-a' : 'token-requisicao-b';
+      const user = await userRepository.findByEmail(testUser.email);
+      expect(user.verification_token).toBe(winner);
     });
   });
 

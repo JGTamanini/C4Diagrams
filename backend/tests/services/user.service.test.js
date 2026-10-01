@@ -189,50 +189,46 @@ describe('UserService', () => {
 
 describe('resendVerificationEmail', () => {
   const DAY_MS = 24 * 60 * 60 * 1000;
-
-  function unverifiedUser(sentMsAgo) {
-    return {
-      id: 'uuid-mock',
-      email: inputData.email,
-      email_verified: false,
-      verification_token_expires_at: new Date(Date.now() + DAY_MS - sentMsAgo),
-    };
-  }
+  const COOLDOWN_MS = 60 * 1000;
+  const unverifiedUser = { id: 'uuid-mock', email: inputData.email, email_verified: false };
 
   beforeEach(() => {
     jest.clearAllMocks();
     crypto.randomBytes.mockReturnValue({ toString: () => 'novo_token_verificacao' });
   });
 
-  it('deve gerar novo token de 24h e reenviar o e-mail para conta não verificada', async () => {
-    userRepository.findByEmail.mockResolvedValue(unverifiedUser(2 * 60 * 1000));
+  it('deve renovar o token (24h, respeitando o intervalo de 1 minuto) e reenviar o e-mail', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.renewVerificationToken.mockResolvedValue(true);
 
     await userService.resendVerificationEmail(inputData.email);
 
-    expect(userRepository.setVerificationToken).toHaveBeenCalledWith('uuid-mock', 'novo_token_verificacao', expect.any(Date));
-    const expiresAt = userRepository.setVerificationToken.mock.calls[0][2];
+    const [userId, token, expiresAt, notSentAfter] = userRepository.renewVerificationToken.mock.calls[0];
+    expect(userId).toBe('uuid-mock');
+    expect(token).toBe('novo_token_verificacao');
     expect(Math.abs(expiresAt.getTime() - (Date.now() + DAY_MS))).toBeLessThan(5000);
+    expect(expiresAt.getTime() - notSentAfter.getTime()).toBe(COOLDOWN_MS);
     expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(inputData.email, 'novo_token_verificacao');
   });
 
-  it('deve reenviar quando a conta não verificada não tiver token registrado', async () => {
-    userRepository.findByEmail.mockResolvedValue({ ...unverifiedUser(0), verification_token_expires_at: null });
+  it('não deve enviar e-mail quando o repositório não renovar (intervalo mínimo ou requisição concorrente)', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.renewVerificationToken.mockResolvedValue(false);
 
-    await userService.resendVerificationEmail(inputData.email);
+    await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
 
-    expect(emailService.sendVerificationEmail).toHaveBeenCalled();
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 
   it.each([
     ['o e-mail não existir', undefined],
     ['a conta já estiver verificada', { id: 'uuid-mock', email: inputData.email, email_verified: true }],
-    ['o último envio tiver menos de 1 minuto', unverifiedUser(30 * 1000)],
-  ])('não deve gerar token nem enviar e-mail quando %s (resposta genérica)', async (_, user) => {
+  ])('não deve tentar renovar nem enviar e-mail quando %s (resposta genérica)', async (_, user) => {
     userRepository.findByEmail.mockResolvedValue(user);
 
     await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
 
-    expect(userRepository.setVerificationToken).not.toHaveBeenCalled();
+    expect(userRepository.renewVerificationToken).not.toHaveBeenCalled();
     expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 });

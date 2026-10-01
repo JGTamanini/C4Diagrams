@@ -24,14 +24,6 @@ function generateVerificationToken() {
   };
 }
 
-// Nota: o último envio é deduzido da expiração do token (expiração − TTL), sem coluna extra no banco
-function isWithinResendCooldown(user) {
-  if (!user.verification_token_expires_at) return false;
-
-  const lastSentAt = new Date(user.verification_token_expires_at).getTime() - VERIFICATION_TOKEN_TTL_HOURS * 60 * 60 * 1000;
-  return Date.now() - lastSentAt < VERIFICATION_RESEND_COOLDOWN_MS;
-}
-
 async function register({ name, email, password }) {
   if (!name) throw new MissingFieldError('name');
   if (!email) throw new MissingFieldError('email');
@@ -76,14 +68,18 @@ async function resendVerificationEmail(email) {
   const user = await userRepository.findByEmail(email);
 
   // Nota: todos os casos terminam na mesma resposta genérica do Controller (anti-enumeração)
-  if (!user || user.email_verified || isWithinResendCooldown(user)) {
+  if (!user || user.email_verified) {
     return;
   }
 
   const { token, expiresAt } = generateVerificationToken();
+  // Nota: o último envio é deduzido da expiração (expiração − TTL); o repositório aplica o intervalo de forma atômica
+  const notSentAfter = new Date(expiresAt.getTime() - VERIFICATION_RESEND_COOLDOWN_MS);
 
-  await userRepository.setVerificationToken(user.id, token, expiresAt);
-  await emailService.sendVerificationEmail(email, token);
+  const renewed = await userRepository.renewVerificationToken(user.id, token, expiresAt, notSentAfter);
+  if (renewed) {
+    await emailService.sendVerificationEmail(email, token);
+  }
 }
 
 async function requestPasswordReset(email) {

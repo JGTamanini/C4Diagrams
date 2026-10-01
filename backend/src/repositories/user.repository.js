@@ -88,14 +88,21 @@ async function markEmailAsVerified(userId) {
   await pool.query(query, [userId]);
 }
 
-async function setVerificationToken(userId, token, expiresAt) {
+// Nota: a checagem do intervalo mínimo fica no próprio WHERE para ser atômica — com duas requisições
+// simultâneas, o Postgres trava a linha e a segunda reavalia o WHERE após a primeira gravar, então só uma renova.
+// notSentAfter = limite da expiração atual (envio anterior + TTL) para ainda permitir um novo envio.
+async function renewVerificationToken(userId, token, expiresAt, notSentAfter) {
   const query = `
     UPDATE users
     SET verification_token = $2, verification_token_expires_at = $3
     WHERE id = $1
+      AND email_verified = false
+      AND (verification_token_expires_at IS NULL OR verification_token_expires_at <= $4)
   `;
 
-  await pool.query(query, [userId, token, expiresAt]);
+  const result = await pool.query(query, [userId, token, expiresAt, notSentAfter]);
+
+  return result.rowCount > 0;
 }
 
 async function setPasswordResetToken(userId, token, expiresAt) {
@@ -145,7 +152,7 @@ module.exports = {
   lockAccount,
   findByVerificationToken,
   markEmailAsVerified,
-  setVerificationToken,
+  renewVerificationToken,
   setPasswordResetToken,
   findByPasswordResetToken,
   updatePassword,
