@@ -187,6 +187,52 @@ describe('UserService', () => {
   });
 });
 
+describe('resendVerificationEmail', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const COOLDOWN_MS = 60 * 1000;
+  const unverifiedUser = { id: 'uuid-mock', email: inputData.email, email_verified: false };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    crypto.randomBytes.mockReturnValue({ toString: () => 'novo_token_verificacao' });
+  });
+
+  it('deve renovar o token (24h, respeitando o intervalo de 1 minuto) e reenviar o e-mail', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.renewVerificationToken.mockResolvedValue(true);
+
+    await userService.resendVerificationEmail(inputData.email);
+
+    const [userId, token, expiresAt, notSentAfter] = userRepository.renewVerificationToken.mock.calls[0];
+    expect(userId).toBe('uuid-mock');
+    expect(token).toBe('novo_token_verificacao');
+    expect(Math.abs(expiresAt.getTime() - (Date.now() + DAY_MS))).toBeLessThan(5000);
+    expect(expiresAt.getTime() - notSentAfter.getTime()).toBe(COOLDOWN_MS);
+    expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(inputData.email, 'novo_token_verificacao');
+  });
+
+  it('não deve enviar e-mail quando o repositório não renovar (intervalo mínimo ou requisição concorrente)', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.renewVerificationToken.mockResolvedValue(false);
+
+    await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
+
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['o e-mail não existir', undefined],
+    ['a conta já estiver verificada', { id: 'uuid-mock', email: inputData.email, email_verified: true }],
+  ])('não deve tentar renovar nem enviar e-mail quando %s (resposta genérica)', async (_, user) => {
+    userRepository.findByEmail.mockResolvedValue(user);
+
+    await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
+
+    expect(userRepository.renewVerificationToken).not.toHaveBeenCalled();
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+});
+
 describe('resetPassword', () => {
   const validToken = 'reset-token-valido';
 

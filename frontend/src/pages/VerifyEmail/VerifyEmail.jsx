@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../../services/api';
+import ResendVerification from '../../components/ResendVerification/ResendVerification';
 
 const STATUS_CONFIG = {
   loading: { border: 'border-line', bg: 'bg-surface', icon: 'text-text-secondary' },
@@ -50,7 +51,7 @@ function VerifyEmail() {
       }
     }
 
-    verify();
+    void verify();
   }, [searchParams]);
 
   const config = STATUS_CONFIG[status];
@@ -83,9 +84,12 @@ function VerifyEmail() {
       )}
 
       {status === 'error' && (
-        <p role="alert" className="max-w-xs text-sm text-text-secondary">
-          {message}
-        </p>
+        <>
+          <p role="alert" className="max-w-xs text-sm text-text-secondary">
+            {message}
+          </p>
+          <ResendVerification />
+        </>
       )}
     </div>
   );
