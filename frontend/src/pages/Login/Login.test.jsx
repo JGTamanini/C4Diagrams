@@ -69,6 +69,21 @@ describe('Login', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/projetos');
   });
 
+  it('deve concluir o login mesmo se a resposta não trouxer o usuário', async () => {
+    const user = userEvent.setup();
+    api.post.mockResolvedValue({ data: { token: 'header.payload.signature' } });
+
+    renderWithRouter(<Login />);
+
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.click(screen.getByRole('button', { name: /entrar/i }));
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/projetos'));
+    expect(localStorage.getItem('token')).toBe('header.payload.signature');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('deve exibir mensagem de erro para credenciais inválidas (401)', async () => {
     const user = userEvent.setup();
     api.post.mockRejectedValue({

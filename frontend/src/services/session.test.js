@@ -15,6 +15,15 @@ describe('session', () => {
     expect(getUser()).toEqual({ name: 'João Tamanini', email: 'joao@example.com' });
   });
 
+  it('deve salvar só o token quando o usuário não vier, limpando um usuário anterior', () => {
+    localStorage.setItem('user', JSON.stringify({ name: 'Sessão anterior', email: 'antigo@example.com' }));
+
+    saveSession('header.payload.signature', undefined);
+
+    expect(getToken()).toBe('header.payload.signature');
+    expect(getUser()).toBeNull();
+  });
+
   it('deve retornar null quando não houver sessão', () => {
     expect(getToken()).toBeNull();
     expect(getUser()).toBeNull();
