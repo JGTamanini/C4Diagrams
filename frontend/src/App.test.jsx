@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import App from './App';
+import { fakeJwt } from './test/fakeJwt';
 import { listProjects, getProject } from './services/projects';
 
 vi.mock('./services/projects');
@@ -28,7 +29,7 @@ describe('App - rotas de projetos', () => {
   });
 
   it('deve exibir o dashboard em /projetos para usuário autenticado', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     listProjects.mockResolvedValue([]);
 
     renderAt('/projetos');
@@ -37,11 +38,38 @@ describe('App - rotas de projetos', () => {
   });
 
   it('deve exibir a página do projeto em /projetos/:id para usuário autenticado', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     getProject.mockResolvedValue({ id: 'p1', name: 'Loja Online', description: null });
 
     renderAt('/projetos/p1');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Loja Online' })).toBeInTheDocument();
+  });
+});
+
+describe('App - telas públicas com usuário logado', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('token', fakeJwt());
+    listProjects.mockResolvedValue([]);
+  });
+
+  it.each(['/login', '/cadastro', '/forgot-password'])('deve levar %s para /projetos', async (path) => {
+    renderAt(path);
+
+    expect(await screen.findByRole('heading', { name: 'Meus Projetos' })).toBeInTheDocument();
+  });
+
+  it('deve manter /reset-password acessível, pois é aberta por link de e-mail', () => {
+    renderAt('/reset-password?token=abc');
+
+    expect(screen.getByRole('heading', { name: 'Redefinir senha' })).toBeInTheDocument();
+  });
+
+  it('deve manter /verify-email acessível, pois é aberta por link de e-mail', () => {
+    renderAt('/verify-email?token=abc');
+
+    expect(screen.getByText('Verificando...')).toBeInTheDocument();
   });
 });

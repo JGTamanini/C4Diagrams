@@ -9,13 +9,28 @@ import ResetPassword from './pages/ResetPassword/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import ProjectPage from './pages/ProjectPage/ProjectPage';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import PublicOnlyRoute from './components/PublicOnlyRoute/PublicOnlyRoute';
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/cadastro" element={<Register />} />
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/cadastro"
+        element={
+          <PublicOnlyRoute>
+            <Register />
+          </PublicOnlyRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <PublicOnlyRoute>
+            <Login />
+          </PublicOnlyRoute>
+        }
+      />
       <Route
         path="/canvas-test"
         element={
@@ -25,7 +40,14 @@ function App() {
         }
       />
       <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicOnlyRoute>
+            <ForgotPassword />
+          </PublicOnlyRoute>
+        }
+      />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/projetos"
