@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { fakeJwt } from '../../test/fakeJwt';
 import PublicOnlyRoute from './PublicOnlyRoute';
 
 function renderAt(path) {
@@ -31,8 +32,16 @@ describe('PublicOnlyRoute', () => {
     expect(screen.getByText('Tela pública')).toBeInTheDocument();
   });
 
+  it('deve exibir a tela pública quando o token estiver vencido', () => {
+    localStorage.setItem('token', fakeJwt({ expiresInSeconds: -60 }));
+
+    renderAt('/login');
+
+    expect(screen.getByText('Tela pública')).toBeInTheDocument();
+  });
+
   it('deve redirecionar para /projetos quando houver sessão', () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
 
     renderAt('/login');
 

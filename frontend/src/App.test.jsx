@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import App from './App';
+import { fakeJwt } from './test/fakeJwt';
 import { listProjects, getProject } from './services/projects';
 
 vi.mock('./services/projects');
@@ -28,7 +29,7 @@ describe('App - rotas de projetos', () => {
   });
 
   it('deve exibir o dashboard em /projetos para usuário autenticado', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     listProjects.mockResolvedValue([]);
 
     renderAt('/projetos');
@@ -37,7 +38,7 @@ describe('App - rotas de projetos', () => {
   });
 
   it('deve exibir a página do projeto em /projetos/:id para usuário autenticado', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     getProject.mockResolvedValue({ id: 'p1', name: 'Loja Online', description: null });
 
     renderAt('/projetos/p1');
@@ -50,7 +51,7 @@ describe('App - telas públicas com usuário logado', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     listProjects.mockResolvedValue([]);
   });
 

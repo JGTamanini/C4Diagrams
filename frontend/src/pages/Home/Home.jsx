@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { getToken } from '../../services/session';
+import { hasActiveSession } from '../../services/session';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 
@@ -34,7 +34,7 @@ function Home() {
         </p>
 
         <nav className="mt-4 flex gap-4">
-          {getToken() ? (
+          {hasActiveSession() ? (
             <Link
               to="/projetos"
               className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"

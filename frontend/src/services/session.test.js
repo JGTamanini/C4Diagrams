@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { saveSession, getToken, getUser, clearSession } from './session';
+import { saveSession, getToken, getUser, clearSession, hasActiveSession } from './session';
+import { fakeJwt } from '../test/fakeJwt';
 
 describe('session', () => {
   const user = { id: '1', name: 'João Tamanini', email: 'joao@example.com' };
@@ -42,5 +43,35 @@ describe('session', () => {
 
     expect(getToken()).toBeNull();
     expect(getUser()).toBeNull();
+  });
+
+  describe('hasActiveSession', () => {
+    it('deve ser falso sem token', () => {
+      expect(hasActiveSession()).toBe(false);
+    });
+
+    it('deve ser verdadeiro com token dentro da validade', () => {
+      localStorage.setItem('token', fakeJwt({ expiresInSeconds: 60 }));
+
+      expect(hasActiveSession()).toBe(true);
+    });
+
+    it('deve ser falso com token expirado', () => {
+      localStorage.setItem('token', fakeJwt({ expiresInSeconds: -60 }));
+
+      expect(hasActiveSession()).toBe(false);
+    });
+
+    it('deve ser falso com token malformado', () => {
+      localStorage.setItem('token', 'nao-e-um-jwt');
+
+      expect(hasActiveSession()).toBe(false);
+    });
+
+    it('deve deixar a decisão para o servidor quando o token não tiver exp', () => {
+      localStorage.setItem('token', fakeJwt({ withExp: false }));
+
+      expect(hasActiveSession()).toBe(true);
+    });
   });
 });

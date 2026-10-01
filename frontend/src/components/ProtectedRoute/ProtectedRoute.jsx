@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { onUnauthorized } from '../../services/api';
-import { getToken } from '../../services/session';
+import { getToken, hasActiveSession } from '../../services/session';
 
 function ProtectedRoute({ children }) {
   const navigate = useNavigate();
@@ -14,6 +14,11 @@ function ProtectedRoute({ children }) {
 
   if (!getToken()) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Nota: token presente mas vencido vai direto ao login com aviso, sem mostrar a tela antes do 401
+  if (!hasActiveSession()) {
+    return <Navigate to="/login" replace state={{ sessionExpired: true }} />;
   }
 
   return children;
