@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../services/api';
+import { saveSession } from '../../services/session';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 import AuthCard from '../../components/AuthCard/AuthCard';
 import Brand from '../../components/Brand/Brand';
@@ -23,6 +24,8 @@ const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionExpired = Boolean(location.state?.sessionExpired);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -33,14 +36,14 @@ function Login() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token } = response.data;
+      const { token, user } = response.data;
 
       if (!JWT_FORMAT_REGEX.test(token)) {
         throw new Error('Token inválido recebido do servidor.');
       }
 
-      localStorage.setItem('token', token);
-      navigate('/canvas-test');
+      saveSession(token, user);
+      navigate('/projetos');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);
@@ -54,6 +57,12 @@ function Login() {
 
         <h1 className="mb-2 text-3xl font-medium text-text-primary">Entrar</h1>
         <p className="mb-8 text-sm text-text-secondary">Continue de onde parou.</p>
+
+        {sessionExpired && (
+          <output className="block mb-6 rounded-md border border-line bg-surface px-3 py-2 text-sm text-text-secondary">
+            Sua sessão expirou. Faça login novamente.
+          </output>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-1">
           <FormInput id="email" label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mb-4" />
