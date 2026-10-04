@@ -1,9 +1,16 @@
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
 const { InvalidCredentialsError, AccountLockedError, UnauthorizedError } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
+const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
 
 function errorHandler(err, req, res, next) {
-  if (err instanceof WeakPasswordError || err instanceof MissingFieldError || err instanceof InvalidOrExpiredTokenError) {
+  if (
+    err instanceof WeakPasswordError ||
+    err instanceof MissingFieldError ||
+    err instanceof InvalidOrExpiredTokenError ||
+    err instanceof FieldTooLongError ||
+    err instanceof NoFieldsToUpdateError
+  ) {
     return res.status(400).json({ message: err.message });
   }
 
@@ -13,6 +20,10 @@ function errorHandler(err, req, res, next) {
 
   if (err instanceof UnauthorizedError) {
     return res.set('WWW-Authenticate', 'Bearer').status(401).json({ message: err.message });
+  }
+
+  if (err instanceof ProjectNotFoundError) {
+    return res.status(404).json({ message: err.message });
   }
 
   if (err instanceof EmailAlreadyExistsError) {
