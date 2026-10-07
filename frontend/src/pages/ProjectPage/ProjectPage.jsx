@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Canvas from '../../components/Canvas/Canvas';
-import { getProject } from '../../services/projects';
+import { getProject, InvalidProjectIdError } from '../../services/projects';
 
 // Nota: página mínima do projeto (RF07 - visualização); a Fase 4 evolui esta página para o editor
 function ProjectPage() {
@@ -17,7 +17,9 @@ function ProjectPage() {
       .then((data) => active && setProject(data))
       .catch((err) => {
         if (!active) return;
-        setErrorMessage(err.response?.status === 404 ? 'Projeto não encontrado.' : 'Não foi possível carregar o projeto.');
+        // Nota: id fora do formato é rejeitado antes da requisição e equivale a um 404 para o usuário
+        const notFound = err instanceof InvalidProjectIdError || err.response?.status === 404;
+        setErrorMessage(notFound ? 'Projeto não encontrado.' : 'Não foi possível carregar o projeto.');
       });
 
     return () => {

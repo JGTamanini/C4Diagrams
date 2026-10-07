@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi } from 'vitest';
 import ProjectPage from './ProjectPage';
-import { getProject } from '../../services/projects';
+import { getProject, InvalidProjectIdError } from '../../services/projects';
 
 vi.mock('../../services/projects');
 vi.mock('../../components/Canvas/Canvas', () => ({ default: () => <div data-testid="canvas" /> }));
@@ -58,6 +58,14 @@ describe('ProjectPage (RF07 - visualização)', () => {
     settle(resolveFn, rejectFn);
 
     await expect(Promise.resolve()).resolves.toBeUndefined();
+  });
+
+  it('deve tratar id fora do formato como projeto não encontrado', async () => {
+    getProject.mockRejectedValue(new InvalidProjectIdError());
+
+    renderAt('/projetos/abc');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Projeto não encontrado.');
   });
 
   it('deve exibir erro genérico para outras falhas', async () => {

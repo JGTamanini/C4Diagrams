@@ -1,7 +1,21 @@
 import api from './api';
 
-// Nota: o id é codificado para não alterar o endpoint chamado (ex.: "../auth/x" viraria outra rota da API)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export class InvalidProjectIdError extends Error {
+  constructor() {
+    super('Projeto não encontrado.');
+    this.name = 'InvalidProjectIdError';
+  }
+}
+
+// Nota: só ids no formato UUID (o mesmo aceito pelo backend) entram na URL — um valor como "../auth/x"
+// poderia trocar o endpoint chamado com o token do usuário. Id inválido nem gera requisição.
 function projectPath(id) {
+  if (!UUID_REGEX.test(id)) {
+    throw new InvalidProjectIdError();
+  }
+
   return `/projects/${encodeURIComponent(id)}`;
 }
 
