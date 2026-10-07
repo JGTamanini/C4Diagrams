@@ -55,3 +55,36 @@ describe('projects service', () => {
     expect(api.delete).toHaveBeenCalledWith('/projects/p1');
   });
 });
+
+describe('projects service - id na URL', () => {
+  const maliciousId = '../auth/forgot-password';
+  const encoded = '..%2Fauth%2Fforgot-password';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deve codificar o id ao buscar, impedindo trocar o endpoint chamado', async () => {
+    api.get.mockResolvedValue({ data: {} });
+
+    await getProject(maliciousId);
+
+    expect(api.get).toHaveBeenCalledWith(`/projects/${encoded}`);
+  });
+
+  it('deve codificar o id ao atualizar', async () => {
+    api.patch.mockResolvedValue({ data: {} });
+
+    await updateProject(maliciousId, { name: 'x' });
+
+    expect(api.patch).toHaveBeenCalledWith(`/projects/${encoded}`, { name: 'x' });
+  });
+
+  it('deve codificar o id ao excluir', async () => {
+    api.delete.mockResolvedValue({ status: 204 });
+
+    await deleteProject(maliciousId);
+
+    expect(api.delete).toHaveBeenCalledWith(`/projects/${encoded}`);
+  });
+});
