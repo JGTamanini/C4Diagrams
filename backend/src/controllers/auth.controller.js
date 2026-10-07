@@ -20,6 +20,12 @@ const verifyEmail = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'E-mail verificado com sucesso.' });
 });
 
+const resendVerification = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  await userService.resendVerificationEmail(email);
+  res.status(200).json({ message: 'Se esse e-mail estiver cadastrado e ainda não verificado, enviamos um novo link de verificação.' });
+});
+
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   await userService.requestPasswordReset(email);
@@ -32,4 +38,4 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Senha redefinida com sucesso.' });
 });
 
-module.exports = { register, login, verifyEmail, forgotPassword, resetPassword };
+module.exports = { register, login, verifyEmail, resendVerification, forgotPassword, resetPassword };

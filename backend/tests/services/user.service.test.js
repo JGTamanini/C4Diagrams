@@ -49,6 +49,7 @@ describe('UserService', () => {
           email: inputData.email,
           passwordHash: 'hashed_password_mock',
           verificationToken: 'mocked_token_hex',
+          verificationSentAt: expect.any(Date),
         })
       );
       expect(result).not.toHaveProperty('password');
@@ -184,6 +185,53 @@ describe('UserService', () => {
     await expect(userService.requestPasswordReset('naoexiste@example.com')).resolves.not.toThrow();
     expect(userRepository.setPasswordResetToken).not.toHaveBeenCalled();
     expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('resendVerificationEmail', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const COOLDOWN_MS = 60 * 1000;
+  const unverifiedUser = { id: 'uuid-mock', email: inputData.email, email_verified: false };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    crypto.randomBytes.mockReturnValue({ toString: () => 'token_candidato' });
+  });
+
+  it('deve reservar o reenvio (intervalo de 1 minuto) e enviar o token devolvido pelo repositório', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.claimVerificationResend.mockResolvedValue('token_ainda_valido');
+
+    await userService.resendVerificationEmail(inputData.email);
+
+    const [userId, { token, expiresAt, now, notSentAfter }] = userRepository.claimVerificationResend.mock.calls[0];
+    expect(userId).toBe('uuid-mock');
+    expect(token).toBe('token_candidato');
+    expect(expiresAt.getTime() - now.getTime()).toBe(DAY_MS);
+    expect(now.getTime() - notSentAfter.getTime()).toBe(COOLDOWN_MS);
+    expect(Math.abs(now.getTime() - Date.now())).toBeLessThan(5000);
+    expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(inputData.email, 'token_ainda_valido');
+  });
+
+  it('não deve enviar e-mail quando o repositório não reservar o reenvio (intervalo mínimo ou requisição concorrente)', async () => {
+    userRepository.findByEmail.mockResolvedValue(unverifiedUser);
+    userRepository.claimVerificationResend.mockResolvedValue(null);
+
+    await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
+
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['o e-mail não existir', undefined],
+    ['a conta já estiver verificada', { id: 'uuid-mock', email: inputData.email, email_verified: true }],
+  ])('não deve tentar reenviar quando %s (resposta genérica)', async (_, user) => {
+    userRepository.findByEmail.mockResolvedValue(user);
+
+    await expect(userService.resendVerificationEmail(inputData.email)).resolves.toBeUndefined();
+
+    expect(userRepository.claimVerificationResend).not.toHaveBeenCalled();
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 });
 
