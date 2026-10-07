@@ -41,4 +41,24 @@ describe('VerifyEmail', () => {
 
     expect(await screen.findByText(/token inválido ou expirado/i)).toBeInTheDocument();
   });
+
+  it('deve oferecer o reenvio do link quando o token for inválido ou expirado', async () => {
+    api.post.mockRejectedValue({
+      response: { status: 400, data: { message: 'Token inválido ou expirado.' } },
+    });
+
+    renderWithToken('token-invalido');
+
+    expect(await screen.findByLabelText('E-mail')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reenviar link' })).toBeInTheDocument();
+  });
+
+  it('não deve oferecer o reenvio quando a verificação der certo', async () => {
+    api.post.mockResolvedValue({ data: { message: 'E-mail verificado com sucesso.' } });
+
+    renderWithToken('token-valido');
+
+    expect(await screen.findByText('E-mail verificado com sucesso.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reenviar link' })).not.toBeInTheDocument();
+  });
 });

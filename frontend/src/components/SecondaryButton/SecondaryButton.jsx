@@ -1,9 +1,9 @@
-function SecondaryButton({ children, className = '', onClick, autoFocus = false }) {
+function SecondaryButton({ children, className = '', onClick, buttonRef }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      autoFocus={autoFocus}
+      ref={buttonRef}
       className={`${className} rounded-md border border-line px-4 py-3 text-sm font-medium text-text-primary hover:bg-surface`}
     >
       {children}

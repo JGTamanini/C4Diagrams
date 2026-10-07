@@ -43,7 +43,7 @@ function Login() {
       }
 
       saveSession(token, user);
-      navigate('/projetos');
+      void navigate('/projetos');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);

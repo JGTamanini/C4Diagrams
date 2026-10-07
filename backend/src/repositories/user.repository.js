@@ -1,15 +1,15 @@
 const { pool } = require('../config/database');
 
 async function create(user) {
-  const { name, email, passwordHash, verificationToken, verificationTokenExpiresAt } = user;
+  const { name, email, passwordHash, verificationToken, verificationTokenExpiresAt, verificationSentAt } = user;
 
   const query = `
-    INSERT INTO users (name, email, password_hash, verification_token, verification_token_expires_at)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO users (name, email, password_hash, verification_token, verification_token_expires_at, verification_sent_at)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id, name, email, email_verified, created_at, updated_at
   `;
 
-  const values = [name, email, passwordHash, verificationToken, verificationTokenExpiresAt];
+  const values = [name, email, passwordHash, verificationToken, verificationTokenExpiresAt, verificationSentAt ?? null];
 
   const result = await pool.query(query, values);
 
@@ -88,6 +88,34 @@ async function markEmailAsVerified(userId) {
   await pool.query(query, [userId]);
 }
 
+// Nota: reserva o reenvio de forma atômica e devolve o token a enviar (ou null se não puder reenviar).
+// - Intervalo mínimo no WHERE: com duas requisições simultâneas, o Postgres trava a linha e a segunda
+//   reavalia o WHERE após a primeira gravar, então só uma reenvia.
+// - Token ainda válido é reaproveitado: um reenvio feito por terceiros não invalida o link já recebido.
+//   Só um token vencido (ou ausente) é trocado pelo candidato. No SET, as colunas referem-se aos valores anteriores.
+async function claimVerificationResend(userId, { token, expiresAt, now, notSentAfter }) {
+  const query = `
+    UPDATE users
+    SET verification_sent_at = $4,
+        verification_token = CASE
+          WHEN verification_token IS NULL OR verification_token_expires_at <= $4 THEN $2
+          ELSE verification_token
+        END,
+        verification_token_expires_at = CASE
+          WHEN verification_token IS NULL OR verification_token_expires_at <= $4 THEN $3
+          ELSE verification_token_expires_at
+        END
+    WHERE id = $1
+      AND email_verified = false
+      AND (verification_sent_at IS NULL OR verification_sent_at <= $5)
+    RETURNING verification_token
+  `;
+
+  const result = await pool.query(query, [userId, token, expiresAt, now, notSentAfter]);
+
+  return result.rows[0]?.verification_token ?? null;
+}
+
 async function setPasswordResetToken(userId, token, expiresAt) {
   const query = `
     UPDATE users
@@ -135,6 +163,7 @@ module.exports = {
   lockAccount,
   findByVerificationToken,
   markEmailAsVerified,
+  claimVerificationResend,
   setPasswordResetToken,
   findByPasswordResetToken,
   updatePassword,

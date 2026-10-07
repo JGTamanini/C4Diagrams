@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from '../Modal/Modal';
 import FormInput from '../FormInput/FormInput';
 import PrimaryButton from '../PrimaryButton/PrimaryButton';
@@ -13,6 +13,12 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
   const [description, setDescription] = useState(initialValues?.description ?? '');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const nameInputRef = useRef(null);
+
+  // Nota: leva o foco ao primeiro campo ao abrir o diálogo (sem o atributo autoFocus)
+  useEffect(() => {
+    nameInputRef.current?.focus();
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -41,7 +47,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={NAME_MAX_LENGTH}
-          autoFocus
+          inputRef={nameInputRef}
           className="mb-4"
         />
         <FormInput

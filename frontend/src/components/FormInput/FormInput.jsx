@@ -8,7 +8,7 @@ function FormInput({
   multiline = false,
   required = true,
   maxLength,
-  autoFocus = false,
+  inputRef,
 }) {
   const fieldClassName = `rounded-md border border-line bg-canvas-deep px-3 text-text-primary outline-none focus:border-accent ${className}`;
 
@@ -35,7 +35,7 @@ function FormInput({
           onChange={onChange}
           required={required}
           maxLength={maxLength}
-          autoFocus={autoFocus}
+          ref={inputRef}
           className={`h-11 ${fieldClassName}`}
         />
       )}

@@ -7,6 +7,7 @@ import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
 import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
 import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailConfirmationCard';
+import ResendVerification from '../../components/ResendVerification/ResendVerification';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 
 const registerNodes = [
@@ -53,6 +54,7 @@ function Register() {
       <div className="grid min-h-screen grid-cols-1 bg-canvas font-sans md:grid-cols-2">
         <AuthCard>
           <EmailConfirmationCard message={successMessage} />
+          <ResendVerification email={email} />
         </AuthCard>
         <DiagramIllustration nodes={emailSentNodes} connections={emailSentConnections} />
       </div>

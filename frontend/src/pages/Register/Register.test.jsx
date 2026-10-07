@@ -59,6 +59,23 @@ describe('Register', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(/verifique seu e-mail/i);
   });
 
+  it('deve permitir reenviar o e-mail de verificação para o e-mail cadastrado', async () => {
+    const user = userEvent.setup();
+    api.post.mockResolvedValue({ data: { id: '1', name: 'João', email: 'joao@example.com' } });
+
+    renderWithRouter(<Register />);
+
+    await user.type(screen.getByLabelText(/nome/i), 'João');
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.click(screen.getByRole('button', { name: /cadastrar/i }));
+
+    api.post.mockResolvedValue({ data: { message: 'Link reenviado.' } });
+    await user.click(await screen.findByRole('button', { name: 'Não recebeu? Reenviar' }));
+
+    expect(api.post).toHaveBeenLastCalledWith('/auth/resend-verification', { email: 'joao@example.com' });
+  });
+
   it('deve exibir mensagem de erro quando o e-mail já existe (409)', async () => {
     const user = userEvent.setup();
     api.post.mockRejectedValue({

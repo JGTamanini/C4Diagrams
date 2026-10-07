@@ -251,3 +251,95 @@ describe('POST /api/auth/reset-password', () => {
     expect(response.status).toBe(400);
   });
 });
+describe('POST /api/auth/resend-verification', () => {
+  const emailService = require('../../src/services/email.service');
+  const resendTestEmail = 'e2e.resend@example.com';
+  const GENERIC_MESSAGE = 'Se esse e-mail estiver cadastrado e ainda não verificado, enviamos um novo link de verificação.';
+
+  async function registerUser() {
+    await request(app).post('/api/auth/register').send({
+      name: 'Resend Test User',
+      email: resendTestEmail,
+      password: 'Senha@12345',
+    });
+    jest.clearAllMocks();
+  }
+
+  async function findToken() {
+    const result = await pool.query('SELECT verification_token FROM users WHERE email = $1', [resendTestEmail]);
+    return result.rows[0].verification_token;
+  }
+
+  afterEach(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [resendTestEmail]);
+  });
+
+  it('deve reenviar o MESMO link quando o token ainda for válido, sem invalidar o já recebido', async () => {
+    await registerUser();
+    await pool.query('UPDATE users SET verification_sent_at = $2 WHERE email = $1', [
+      resendTestEmail,
+      new Date(Date.now() - 2 * 60 * 1000),
+    ]);
+    const originalToken = await findToken();
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe(GENERIC_MESSAGE);
+    expect(await findToken()).toBe(originalToken);
+    expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(resendTestEmail, originalToken);
+  });
+
+  it('deve gerar e enviar um novo token quando o anterior já tiver vencido', async () => {
+    await registerUser();
+    await pool.query(
+      'UPDATE users SET verification_sent_at = $2, verification_token_expires_at = $3 WHERE email = $1',
+      [resendTestEmail, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), new Date(Date.now() - 24 * 60 * 60 * 1000)]
+    );
+    const expiredToken = await findToken();
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
+
+    expect(response.status).toBe(200);
+    const newToken = await findToken();
+    expect(newToken).not.toBe(expiredToken);
+    expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(resendTestEmail, newToken);
+  });
+
+  it('deve responder igual, sem reenviar, dentro do intervalo de 1 minuto', async () => {
+    await registerUser();
+    const oldToken = await findToken();
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe(GENERIC_MESSAGE);
+    expect(await findToken()).toBe(oldToken);
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('deve responder igual quando o e-mail não existir', async () => {
+    jest.clearAllMocks();
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: 'naoexiste@example.com' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe(GENERIC_MESSAGE);
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('deve responder igual, sem reenviar, quando a conta já estiver verificada', async () => {
+    await registerUser();
+    await pool.query(
+      'UPDATE users SET email_verified = true, verification_token = NULL, verification_token_expires_at = NULL WHERE email = $1',
+      [resendTestEmail]
+    );
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe(GENERIC_MESSAGE);
+    expect(await findToken()).toBeNull();
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+});
