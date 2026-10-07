@@ -12,10 +12,14 @@ export function onUnauthorized(handler) {
   unauthorizedHandler = handler;
 }
 
+// Nota: rotas /auth/* são públicas — não enviam o JWT (evita mandar um token vencido no login, por exemplo).
+// As demais recebem o token mesmo vencido: é o 401 delas que dispara o fluxo de "sessão expirada".
+const PUBLIC_AUTH_PREFIX = '/auth/';
+
 // Anexa o JWT automaticamente em toda requisição autenticada.
 api.interceptors.request.use((config) => {
   const token = getToken();
-  if (token) {
+  if (token && !config.url?.startsWith(PUBLIC_AUTH_PREFIX)) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

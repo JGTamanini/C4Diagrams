@@ -16,6 +16,27 @@ describe('api', () => {
     expect(result.headers.Authorization).toBe('Bearer fake-jwt-token');
   });
 
+  it.each(['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/resend-verification'])(
+    'não deve anexar o token nas rotas públicas de autenticação (%s), mesmo com token salvo',
+    (url) => {
+      localStorage.setItem('token', 'token-vencido');
+
+      const interceptor = api.interceptors.request.handlers[0].fulfilled;
+      const result = interceptor({ url, headers: {} });
+
+      expect(result.headers.Authorization).toBeUndefined();
+    }
+  );
+
+  it('deve anexar o token nas rotas protegidas', () => {
+    localStorage.setItem('token', 'fake-jwt-token');
+
+    const interceptor = api.interceptors.request.handlers[0].fulfilled;
+    const result = interceptor({ url: '/projects', headers: {} });
+
+    expect(result.headers.Authorization).toBe('Bearer fake-jwt-token');
+  });
+
   it('não deve anexar o header Authorization quando não há token', () => {
     const config = { headers: {} };
     const interceptor = api.interceptors.request.handlers[0].fulfilled;
