@@ -29,6 +29,15 @@ describe('UserRepository', () => {
       expect(createdUser).toHaveProperty('created_at');
     });
 
+    it('deve gravar o momento do envio do e-mail de verificação', async () => {
+      const sentAt = new Date();
+
+      await userRepository.create({ ...testUser, verificationSentAt: sentAt });
+
+      const result = await pool.query('SELECT verification_sent_at FROM users WHERE email = $1', [testUser.email]);
+      expect(result.rows[0].verification_sent_at.getTime()).toBe(sentAt.getTime());
+    });
+
     it('deve rejeitar a criação com e-mail duplicado', async () => {
       await userRepository.create(testUser);
 
@@ -129,68 +138,95 @@ describe('UserRepository', () => {
     });
   });
 
-  describe('renewVerificationToken', () => {
+  describe('claimVerificationResend', () => {
     const DAY_MS = 24 * 60 * 60 * 1000;
     const COOLDOWN_MS = 60 * 1000;
 
-    // Simula o último envio feito há `msAgo` (a expiração é sempre envio + 24h)
-    async function createUserSentAgo(msAgo) {
+    async function createPendingUser({ sentMsAgo, expiresInMs = DAY_MS }) {
       const createdUser = await userRepository.create({
         ...testUser,
-        verificationTokenExpiresAt: new Date(Date.now() + DAY_MS - msAgo),
+        verificationTokenExpiresAt: new Date(Date.now() + expiresInMs),
+        verificationSentAt: sentMsAgo === null ? null : new Date(Date.now() - sentMsAgo),
       });
       return createdUser.id;
     }
 
-    function renewArgs(token) {
-      return [token, new Date(Date.now() + DAY_MS), new Date(Date.now() + DAY_MS - COOLDOWN_MS)];
+    function claimArgs(token = 'token-candidato') {
+      const now = new Date();
+      return { token, expiresAt: new Date(now.getTime() + DAY_MS), now, notSentAfter: new Date(now.getTime() - COOLDOWN_MS) };
     }
 
-    it('deve renovar o token quando o último envio passou do intervalo mínimo', async () => {
-      const userId = await createUserSentAgo(2 * 60 * 1000);
-      const [token, expiresAt, notSentAfter] = renewArgs('novo-token-verificacao');
+    async function findRaw() {
+      const result = await pool.query(
+        'SELECT verification_token, verification_token_expires_at, verification_sent_at FROM users WHERE email = $1',
+        [testUser.email]
+      );
+      return result.rows[0];
+    }
 
-      const renewed = await userRepository.renewVerificationToken(userId, token, expiresAt, notSentAfter);
+    it('deve reenviar o MESMO token enquanto ele for válido, sem invalidar o link já recebido', async () => {
+      const userId = await createPendingUser({ sentMsAgo: 2 * 60 * 1000 });
+      const before = await findRaw();
+      const args = claimArgs();
 
-      expect(renewed).toBe(true);
-      const user = await userRepository.findByEmail(testUser.email);
-      expect(user.verification_token).toBe('novo-token-verificacao');
-      expect(new Date(user.verification_token_expires_at).getTime()).toBe(expiresAt.getTime());
+      const token = await userRepository.claimVerificationResend(userId, args);
+
+      expect(token).toBe(testUser.verificationToken);
+      const after = await findRaw();
+      expect(after.verification_token).toBe(testUser.verificationToken);
+      expect(after.verification_token_expires_at.getTime()).toBe(before.verification_token_expires_at.getTime());
+      expect(after.verification_sent_at.getTime()).toBe(args.now.getTime());
     });
 
-    it('não deve renovar dentro do intervalo mínimo', async () => {
-      const userId = await createUserSentAgo(30 * 1000);
+    it('deve gerar novo token quando o anterior já tiver vencido', async () => {
+      const userId = await createPendingUser({ sentMsAgo: 2 * DAY_MS, expiresInMs: -DAY_MS });
+      const args = claimArgs('token-novo');
 
-      const renewed = await userRepository.renewVerificationToken(userId, ...renewArgs('novo-token-verificacao'));
+      const token = await userRepository.claimVerificationResend(userId, args);
 
-      expect(renewed).toBe(false);
-      const user = await userRepository.findByEmail(testUser.email);
-      expect(user.verification_token).toBe(testUser.verificationToken);
+      expect(token).toBe('token-novo');
+      const after = await findRaw();
+      expect(after.verification_token).toBe('token-novo');
+      expect(after.verification_token_expires_at.getTime()).toBe(args.expiresAt.getTime());
     });
 
-    it('não deve renovar quando a conta já estiver verificada', async () => {
-      const userId = await createUserSentAgo(2 * 60 * 1000);
+    it('deve permitir o reenvio para conta sem registro de envio anterior', async () => {
+      const userId = await createPendingUser({ sentMsAgo: null });
+
+      const token = await userRepository.claimVerificationResend(userId, claimArgs());
+
+      expect(token).toBe(testUser.verificationToken);
+    });
+
+    it('não deve reenviar dentro do intervalo mínimo', async () => {
+      const userId = await createPendingUser({ sentMsAgo: 30 * 1000 });
+      const before = await findRaw();
+
+      const token = await userRepository.claimVerificationResend(userId, claimArgs());
+
+      expect(token).toBeNull();
+      const after = await findRaw();
+      expect(after.verification_sent_at.getTime()).toBe(before.verification_sent_at.getTime());
+    });
+
+    it('não deve reenviar quando a conta já estiver verificada', async () => {
+      const userId = await createPendingUser({ sentMsAgo: 2 * 60 * 1000 });
       await userRepository.markEmailAsVerified(userId);
 
-      const renewed = await userRepository.renewVerificationToken(userId, ...renewArgs('novo-token-verificacao'));
+      const token = await userRepository.claimVerificationResend(userId, claimArgs());
 
-      expect(renewed).toBe(false);
-      const user = await userRepository.findByEmail(testUser.email);
-      expect(user.verification_token).toBeNull();
+      expect(token).toBeNull();
     });
 
-    it('deve permitir apenas uma renovação quando duas chegam ao mesmo tempo', async () => {
-      const userId = await createUserSentAgo(2 * 60 * 1000);
+    it('deve permitir apenas um reenvio quando duas requisições chegam ao mesmo tempo', async () => {
+      const userId = await createPendingUser({ sentMsAgo: 2 * 60 * 1000 });
 
       const results = await Promise.all([
-        userRepository.renewVerificationToken(userId, ...renewArgs('token-requisicao-a')),
-        userRepository.renewVerificationToken(userId, ...renewArgs('token-requisicao-b')),
+        userRepository.claimVerificationResend(userId, claimArgs('token-a')),
+        userRepository.claimVerificationResend(userId, claimArgs('token-b')),
       ]);
 
-      expect(results.filter(Boolean)).toHaveLength(1);
-      const winner = results[0] ? 'token-requisicao-a' : 'token-requisicao-b';
-      const user = await userRepository.findByEmail(testUser.email);
-      expect(user.verification_token).toBe(winner);
+      expect(results.filter((token) => token !== null)).toHaveLength(1);
     });
   });
 

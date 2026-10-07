@@ -274,20 +274,35 @@ describe('POST /api/auth/resend-verification', () => {
     await pool.query('DELETE FROM users WHERE email = $1', [resendTestEmail]);
   });
 
-  it('deve gerar novo token e reenviar o e-mail quando a conta não estiver verificada', async () => {
+  it('deve reenviar o MESMO link quando o token ainda for válido, sem invalidar o já recebido', async () => {
     await registerUser();
-    await pool.query(
-      `UPDATE users SET verification_token_expires_at = now() + interval '24 hours' - interval '2 minutes' WHERE email = $1`,
-      [resendTestEmail]
-    );
-    const oldToken = await findToken();
+    await pool.query('UPDATE users SET verification_sent_at = $2 WHERE email = $1', [
+      resendTestEmail,
+      new Date(Date.now() - 2 * 60 * 1000),
+    ]);
+    const originalToken = await findToken();
 
     const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe(GENERIC_MESSAGE);
+    expect(await findToken()).toBe(originalToken);
+    expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(resendTestEmail, originalToken);
+  });
+
+  it('deve gerar e enviar um novo token quando o anterior já tiver vencido', async () => {
+    await registerUser();
+    await pool.query(
+      'UPDATE users SET verification_sent_at = $2, verification_token_expires_at = $3 WHERE email = $1',
+      [resendTestEmail, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), new Date(Date.now() - 24 * 60 * 60 * 1000)]
+    );
+    const expiredToken = await findToken();
+
+    const response = await request(app).post('/api/auth/resend-verification').send({ email: resendTestEmail });
+
+    expect(response.status).toBe(200);
     const newToken = await findToken();
-    expect(newToken).not.toBe(oldToken);
+    expect(newToken).not.toBe(expiredToken);
     expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(resendTestEmail, newToken);
   });
 
