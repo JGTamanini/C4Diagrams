@@ -11,7 +11,7 @@ export class InvalidProjectIdError extends Error {
 
 // Nota: só ids no formato UUID (o mesmo aceito pelo backend) entram na URL — um valor como "../auth/x"
 // poderia trocar o endpoint chamado com o token do usuário. Id inválido nem gera requisição.
-function projectPath(id) {
+export function projectPath(id) {
   if (!UUID_REGEX.test(id)) {
     throw new InvalidProjectIdError();
   }
