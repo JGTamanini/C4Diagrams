@@ -2,6 +2,7 @@ const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = requir
 const { InvalidCredentialsError, AccountLockedError, UnauthorizedError } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
+const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
 
 function errorHandler(err, req, res, next) {
   if (
@@ -9,7 +10,9 @@ function errorHandler(err, req, res, next) {
     err instanceof MissingFieldError ||
     err instanceof InvalidOrExpiredTokenError ||
     err instanceof FieldTooLongError ||
-    err instanceof NoFieldsToUpdateError
+    err instanceof NoFieldsToUpdateError ||
+    err instanceof InvalidDiagramLevelError ||
+    err instanceof InvalidDiagramDataError
   ) {
     return res.status(400).json({ message: err.message });
   }

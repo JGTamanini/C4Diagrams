@@ -3,6 +3,7 @@ const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = requir
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
 const { UnauthorizedError } = require('../../src/errors/auth.errors');
 const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../../src/errors/project.errors');
+const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
 
 describe('errorHandler', () => {
   function mockRes() {
@@ -89,6 +90,19 @@ describe('errorHandler', () => {
 
   it('deve retornar 400 para NoFieldsToUpdateError', () => {
     const err = new NoFieldsToUpdateError();
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it.each([
+    ['InvalidDiagramLevelError', () => new InvalidDiagramLevelError('code')],
+    ['InvalidDiagramDataError', () => new InvalidDiagramDataError('Elemento "n1": posição inválida.')],
+  ])('deve retornar 400 para %s', (_, buildError) => {
+    const err = buildError();
     const res = mockRes();
 
     errorHandler(err, {}, res, jest.fn());
