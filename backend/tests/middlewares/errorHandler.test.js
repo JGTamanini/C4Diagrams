@@ -107,7 +107,7 @@ describe('errorHandler', () => {
 
     const logged = warnSpy.mock.calls[0][0];
     expect(logged).not.toMatch(/[\r\n]/);
-    expect(logged).toBe('Acesso a projeto não encontrado: GET /api/projects/x_ERRO_FALSO__admin_logado (usuário u1)');
+    expect(logged).toBe('Acesso a projeto não encontrado: GET /api/projects/x_ERRO_FALSO:_admin_logado (usuário u1)');
     warnSpy.mockRestore();
   });
 
