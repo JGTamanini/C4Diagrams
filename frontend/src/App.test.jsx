@@ -4,9 +4,11 @@ import { vi } from 'vitest';
 import App from './App';
 import { fakeJwt } from './test/fakeJwt';
 import { listProjects, getProject } from './services/projects';
+import { listDiagrams } from './services/diagrams';
 
 vi.mock('./services/projects');
-vi.mock('./components/Canvas/Canvas', () => ({ default: () => <div data-testid="canvas" /> }));
+vi.mock('./services/diagrams');
+vi.mock('./components/DiagramCanvas/DiagramCanvas', () => ({ default: () => <div data-testid="diagram-canvas" /> }));
 
 function renderAt(path) {
   return render(
@@ -40,10 +42,11 @@ describe('App - rotas de projetos', () => {
   it('deve exibir a página do projeto em /projetos/:id para usuário autenticado', async () => {
     localStorage.setItem('token', fakeJwt());
     getProject.mockResolvedValue({ id: 'p1', name: 'Loja Online', description: null });
+    listDiagrams.mockResolvedValue([]);
 
     renderAt('/projetos/p1');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Loja Online' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Diagrama de Contexto — Loja Online' })).toBeInTheDocument();
   });
 });
 
@@ -71,5 +74,13 @@ describe('App - telas públicas com usuário logado', () => {
     renderAt('/verify-email?token=abc');
 
     expect(screen.getByText('Verificando...')).toBeInTheDocument();
+  });
+});
+
+describe('App - prova de conceito removida', () => {
+  it('não deve mais expor a rota pública /canvas-test', () => {
+    renderAt('/canvas-test');
+
+    expect(screen.queryByTestId('canvas')).not.toBeInTheDocument();
   });
 });
