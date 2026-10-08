@@ -87,6 +87,30 @@ describe('errorHandler', () => {
     expect(res.json).toHaveBeenCalledWith({ message: err.message });
   });
 
+  it('deve registrar a tentativa de acesso a projeto não encontrado (OWASP A09)', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const req = { method: 'GET', originalUrl: '/api/projects/3b241101-e2bb-4255-8caf-4136c566a962', user: { id: 'u1' } };
+
+    errorHandler(new ProjectNotFoundError(), req, mockRes(), jest.fn());
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Acesso a projeto não encontrado: GET /api/projects/3b241101-e2bb-4255-8caf-4136c566a962 (usuário u1)'
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('não deve permitir forjar linhas no log com quebras de linha na URL (log injection)', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const req = { method: 'GET', originalUrl: '/api/projects/x\nERRO FALSO: admin logado', user: { id: 'u1' } };
+
+    errorHandler(new ProjectNotFoundError(), req, mockRes(), jest.fn());
+
+    const logged = warnSpy.mock.calls[0][0];
+    expect(logged).not.toMatch(/[\r\n]/);
+    expect(logged).toBe('Acesso a projeto não encontrado: GET /api/projects/x_ERRO_FALSO:_admin_logado (usuário u1)');
+    warnSpy.mockRestore();
+  });
+
   it('deve retornar 400 para NoFieldsToUpdateError', () => {
     const err = new NoFieldsToUpdateError();
     const res = mockRes();
