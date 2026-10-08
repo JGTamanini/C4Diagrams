@@ -1,6 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
+import { fakeJwt } from '../../test/fakeJwt';
 import api from '../../services/api';
 
 function LoginProbe() {
@@ -44,15 +45,24 @@ describe('ProtectedRoute', () => {
   });
 
   it('deve renderizar o conteúdo quando houver token', () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
 
     renderAt('/projetos');
 
     expect(screen.getByText('Conteúdo protegido')).toBeInTheDocument();
   });
 
+  it('deve levar ao login com aviso de sessão expirada quando o token já estiver vencido', () => {
+    localStorage.setItem('token', fakeJwt({ expiresInSeconds: -60 }));
+
+    renderAt('/projetos');
+
+    expect(screen.getByText('Tela de login (sessão expirada)')).toBeInTheDocument();
+    expect(screen.queryByText('Conteúdo protegido')).not.toBeInTheDocument();
+  });
+
   it('deve levar ao login com aviso de sessão expirada quando a API responder 401', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     renderAt('/projetos');
 
     await act(simulateAuthenticated401);
@@ -62,7 +72,7 @@ describe('ProtectedRoute', () => {
   });
 
   it('deve remover o handler de 401 ao desmontar', async () => {
-    localStorage.setItem('token', 'header.payload.signature');
+    localStorage.setItem('token', fakeJwt());
     const { unmount } = renderAt('/projetos');
     unmount();
 
