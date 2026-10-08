@@ -7,6 +7,12 @@ import { listProjects, createProject, updateProject, deleteProject } from '../..
 
 vi.mock('../../services/projects');
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 const loja = {
   id: 'p1',
   name: 'Loja Online',
@@ -79,7 +85,7 @@ describe('Dashboard', () => {
   });
 
   describe('criação (RF04)', () => {
-    it('deve criar o projeto pelo modal e exibi-lo no topo da lista', async () => {
+    it('deve criar o projeto pelo modal e levar o usuário ao projeto criado (RFC 3.1.2)', async () => {
       const user = userEvent.setup();
       listProjects.mockResolvedValue([blog]);
       createProject.mockResolvedValue(loja);
@@ -92,8 +98,7 @@ describe('Dashboard', () => {
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(createProject).toHaveBeenCalledWith({ name: 'Loja Online', description: '' });
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-      expect(cardNames()).toEqual(['Loja Online', 'Blog']);
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/projetos/p1'));
     });
   });
 

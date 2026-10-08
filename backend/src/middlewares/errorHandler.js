@@ -23,6 +23,8 @@ function errorHandler(err, req, res, next) {
   }
 
   if (err instanceof ProjectNotFoundError) {
+    // Nota: registra erros de acesso (OWASP A09 - RFC 6.1) sem distinguir "inexistente" de "de outro usuário"
+    console.warn(`Acesso a projeto não encontrado: ${req.method} ${req.originalUrl} (usuário ${req.user?.id})`);
     return res.status(404).json({ message: err.message });
   }
 
