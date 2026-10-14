@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 import ProjectCard from '../../components/ProjectCard/ProjectCard';
@@ -25,6 +26,7 @@ function moveToTop(projects, project) {
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [status, setStatus] = useState('loading');
   const [formModal, setFormModal] = useState(null);
@@ -59,11 +61,17 @@ function Dashboard() {
   const cancelDelete = useCallback(() => setProjectToDelete(null), []);
 
   async function handleFormSubmit(values) {
-    const saved =
-      formModal.mode === 'edit' ? await updateProject(formModal.project.id, values) : await createProject(values);
+    if (formModal.mode === 'edit') {
+      const updated = await updateProject(formModal.project.id, values);
+      setProjects((current) => moveToTop(current, updated));
+      setFormModal(null);
+      return;
+    }
 
-    setProjects((current) => moveToTop(current, saved));
+    // Nota: RFC 3.1.2 — projeto criado leva o usuário direto ao editor (página do projeto)
+    const created = await createProject(values);
     setFormModal(null);
+    void navigate(`/projetos/${created.id}`);
   }
 
   async function handleConfirmDelete() {
