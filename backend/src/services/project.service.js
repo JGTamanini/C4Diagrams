@@ -1,9 +1,9 @@
 const projectRepository = require('../repositories/project.repository');
+const { isUuid } = require('../domain/uuid');
 const { MissingFieldError } = require('../errors/user.errors');
 const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
 
 const NAME_MAX_LENGTH = 255;
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function normalizeName(name) {
   const trimmedName = typeof name === 'string' ? name.trim() : '';
@@ -34,7 +34,7 @@ function buildChanges({ name, description }) {
 
 // Nota: id fora do formato UUID recebe o mesmo 404 de "não existe" — não revela nada e evita erro 500 do Postgres
 function assertValidId(id) {
-  if (!UUID_REGEX.test(id)) throw new ProjectNotFoundError();
+  if (!isUuid(id)) throw new ProjectNotFoundError();
 }
 
 async function createProject(userId, { name, description }) {
