@@ -116,6 +116,27 @@ describe('DiagramRepository', () => {
       expect(await diagramRepository.findAllByProject(projectId, ownerId)).toEqual([]);
     });
 
+    it('deve renovar o updated_at do projeto ao esvaziar um nível (também é uma edição)', async () => {
+      await diagramRepository.upsert(projectId, ownerId, 'context', contextData);
+      await pool.query(`UPDATE projects SET updated_at = now() - interval '1 day' WHERE id = $1`, [projectId]);
+      const before = await pool.query('SELECT updated_at FROM projects WHERE id = $1', [projectId]);
+
+      await diagramRepository.remove(projectId, ownerId, 'context');
+
+      const after = await pool.query('SELECT updated_at FROM projects WHERE id = $1', [projectId]);
+      expect(after.rows[0].updated_at.getTime()).toBeGreaterThan(before.rows[0].updated_at.getTime());
+    });
+
+    it('não deve renovar o updated_at de projeto de outro usuário', async () => {
+      await pool.query(`UPDATE projects SET updated_at = now() - interval '1 day' WHERE id = $1`, [otherProjectId]);
+      const before = await pool.query('SELECT updated_at FROM projects WHERE id = $1', [otherProjectId]);
+
+      await diagramRepository.remove(otherProjectId, ownerId, 'context');
+
+      const after = await pool.query('SELECT updated_at FROM projects WHERE id = $1', [otherProjectId]);
+      expect(after.rows[0].updated_at.getTime()).toBe(before.rows[0].updated_at.getTime());
+    });
+
     it('deve retornar false e manter o diagrama de outro usuário', async () => {
       await diagramRepository.upsert(otherProjectId, otherUserId, 'context', contextData);
 

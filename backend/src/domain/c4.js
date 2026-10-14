@@ -11,7 +11,9 @@ const NODE_TYPES = [
   'c4-component',
 ];
 
-// Notação oficial: todo container e componente deve ter a tecnologia explicitada
+// Tipos que aceitam tecnologia. A notação oficial pede tecnologia em todo container e componente, mas ela é
+// OPCIONAL ao salvar: o diagrama pode estar em construção (o autosave não pode falhar). A falta dela é uma
+// inconsistência a sinalizar sem bloquear (RN11), papel do motor de validação C4 (Fase 5).
 const TYPES_WITH_TECHNOLOGY = ['c4-container', 'c4-container-db', 'c4-component'];
 
 module.exports = { LEVELS, NODE_TYPES, TYPES_WITH_TECHNOLOGY };

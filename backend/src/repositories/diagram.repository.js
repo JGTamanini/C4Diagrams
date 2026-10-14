@@ -37,14 +37,17 @@ async function upsert(projectId, userId, level, data) {
   return result.rows[0];
 }
 
+// Nota: mesmo padrão do upsert — esvaziar um nível também é uma edição, então renova o updated_at do projeto
 async function remove(projectId, userId, level) {
   const query = `
-    DELETE FROM diagrams d
-    USING projects p
-    WHERE d.project_id = p.id
-      AND p.id = $1
-      AND p.user_id = $2
-      AND d.level = $3
+    WITH owned_project AS (
+      UPDATE projects SET updated_at = now()
+      WHERE id = $1 AND user_id = $2
+      RETURNING id
+    )
+    DELETE FROM diagrams
+    WHERE project_id IN (SELECT id FROM owned_project)
+      AND level = $3
   `;
 
   const result = await pool.query(query, [projectId, userId, level]);
