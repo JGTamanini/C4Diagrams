@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import DiagramCanvas from './DiagramCanvas';
+import { RELATIONSHIP_COLOR } from '../../constants/c4Notation';
 import { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPalette';
 import { mockReactFlowBrowserApis } from '../../test/reactFlowMocks';
 
@@ -143,6 +144,29 @@ describe('DiagramCanvas', () => {
       const paths = [...container.querySelectorAll('.react-flow__edge-path')].map((path) => path.getAttribute('d'));
       expect(paths).toHaveLength(2);
       expect(paths[0]).not.toBe(paths[1]);
+    });
+
+    it('deve destacar a linha da relação da grade do canvas (cor clara, também na seta)', async () => {
+      const { container } = render(
+        <div style={{ width: 800, height: 600 }}>
+          <DiagramCanvas
+            level="context"
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={vi.fn()}
+            onEdgesChange={vi.fn()}
+            onConnect={vi.fn()}
+            onAddNode={vi.fn()}
+            onEditNode={vi.fn()}
+            onEditEdge={vi.fn()}
+          />
+        </div>
+      );
+
+      await screen.findByText('Compra em [HTTPS]');
+      const path = container.querySelector('.react-flow__edge-path');
+      expect(path).toHaveStyle({ stroke: RELATIONSHIP_COLOR });
+      expect(container.querySelector('.react-flow__arrowhead polyline')).toHaveStyle({ stroke: RELATIONSHIP_COLOR });
     });
   });
 });

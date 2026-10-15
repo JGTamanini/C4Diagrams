@@ -6,14 +6,23 @@ import ElementPalette, { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPale
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import { parallelOffsets } from '../FloatingEdge/edgeGeometry';
-import { C4_ELEMENTS, isAllowedInLevel, isValidRelationship, withTechnologyLabel } from '../../constants/c4Notation';
+import {
+  C4_ELEMENTS,
+  RELATIONSHIP_COLOR,
+  isAllowedInLevel,
+  isValidRelationship,
+  withTechnologyLabel,
+} from '../../constants/c4Notation';
 
 // Fora do componente: o React Flow recria tudo se o objeto de tipos mudar a cada render
 const NODE_TYPES = Object.fromEntries(Object.keys(C4_ELEMENTS).map((type) => [type, C4Node]));
 const EDGE_TYPES = { floating: FloatingEdge };
 
 // Notação oficial: relacionamento unidirecional, linha tracejada com seta no destino
-const RELATIONSHIP_STYLE = { markerEnd: { type: MarkerType.ArrowClosed }, style: { strokeDasharray: '6 4' } };
+const RELATIONSHIP_STYLE = {
+  markerEnd: { type: MarkerType.ArrowClosed, color: RELATIONSHIP_COLOR },
+  style: { stroke: RELATIONSHIP_COLOR, strokeDasharray: '6 4' },
+};
 
 // Metade do tamanho aproximado do elemento: ao soltar, o cursor fica no centro dele, não no canto
 const NODE_CENTER_OFFSET = { x: 100, y: 50 };

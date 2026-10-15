@@ -37,6 +37,9 @@ export function isAllowedInLevel(level, type) {
 // Notação oficial: toda conexão tem rótulo; "Usa" é o ponto de partida, editável pelo usuário
 export const DEFAULT_RELATIONSHIP_LABEL = 'Usa';
 
+// O C4-PlantUML usa cinza-escuro sobre fundo branco; no canvas escuro, o equivalente legível é um tom quase branco
+export const RELATIONSHIP_COLOR = '#E6EDF3';
+
 // Mesma regra do backend: uma conexão não liga um elemento a ele mesmo
 export function isValidRelationship({ source, target }) {
   return source !== target;

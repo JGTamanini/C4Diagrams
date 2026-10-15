@@ -1,4 +1,4 @@
-import { C4_ELEMENTS } from '../../constants/c4Notation';
+import { C4_ELEMENTS, RELATIONSHIP_COLOR } from '../../constants/c4Notation';
 
 const ELEMENT_ORDER = Object.keys(C4_ELEMENTS);
 
@@ -33,7 +33,7 @@ function DiagramLegend({ nodes, edges }) {
       </ul>
       {edges.length > 0 && (
         <p className="mt-2 flex items-center gap-2">
-          <span aria-hidden="true">- - →</span>
+          <span aria-hidden="true" style={{ color: RELATIONSHIP_COLOR }}>- - →</span>
           <span>Relacionamento (rótulo [tecnologia])</span>
         </p>
       )}
