@@ -58,7 +58,7 @@ describe('useDiagramEditor', () => {
       expect(result.current.edges[0]).toMatchObject({ id: 'e1', label: 'Compra em', data: { technology: 'HTTPS' } });
       expect(result.current.saveStatus).toBe('saved');
 
-      act(() => result.current.setActiveLevel('container'));
+      act(() => result.current.selectLevel('container'));
       expect(result.current.nodes).toEqual([]);
     });
 
@@ -170,7 +170,7 @@ describe('useDiagramEditor', () => {
         { level: 'code', data: { nodes: [], edges: [] } },
       ]);
       const { result } = await renderLoadedEditor();
-      act(() => result.current.setActiveLevel('container'));
+      act(() => result.current.selectLevel('container'));
 
       act(() => result.current.onNodesChange([{ type: 'remove', id: 'c3' }]));
       await advanceAutosave();
@@ -246,7 +246,7 @@ describe('useDiagramEditor', () => {
       await act(async () => {
         await result.current.save();
       });
-      act(() => result.current.setActiveLevel('container'));
+      act(() => result.current.selectLevel('container'));
       await waitFor(() => expect(saveDiagram).toHaveBeenCalledTimes(2));
       await waitFor(() => expect(result.current.saveStatus).toBe('error'));
       dragEnd(result, 'c1', { x: 10, y: 10 });
@@ -340,7 +340,7 @@ describe('useDiagramEditor', () => {
         },
       ]);
       const { result } = await renderLoadedEditor();
-      act(() => result.current.setActiveLevel('container'));
+      act(() => result.current.selectLevel('container'));
 
       act(() => result.current.updateNode('c1', { label: 'API de Pedidos', description: '', technology: 'Node.js' }));
 
@@ -415,7 +415,7 @@ describe('useDiagramEditor', () => {
       const { result } = await renderLoadedEditor();
       dragEnd(result, 'n1', { x: 50, y: 60 });
 
-      act(() => result.current.setActiveLevel('container'));
+      act(() => result.current.selectLevel('container'));
 
       await waitFor(() => expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.any(Object)));
       expect(result.current.activeLevel).toBe('container');

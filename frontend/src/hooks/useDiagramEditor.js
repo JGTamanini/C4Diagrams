@@ -21,7 +21,7 @@ function emptyDiagrams() {
 export function useDiagramEditor(projectId) {
   const [loadStatus, setLoadStatus] = useState('loading');
   const [diagrams, setDiagrams] = useState(emptyDiagrams);
-  const [activeLevel, setCurrentLevel] = useState('context');
+  const [activeLevel, setActiveLevel] = useState('context');
   const [saveStatus, setSaveStatus] = useState('saved');
 
   const diagramsRef = useRef(diagrams);
@@ -196,10 +196,10 @@ export function useDiagramEditor(projectId) {
     [editActive]
   );
 
-  const setActiveLevel = useCallback(
+  const selectLevel = useCallback(
     (level) => {
       if (dirtyLevelsRef.current.size > 0) void save();
-      setCurrentLevel(level);
+      setActiveLevel(level);
     },
     [save]
   );
@@ -207,7 +207,7 @@ export function useDiagramEditor(projectId) {
   return {
     loadStatus,
     activeLevel,
-    setActiveLevel,
+    selectLevel,
     nodes: diagrams[activeLevel].nodes,
     edges: diagrams[activeLevel].edges,
     onNodesChange,

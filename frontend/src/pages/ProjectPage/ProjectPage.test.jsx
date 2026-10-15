@@ -22,7 +22,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
 const editor = {
   loadStatus: 'ready',
   activeLevel: 'context',
-  setActiveLevel: vi.fn(),
+  selectLevel: vi.fn(),
   nodes: [
     { id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
     { id: 'n2', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
@@ -105,7 +105,7 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       await user.click(screen.getByRole('tab', { name: 'Container' }));
 
-      expect(editor.setActiveLevel).toHaveBeenCalledWith('container');
+      expect(editor.selectLevel).toHaveBeenCalledWith('container');
     });
   });
 

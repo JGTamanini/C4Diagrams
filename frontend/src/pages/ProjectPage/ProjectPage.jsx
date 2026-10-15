@@ -174,7 +174,7 @@ function ProjectPage() {
             type="button"
             role="tab"
             aria-selected={level.id === editor.activeLevel}
-            onClick={() => editor.setActiveLevel(level.id)}
+            onClick={() => editor.selectLevel(level.id)}
             className={`border-r border-line px-5 py-2 text-xs ${
               level.id === editor.activeLevel ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'
             }`}
