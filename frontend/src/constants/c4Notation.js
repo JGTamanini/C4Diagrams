@@ -31,5 +31,6 @@ export function typeLabel(type, technology) {
 // Notação oficial: a conexão mostra o rótulo e, quando houver, a tecnologia/protocolo
 export function withTechnologyLabel(edge) {
   const technology = edge.data?.technology;
-  return technology ? { ...edge, label: `${edge.label} [${technology}]` } : edge;
+  if (!technology) return edge;
+  return { ...edge, label: edge.label ? `${edge.label} [${technology}]` : `[${technology}]` };
 }

@@ -23,7 +23,7 @@ function C4Node({ type, data }) {
 
       <div
         data-testid="c4-node-body"
-        className={`relative w-full border-2 px-3 py-4 text-center ${BODY_SHAPE_CLASSES[element.shape]}`}
+        className={`relative w-full border-2 px-3 py-4 text-center wrap-break-word ${BODY_SHAPE_CLASSES[element.shape]}`}
         style={colors}
       >
         {element.shape === 'database' && (
