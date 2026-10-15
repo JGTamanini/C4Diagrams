@@ -47,7 +47,7 @@ export function floatingEdgePath(sourceRect, targetRect, offset) {
 export function parallelOffsets(edges) {
   const groups = new Map();
   edges.forEach((edge) => {
-    const key = [edge.source, edge.target].sort().join('|');
+    const key = [edge.source, edge.target].sort((a, b) => a.localeCompare(b)).join('|');
     groups.set(key, [...(groups.get(key) ?? []), edge]);
   });
 
@@ -56,7 +56,7 @@ export function parallelOffsets(edges) {
     group.forEach((edge, index) => {
       const offset = (index - (group.length - 1) / 2) * PARALLEL_SPACING;
       // A perpendicular inverte com o sentido da linha; o sinal compensa para manter a posição no desenho
-      const reversed = edge.source > edge.target && offset !== 0;
+      const reversed = edge.source.localeCompare(edge.target) > 0 && offset !== 0;
       offsets.set(edge.id, reversed ? -offset : offset);
     });
   });

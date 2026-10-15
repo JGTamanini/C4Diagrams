@@ -2,14 +2,14 @@ import { C4_ELEMENTS, LEVEL_ELEMENTS } from '../../constants/c4Notation';
 
 export const ELEMENT_DRAG_TYPE = 'application/x-c4-element';
 
+function handleDragStart(event, type) {
+  event.dataTransfer.setData(ELEMENT_DRAG_TYPE, type);
+  event.dataTransfer.effectAllowed = 'move';
+}
+
 // Nota: sidebar do editor (wireframe 7) — só os elementos válidos no nível ativo (RN08).
 // Arrastar para o canvas é o caminho principal; o clique adiciona no centro e atende quem usa teclado.
 function ElementPalette({ level, onAdd }) {
-  function handleDragStart(event, type) {
-    event.dataTransfer.setData(ELEMENT_DRAG_TYPE, type);
-    event.dataTransfer.effectAllowed = 'move';
-  }
-
   return (
     <aside className="flex w-48 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line p-4">
       <h2 className="text-xs font-medium uppercase tracking-wide text-text-secondary">Elementos</h2>

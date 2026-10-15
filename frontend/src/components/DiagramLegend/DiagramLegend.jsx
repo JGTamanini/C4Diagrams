@@ -34,7 +34,7 @@ function DiagramLegend({ nodes, edges }) {
       {edges.length > 0 && (
         <p className="mt-2 flex items-center gap-2">
           <span aria-hidden="true">- - →</span>
-          Relacionamento (rótulo [tecnologia])
+          <span>Relacionamento (rótulo [tecnologia])</span>
         </p>
       )}
     </section>

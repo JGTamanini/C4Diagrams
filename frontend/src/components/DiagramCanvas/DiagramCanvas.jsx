@@ -20,6 +20,11 @@ const NODE_CENTER_OFFSET = { x: 100, y: 50 };
 
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
+function handleDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
 function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, onConnect, onAddNode, onEditNode, onEditEdge }) {
   const { screenToFlowPosition } = useReactFlow();
   const dropAreaRef = useRef(null);
@@ -37,11 +42,6 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
   function addAt(type, screenPoint) {
     const position = screenToFlowPosition(screenPoint);
     onAddNode(type, { x: position.x - NODE_CENTER_OFFSET.x, y: position.y - NODE_CENTER_OFFSET.y });
-  }
-
-  function handleDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
   }
 
   function handleDrop(event) {
