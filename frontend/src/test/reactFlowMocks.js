@@ -8,8 +8,12 @@ export function mockReactFlowBrowserApis() {
     observe(target) {
       this.callback([{ target, contentRect: { width: target.offsetWidth, height: target.offsetHeight } }]);
     }
-    unobserve() {}
-    disconnect() {}
+    unobserve() {
+      // Sem efeito no teste: o mock não guarda os elementos observados
+    }
+    disconnect() {
+      // Sem efeito no teste: não há observação contínua para encerrar
+    }
   }
 
   class DOMMatrixReadOnlyMock {

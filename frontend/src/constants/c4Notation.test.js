@@ -54,4 +54,8 @@ describe('notação C4', () => {
     expect(withTechnologyLabel({ id: 'e1', label: 'Usa', data: { technology: 'JSON/HTTPS' } }).label).toBe('Usa [JSON/HTTPS]');
     expect(withTechnologyLabel({ id: 'e2', label: 'Usa', data: {} }).label).toBe('Usa');
   });
+
+  it('não deve exibir "undefined" quando a conexão tiver tecnologia mas não tiver rótulo', () => {
+    expect(withTechnologyLabel({ id: 'e1', data: { technology: 'HTTPS' } }).label).toBe('[HTTPS]');
+  });
 });

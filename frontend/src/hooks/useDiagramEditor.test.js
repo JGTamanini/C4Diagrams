@@ -203,6 +203,73 @@ describe('useDiagramEditor', () => {
       expect(result.current.saveStatus).toBe('pending');
     });
 
+    it('não deve enviar dois salvamentos ao mesmo tempo: o pedido feito durante um salvamento roda depois, com os dados mais novos', async () => {
+      let finishFirstSave;
+      saveDiagram.mockImplementationOnce(() => new Promise((resolve) => { finishFirstSave = resolve; }));
+      const { result } = await renderLoadedEditor();
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+
+      let firstSave;
+      act(() => {
+        firstSave = result.current.save();
+      });
+      dragEnd(result, 'n1', { x: 70, y: 80 });
+      let secondSave;
+      act(() => {
+        secondSave = result.current.save();
+      });
+      expect(saveDiagram).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        finishFirstSave({});
+        await Promise.all([firstSave, secondSave]);
+      });
+
+      expect(saveDiagram).toHaveBeenCalledTimes(2);
+      expect(saveDiagram.mock.calls[1][2].nodes[0].position).toEqual({ x: 70, y: 80 });
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve tentar de novo só os níveis que falharam', async () => {
+      listDiagrams.mockResolvedValue([
+        savedContext,
+        {
+          level: 'container',
+          data: { nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }], edges: [] },
+        },
+      ]);
+      saveDiagram.mockRejectedValueOnce(new Error('Network Error')).mockRejectedValueOnce(new Error('Network Error'));
+      const { result } = await renderLoadedEditor();
+
+      // Contexto fica pendente após duas falhas (salvar e trocar de nível); depois o Container também é alterado
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await act(async () => {
+        await result.current.save();
+      });
+      act(() => result.current.setActiveLevel('container'));
+      await waitFor(() => expect(saveDiagram).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(result.current.saveStatus).toBe('error'));
+      dragEnd(result, 'c1', { x: 10, y: 10 });
+
+      saveDiagram.mockReset();
+      saveDiagram.mockImplementation((_, level) =>
+        level === 'container' ? Promise.reject(new Error('Network Error')) : Promise.resolve({})
+      );
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveDiagram.mock.calls.map((call) => call[1]).sort()).toEqual(['container', 'context']);
+      expect(result.current.saveStatus).toBe('error');
+
+      saveDiagram.mockReset();
+      saveDiagram.mockResolvedValue({});
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveDiagram.mock.calls.map((call) => call[1])).toEqual(['container']);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
     it.each([
       ['sucesso', (resolve) => resolve([savedContext])],
       ['falha', (_, reject) => reject(new Error('Network Error'))],
