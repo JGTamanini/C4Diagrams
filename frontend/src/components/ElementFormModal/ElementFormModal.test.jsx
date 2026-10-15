@@ -47,6 +47,16 @@ describe('ElementFormModal (RF22 - versão mínima)', () => {
       expect(onSave).toHaveBeenCalledWith({ label: 'API de Pedidos', description: 'Regras de negócio', technology: '' });
     });
 
+    it('deve salvar a descrição editada', async () => {
+      const user = userEvent.setup();
+      const { onSave } = renderModal({ kind: 'node', type: 'c4-person', data: { label: 'Cliente' } });
+
+      await user.type(screen.getByLabelText('Descrição'), 'Compra pela loja');
+      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      expect(onSave).toHaveBeenCalledWith({ label: 'Cliente', description: 'Compra pela loja' });
+    });
+
     it('deve exigir o título', async () => {
       const user = userEvent.setup();
       const { onSave } = renderModal(containerTarget);
