@@ -286,6 +286,107 @@ describe('useDiagramEditor', () => {
     });
   });
 
+  describe('edição do diagrama', () => {
+    it('deve adicionar um elemento do nível com o nome do tipo como título e salvar', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.addNode('c4-system-external', { x: 120, y: 80 }));
+
+      const added = result.current.nodes[2];
+      expect(added).toMatchObject({ type: 'c4-system-external', position: { x: 120, y: 80 }, data: { label: 'Sistema Externo' } });
+      expect(added.id).toEqual(expect.any(String));
+      expect(added.id).not.toBe(result.current.nodes[1].id);
+      expect(result.current.saveStatus).toBe('pending');
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.objectContaining({ nodes: expect.any(Array) }));
+    });
+
+    it('deve ignorar elemento incompatível com o nível ativo (RN08)', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.addNode('c4-component', { x: 0, y: 0 }));
+
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve criar a conexão com o rótulo padrão "Usa"', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.connect({ source: 'n2', target: 'n1', sourceHandle: null, targetHandle: null }));
+
+      expect(result.current.edges[1]).toMatchObject({ source: 'n2', target: 'n1', label: 'Usa', data: {} });
+      expect(result.current.edges[1].id).not.toBe('e1');
+      expect(result.current.saveStatus).toBe('pending');
+    });
+
+    it('não deve ligar um elemento a ele mesmo', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.connect({ source: 'n1', target: 'n1' }));
+
+      expect(result.current.edges).toHaveLength(1);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve atualizar título, descrição e tecnologia de um elemento, removendo campos esvaziados', async () => {
+      listDiagrams.mockResolvedValue([
+        {
+          level: 'container',
+          data: {
+            nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API', description: 'Antiga' } }],
+            edges: [],
+          },
+        },
+      ]);
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.selectLevel('container'));
+
+      act(() => result.current.updateNode('c1', { label: 'API de Pedidos', description: '', technology: 'Node.js' }));
+
+      expect(result.current.nodes[0].data).toEqual({ label: 'API de Pedidos', technology: 'Node.js' });
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', {
+        nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API de Pedidos', technology: 'Node.js' } }],
+        edges: [],
+      });
+    });
+
+    it('deve atualizar rótulo e tecnologia de uma conexão', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.updateEdge('e1', { label: 'Navega em', technology: '' }));
+
+      expect(result.current.edges[0]).toMatchObject({ id: 'e1', label: 'Navega em', data: {} });
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenCalledWith(
+        PROJECT_ID,
+        'context',
+        expect.objectContaining({ edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Navega em' }] })
+      );
+    });
+
+    it('deve excluir um elemento junto com as conexões dele', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.removeNode('n1'));
+
+      expect(result.current.nodes.map((n) => n.id)).toEqual(['n2']);
+      expect(result.current.edges).toEqual([]);
+      expect(result.current.saveStatus).toBe('pending');
+    });
+
+    it('deve excluir uma conexão', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.removeEdge('e1'));
+
+      expect(result.current.edges).toEqual([]);
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.saveStatus).toBe('pending');
+    });
+  });
+
   describe('salvamento imediato', () => {
     it('deve salvar na hora pelo botão Salvar', async () => {
       const { result } = await renderLoadedEditor();

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -9,17 +9,33 @@ import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({ nodes }) => <div data-testid="canvas" data-count={nodes.length} />,
+  default: ({ level, nodes, onAddNode, onConnect, onEditNode, onEditEdge }) => (
+    <div data-testid="canvas" data-count={nodes.length} data-level={level}>
+      <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
+      <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
+      <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
+      <button type="button" onClick={() => onEditEdge('e1')}>mock-edit-edge</button>
+    </div>
+  ),
 }));
 
 const editor = {
   loadStatus: 'ready',
   activeLevel: 'context',
   selectLevel: vi.fn(),
-  nodes: [{ id: 'n1' }, { id: 'n2' }],
-  edges: [],
+  nodes: [
+    { id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+    { id: 'n2', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+  ],
+  edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Usa', data: {} }],
   onNodesChange: vi.fn(),
   onEdgesChange: vi.fn(),
+  addNode: vi.fn(),
+  connect: vi.fn(),
+  updateNode: vi.fn(),
+  updateEdge: vi.fn(),
+  removeNode: vi.fn(),
+  removeEdge: vi.fn(),
   save: vi.fn(),
   saveStatus: 'saved',
 };
@@ -90,6 +106,80 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('tab', { name: 'Container' }));
 
       expect(editor.selectLevel).toHaveBeenCalledWith('container');
+    });
+  });
+
+  describe('edição do diagrama', () => {
+    it('deve passar o nível ativo ao canvas e ligar adição e conexão ao editor', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ activeLevel: 'container' });
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-level', 'container');
+      await user.click(screen.getByRole('button', { name: 'mock-add' }));
+      await user.click(screen.getByRole('button', { name: 'mock-connect' }));
+
+      expect(editor.addNode).toHaveBeenCalledWith('c4-system', { x: 1, y: 2 });
+      expect(editor.connect).toHaveBeenCalledWith({ source: 'n1', target: 'n2' });
+    });
+
+    it('deve editar o elemento pelo modal e fechá-lo ao salvar (RF22)', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+      const title = screen.getByLabelText('Título');
+      expect(title).toHaveValue('Cliente');
+      await user.clear(title);
+      await user.type(title, 'Cliente VIP');
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Salvar' }));
+
+      expect(editor.updateNode).toHaveBeenCalledWith('n1', { label: 'Cliente VIP', description: '' });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('deve editar a conexão pelo modal', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-edge' }));
+      await user.type(screen.getByLabelText('Tecnologia'), 'HTTPS');
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Salvar' }));
+
+      expect(editor.updateEdge).toHaveBeenCalledWith('e1', { label: 'Usa', technology: 'HTTPS' });
+    });
+
+    it.each([
+      ['elemento', 'mock-edit-node', 'removeNode', 'n1'],
+      ['conexão', 'mock-edit-edge', 'removeEdge', 'e1'],
+    ])('deve excluir o(a) %s pelo modal', async (_, openButton, action, id) => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: openButton }));
+      await user.click(screen.getByRole('button', { name: 'Excluir' }));
+
+      expect(editor[action]).toHaveBeenCalledWith(id);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('deve fechar o modal sem alterar nada ao cancelar', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+      await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(editor.updateNode).not.toHaveBeenCalled();
+    });
+
+    it('não deve abrir o modal para um elemento que não está no nível ativo', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ nodes: [], edges: [] });
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
 

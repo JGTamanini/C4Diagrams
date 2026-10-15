@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Brand from '../../components/Brand/Brand';
 import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
+import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { LEVELS } from '../../constants/c4Notation';
@@ -15,7 +16,7 @@ const SAVE_STATUS_TEXT = {
   error: 'Falha ao salvar. Suas alterações continuam aqui — clique em Salvar para tentar de novo.',
 };
 
-function EditorBody({ editor }) {
+function EditorBody({ editor, onEdit }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -30,21 +31,60 @@ function EditorBody({ editor }) {
 
   return (
     <DiagramCanvas
+      level={editor.activeLevel}
       nodes={editor.nodes}
       edges={editor.edges}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
+      onConnect={editor.connect}
+      onAddNode={editor.addNode}
+      onEditNode={(id) => onEdit({ kind: 'node', id })}
+      onEditEdge={(id) => onEdit({ kind: 'edge', id })}
     />
   );
 }
 
-// Nota: editor de diagramas do projeto (wireframe 7). Fase 4 — estrutura, níveis e salvamento;
-// paleta, conexões, modal de elemento e legenda vêm no próximo incremento
+// Nota: o alvo do modal é procurado no nível ativo a cada render — se ele deixar de existir, o modal some
+function findEditTarget(editor, editing) {
+  if (!editing) return null;
+  if (editing.kind === 'node') {
+    const node = editor.nodes.find((candidate) => candidate.id === editing.id);
+    return node && { kind: 'node', type: node.type, data: node.data };
+  }
+  const edge = editor.edges.find((candidate) => candidate.id === editing.id);
+  return edge && { kind: 'edge', label: edge.label, data: edge.data };
+}
+
+function ElementEditor({ editor, editing, onClose }) {
+  const target = findEditTarget(editor, editing);
+  if (!target) return null;
+
+  const isNode = editing.kind === 'node';
+
+  function handleSave(values) {
+    if (isNode) editor.updateNode(editing.id, values);
+    else editor.updateEdge(editing.id, values);
+    onClose();
+  }
+
+  function handleDelete() {
+    if (isNode) editor.removeNode(editing.id);
+    else editor.removeEdge(editing.id);
+    onClose();
+  }
+
+  return <ElementFormModal target={target} onSave={handleSave} onDelete={handleDelete} onClose={onClose} />;
+}
+
+// Nota: editor de diagramas do projeto (wireframe 7) — níveis, paleta, conexões, modal de edição (RF22),
+// legenda e salvamento automático
 function ProjectPage() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const editor = useDiagramEditor(id);
+  const [editing, setEditing] = useState(null);
+  const closeEditor = useCallback(() => setEditing(null), []);
 
   useEffect(() => {
     let active = true;
@@ -122,8 +162,10 @@ function ProjectPage() {
       </div>
 
       <main className="relative min-h-0 flex-1">
-        <EditorBody editor={editor} />
+        <EditorBody editor={editor} onEdit={setEditing} />
       </main>
+
+      <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
       <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line">
         {LEVELS.map((level) => (
