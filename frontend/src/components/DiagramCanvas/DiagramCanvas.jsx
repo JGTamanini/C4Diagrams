@@ -1,13 +1,16 @@
 import { useMemo, useRef } from 'react';
-import { ReactFlow, ReactFlowProvider, Background, Controls, MarkerType, useReactFlow } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider, Background, Controls, ConnectionMode, MarkerType, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPalette';
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
+import FloatingEdge from '../FloatingEdge/FloatingEdge';
+import { parallelOffsets } from '../FloatingEdge/edgeGeometry';
 import { C4_ELEMENTS, isAllowedInLevel, isValidRelationship, withTechnologyLabel } from '../../constants/c4Notation';
 
 // Fora do componente: o React Flow recria tudo se o objeto de tipos mudar a cada render
 const NODE_TYPES = Object.fromEntries(Object.keys(C4_ELEMENTS).map((type) => [type, C4Node]));
+const EDGE_TYPES = { floating: FloatingEdge };
 
 // Notação oficial: relacionamento unidirecional, linha tracejada com seta no destino
 const RELATIONSHIP_STYLE = { markerEnd: { type: MarkerType.ArrowClosed }, style: { strokeDasharray: '6 4' } };
@@ -20,10 +23,16 @@ const DELETE_KEYS = ['Backspace', 'Delete'];
 function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, onConnect, onAddNode, onEditNode, onEditEdge }) {
   const { screenToFlowPosition } = useReactFlow();
   const dropAreaRef = useRef(null);
-  const displayedEdges = useMemo(
-    () => edges.map((edge) => ({ ...withTechnologyLabel(edge), ...RELATIONSHIP_STYLE })),
-    [edges]
-  );
+  // Nota: só para exibição — tipo flutuante e deslocamento das relações paralelas não vão para a API
+  const displayedEdges = useMemo(() => {
+    const offsets = parallelOffsets(edges);
+    return edges.map((edge) => ({
+      ...withTechnologyLabel(edge),
+      ...RELATIONSHIP_STYLE,
+      type: 'floating',
+      data: { ...edge.data, offset: offsets.get(edge.id) },
+    }));
+  }, [edges]);
 
   function addAt(type, screenPoint) {
     const position = screenToFlowPosition(screenPoint);
@@ -63,6 +72,8 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
           nodes={nodes}
           edges={displayedEdges}
           nodeTypes={NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
+          connectionMode={ConnectionMode.Loose}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}

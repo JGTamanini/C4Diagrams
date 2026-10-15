@@ -116,4 +116,33 @@ describe('DiagramCanvas', () => {
       expect(onEditEdge).toHaveBeenCalledWith('e1');
     });
   });
+
+  describe('conexões flutuantes', () => {
+    it('deve desenhar mais de uma relação entre o mesmo par, cada uma com o seu rótulo e em linhas separadas', async () => {
+      const { container } = render(
+        <div style={{ width: 800, height: 600 }}>
+          <DiagramCanvas
+            level="context"
+            nodes={nodes}
+            edges={[
+              { id: 'e1', source: 'n1', target: 'n2', label: 'Compra em', data: {} },
+              { id: 'e2', source: 'n1', target: 'n2', label: 'Acompanha pedidos em', data: {} },
+            ]}
+            onNodesChange={vi.fn()}
+            onEdgesChange={vi.fn()}
+            onConnect={vi.fn()}
+            onAddNode={vi.fn()}
+            onEditNode={vi.fn()}
+            onEditEdge={vi.fn()}
+          />
+        </div>
+      );
+
+      expect(await screen.findByText('Compra em')).toBeInTheDocument();
+      expect(screen.getByText('Acompanha pedidos em')).toBeInTheDocument();
+      const paths = [...container.querySelectorAll('.react-flow__edge-path')].map((path) => path.getAttribute('d'));
+      expect(paths).toHaveLength(2);
+      expect(paths[0]).not.toBe(paths[1]);
+    });
+  });
 });
