@@ -15,7 +15,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
 const editor = {
   loadStatus: 'ready',
   activeLevel: 'context',
-  setActiveLevel: vi.fn(),
+  selectLevel: vi.fn(),
   nodes: [{ id: 'n1' }, { id: 'n2' }],
   edges: [],
   onNodesChange: vi.fn(),
@@ -89,7 +89,7 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       await user.click(screen.getByRole('tab', { name: 'Container' }));
 
-      expect(editor.setActiveLevel).toHaveBeenCalledWith('container');
+      expect(editor.selectLevel).toHaveBeenCalledWith('container');
     });
   });
 
