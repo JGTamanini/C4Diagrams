@@ -1,7 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { C4_ELEMENTS, typeLabel, withTechnologyLabel } from './c4Notation';
+import { C4_ELEMENTS, LEVEL_ELEMENTS, isAllowedInLevel, isValidRelationship, typeLabel, withTechnologyLabel } from './c4Notation';
 
 describe('notação C4', () => {
+  it('deve oferecer em cada nível só os elementos que o c4model.com prevê para ele (RN08)', () => {
+    expect(LEVEL_ELEMENTS.context).toEqual(['c4-person', 'c4-system', 'c4-system-external']);
+    expect(LEVEL_ELEMENTS.container).toEqual(['c4-person', 'c4-system-external', 'c4-container', 'c4-container-db']);
+    expect(LEVEL_ELEMENTS.component).toEqual([
+      'c4-person',
+      'c4-system-external',
+      'c4-container',
+      'c4-container-db',
+      'c4-component',
+    ]);
+  });
+
+  it.each([
+    ['context', 'c4-system', true],
+    ['context', 'c4-container', false],
+    ['container', 'c4-component', false],
+    ['component', 'c4-component', true],
+    ['code', 'c4-person', false],
+  ])('isAllowedInLevel(%s, %s) deve ser %s', (level, type, expected) => {
+    expect(isAllowedInLevel(level, type)).toBe(expected);
+  });
+
   it.each([
     ['c4-person', undefined, '[Person]'],
     ['c4-system', undefined, '[Software System]'],
@@ -21,6 +43,11 @@ describe('notação C4', () => {
     expect(C4_ELEMENTS['c4-container']).toMatchObject({ background: '#438DD5', border: '#3C7FC0', shape: 'box' });
     expect(C4_ELEMENTS['c4-container-db']).toMatchObject({ background: '#438DD5', border: '#3C7FC0', shape: 'database' });
     expect(C4_ELEMENTS['c4-component']).toMatchObject({ background: '#85BBF0', border: '#78A8D8', color: '#000000', shape: 'box' });
+  });
+
+  it('deve aceitar conexão só entre elementos diferentes', () => {
+    expect(isValidRelationship({ source: 'n1', target: 'n2' })).toBe(true);
+    expect(isValidRelationship({ source: 'n1', target: 'n1' })).toBe(false);
   });
 
   it('deve mostrar a tecnologia junto ao rótulo da conexão', () => {

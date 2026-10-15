@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react';
 import { listDiagrams, saveDiagram } from '../services/diagrams';
-import { LEVEL_IDS } from '../constants/c4Notation';
+import { C4_ELEMENTS, DEFAULT_RELATIONSHIP_LABEL, LEVEL_IDS, isAllowedInLevel, isValidRelationship } from '../constants/c4Notation';
 
 export const AUTOSAVE_DELAY_MS = 2000;
 
@@ -145,6 +145,70 @@ export function useDiagramEditor(projectId) {
   const onNodesChange = useCallback((changes) => updateActive('nodes', applyNodeChanges, changes), [updateActive]);
   const onEdgesChange = useCallback((changes) => updateActive('edges', applyEdgeChanges, changes), [updateActive]);
 
+  // Edições feitas pelo editor (paleta, conexões e modal): sempre alteram o diagrama do nível ativo
+  const editActive = useCallback(
+    (edit) => {
+      setDiagrams((current) => ({ ...current, [activeLevel]: edit(current[activeLevel]) }));
+      markDirty(activeLevel);
+    },
+    [activeLevel, markDirty]
+  );
+
+  const addNode = useCallback(
+    (type, position) => {
+      if (!isAllowedInLevel(activeLevel, type)) return;
+      const node = { id: crypto.randomUUID(), type, position, data: { label: C4_ELEMENTS[type].name } };
+      editActive((diagram) => ({ ...diagram, nodes: [...diagram.nodes, node] }));
+    },
+    [activeLevel, editActive]
+  );
+
+  const connect = useCallback(
+    ({ source, target }) => {
+      if (!isValidRelationship({ source, target })) return;
+      const edge = { id: crypto.randomUUID(), source, target, label: DEFAULT_RELATIONSHIP_LABEL, data: {} };
+      editActive((diagram) => ({ ...diagram, edges: [...diagram.edges, edge] }));
+    },
+    [editActive]
+  );
+
+  const updateNode = useCallback(
+    (id, data) => {
+      editActive((diagram) => ({
+        ...diagram,
+        nodes: diagram.nodes.map((node) => (node.id === id ? { ...node, data: pickNodeData(data) } : node)),
+      }));
+    },
+    [editActive]
+  );
+
+  const updateEdge = useCallback(
+    (id, { label, technology }) => {
+      editActive((diagram) => ({
+        ...diagram,
+        edges: diagram.edges.map((edge) => (edge.id === id ? { ...edge, label, data: technology ? { technology } : {} } : edge)),
+      }));
+    },
+    [editActive]
+  );
+
+  const removeNode = useCallback(
+    (id) => {
+      editActive(({ nodes, edges }) => ({
+        nodes: nodes.filter((node) => node.id !== id),
+        edges: edges.filter((edge) => edge.source !== id && edge.target !== id),
+      }));
+    },
+    [editActive]
+  );
+
+  const removeEdge = useCallback(
+    (id) => {
+      editActive((diagram) => ({ ...diagram, edges: diagram.edges.filter((edge) => edge.id !== id) }));
+    },
+    [editActive]
+  );
+
   const setActiveLevel = useCallback(
     (level) => {
       if (dirtyLevelsRef.current.size > 0) void save();
@@ -161,6 +225,12 @@ export function useDiagramEditor(projectId) {
     edges: diagrams[activeLevel].edges,
     onNodesChange,
     onEdgesChange,
+    addNode,
+    connect,
+    updateNode,
+    updateEdge,
+    removeNode,
+    removeEdge,
     save,
     saveStatus,
   };

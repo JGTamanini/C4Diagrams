@@ -22,6 +22,31 @@ export const C4_ELEMENTS = {
   'c4-component': { name: 'Componente', type: 'Component', background: '#85BBF0', border: '#78A8D8', color: '#000000', shape: 'box', hasTechnology: true },
 };
 
+// Elementos de cada nível (c4model.com): o nível detalha o anterior, então pessoas e sistemas externos
+// continuam aparecendo como contexto; no nível de Componente, os containers vizinhos também (RN08)
+export const LEVEL_ELEMENTS = {
+  context: ['c4-person', 'c4-system', 'c4-system-external'],
+  container: ['c4-person', 'c4-system-external', 'c4-container', 'c4-container-db'],
+  component: ['c4-person', 'c4-system-external', 'c4-container', 'c4-container-db', 'c4-component'],
+};
+
+export function isAllowedInLevel(level, type) {
+  return Boolean(LEVEL_ELEMENTS[level]?.includes(type));
+}
+
+// Notação oficial: toda conexão tem rótulo; "Usa" é o ponto de partida, editável pelo usuário
+export const DEFAULT_RELATIONSHIP_LABEL = 'Usa';
+
+// Mesma regra do backend: uma conexão não liga um elemento a ele mesmo
+export function isValidRelationship({ source, target }) {
+  return source !== target;
+}
+
+// Mesmos limites validados pelo backend
+export const TITLE_MAX_LENGTH = 100;
+export const DESCRIPTION_MAX_LENGTH = 1000;
+export const TECHNOLOGY_MAX_LENGTH = 100;
+
 // Notação oficial: todo elemento explicita o tipo; containers e componentes, também a tecnologia
 export function typeLabel(type, technology) {
   const elementType = C4_ELEMENTS[type].type;
