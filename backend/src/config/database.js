@@ -1,11 +1,17 @@
 require('dotenv').config({ quiet: true });
 const { Pool } = require('pg');
 
-// Configuração da conexão com PostgreSQL (hospedado no Railway em produção).
+// Nota: SSL é uma decisão explícita (DATABASE_SSL=true), e não consequência do NODE_ENV. Ligado, valida o certificado
+// do servidor — o Azure Database for PostgreSQL usa certificado de CA pública, já confiável pelo Node.
+function buildSslConfig(env = process.env) {
+  return env.DATABASE_SSL === 'true' ? { rejectUnauthorized: true } : false;
+}
+
+// Configuração da conexão com PostgreSQL (Azure Database for PostgreSQL em produção).
 // Todas as credenciais vêm de variáveis de ambiente — nunca hardcoded.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: buildSslConfig(),
 });
 
 pool.on('error', (err) => {
@@ -26,4 +32,4 @@ async function testConnection() {
   }
 }
 
-module.exports = { pool, testConnection };
+module.exports = { pool, testConnection, buildSslConfig };
