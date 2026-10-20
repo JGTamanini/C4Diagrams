@@ -1,0 +1,56 @@
+name: Docker Image
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/docker-image.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: c4diagrams
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Montar a imagem de produção
+        run: docker build -t c4diagrams:ci .
+
+      # Sobe a imagem como em produção (migrações + servidor) e confere API, frontend e rota do React
+      - name: Teste de fumaça da imagem
+        run: |
+          docker run -d --name c4 --network host \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/c4diagrams \
+            -e JWT_SECRET=segredo_de_teste_do_ci_com_32_caracteres_ou_mais \
+            -e JWT_EXPIRES_IN=1h \
+            -e RESEND_API_KEY=re_fake_key_apenas_para_ci \
+            -e EMAIL_FROM=onboarding@resend.dev \
+            -e FRONTEND_URL=http://localhost:8080 \
+            c4diagrams:ci
+          npx wait-on http://localhost:8080/api/health --timeout 60000 || (docker logs c4; exit 1)
+          curl -sf http://localhost:8080/api/health | grep '"database":"connected"'
+          curl -sf http://localhost:8080/ | grep 'id="root"'
+          curl -sf http://localhost:8080/projetos/qualquer | grep 'id="root"'
