@@ -68,6 +68,14 @@ jobs:
           curl -sf http://localhost:8080/api/health | grep '"version":"${{ github.sha }}"'
           curl -sf http://localhost:8080/ | grep 'id="root"'
 
+      # Regressão: agente do New Relic + requisição HTTP de saída (no Node 24.15 isso derrubava o processo)
+      - name: Teste de regressão (New Relic + requisição HTTP de saída)
+        run: |
+          docker run --rm --network host \
+            -e NEW_RELIC_LICENSE_KEY=chave_falsa_somente_para_o_teste_de_ci_000 \
+            $IMAGE:${{ github.sha }} node -e "require('./src/config/telemetry').startTelemetry(); fetch('http://localhost:8080/api/health').then((r) => { console.log('FETCH OK', r.status); process.exit(0); })" \
+            | grep 'FETCH OK'
+
       - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:

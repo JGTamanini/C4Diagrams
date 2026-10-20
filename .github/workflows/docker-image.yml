@@ -54,3 +54,12 @@ jobs:
           curl -sf http://localhost:8080/api/health | grep '"database":"connected"'
           curl -sf http://localhost:8080/ | grep 'id="root"'
           curl -sf http://localhost:8080/projetos/qualquer | grep 'id="root"'
+
+      # Regressão: com o Node 24.15 o agente do New Relic + o primeiro fetch estouravam o limite de canais de
+      # diagnóstico do Node e derrubavam o processo (cadastro dava 502). Requisição de saída com o agente ligado.
+      - name: Teste de regressão (New Relic + requisição HTTP de saída)
+        run: |
+          docker run --rm --network host \
+            -e NEW_RELIC_LICENSE_KEY=chave_falsa_somente_para_o_teste_de_ci_000 \
+            c4diagrams:ci node -e "require('./src/config/telemetry').startTelemetry(); fetch('http://localhost:8080/api/health').then((r) => { console.log('FETCH OK', r.status); process.exit(0); })" \
+            | grep 'FETCH OK'

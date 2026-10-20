@@ -1,7 +1,7 @@
 # Imagem de produção do C4Diagrams: a API (Express) serve também o frontend compilado, no mesmo endereço.
 
 # 1) Frontend: build de produção do Vite, com a API no mesmo endereço (/api)
-FROM node:24.15.0-alpine AS frontend
+FROM node:24.22.0-alpine AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
@@ -10,13 +10,13 @@ ENV VITE_API_URL=/api
 RUN npm run build
 
 # 2) Backend: só as dependências de produção
-FROM node:24.15.0-alpine AS backend-deps
+FROM node:24.22.0-alpine AS backend-deps
 WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
 
 # 3) Imagem final: sem ferramentas de build, rodando com usuário sem privilégios
-FROM node:24.15.0-alpine
+FROM node:24.22.0-alpine
 # Commit desta imagem, exposto no /api/health para o pipeline confirmar que a nova versão subiu
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION \
