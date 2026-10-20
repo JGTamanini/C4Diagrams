@@ -17,7 +17,10 @@ RUN npm ci --omit=dev
 
 # 3) Imagem final: sem ferramentas de build, rodando com usuário sem privilégios
 FROM node:24.15.0-alpine
-ENV NODE_ENV=production \
+# Commit desta imagem, exposto no /api/health para o pipeline confirmar que a nova versão subiu
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION \
+    NODE_ENV=production \
     PORT=8080 \
     STATIC_DIR=/app/public
 WORKDIR /app
