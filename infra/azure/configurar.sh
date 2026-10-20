@@ -25,6 +25,10 @@ if ! az postgres flexible-server db show -g "$RG" --server-name "$DB_SERVER" --n
   az postgres flexible-server db create -g "$RG" --server-name "$DB_SERVER" --name "$DB_NAME" --output none
 fi
 
+echo "== Extensões do PostgreSQL usadas pelas migrações (a Azure exige liberação explícita)"
+# pgcrypto: gen_random_uuid() nos ids (migração create-users-table)
+az postgres flexible-server parameter set -g "$RG" --server-name "$DB_SERVER" --name azure.extensions --value PGCRYPTO --output none
+
 echo "== Firewall do banco: só os IPs de saída do Web App"
 existing_ips=$(az postgres flexible-server firewall-rule list -g "$RG" --server-name "$DB_SERVER" --query "[].startIpAddress" -o tsv)
 index=0
