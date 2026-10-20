@@ -1,0 +1,148 @@
+name: Deploy
+
+# Publica na Azure a cada push na main que altere a aplicação (o código já passou pelos checks do PR).
+# Sem SSH/FTP: a imagem vai para o GHCR e o Web App é atualizado pela API da Azure, autenticando por OIDC.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# Um deploy por vez; um novo push espera o anterior terminar em vez de cancelá-lo no meio
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/jgtamanini/c4diagrams
+  RESOURCE_GROUP: c4diagrams
+  WEB_APP: c4diagrams
+  APP_URL: https://c4diagrams-aubseke6gwheaqa5.canadacentral-01.azurewebsites.net
+
+jobs:
+  build:
+    name: Montar, testar e publicar a imagem
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: c4diagrams
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Montar a imagem de produção
+        run: docker build --build-arg APP_VERSION=${{ github.sha }} -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+
+      - name: Teste de fumaça da imagem
+        run: |
+          docker run -d --name c4 --network host \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/c4diagrams \
+            -e JWT_SECRET=segredo_de_teste_do_ci_com_32_caracteres_ou_mais \
+            -e JWT_EXPIRES_IN=1h \
+            -e RESEND_API_KEY=re_fake_key_apenas_para_ci \
+            -e EMAIL_FROM=onboarding@resend.dev \
+            -e FRONTEND_URL=http://localhost:8080 \
+            $IMAGE:${{ github.sha }}
+          npx wait-on http://localhost:8080/api/health --timeout 60000 || (docker logs c4; exit 1)
+          curl -sf http://localhost:8080/api/health | grep '"version":"${{ github.sha }}"'
+          curl -sf http://localhost:8080/ | grep 'id="root"'
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar a imagem
+        run: |
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+  deploy:
+    name: Publicar no Azure App Service
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://c4diagrams-aubseke6gwheaqa5.canadacentral-01.azurewebsites.net
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Login na Azure (OIDC, sem senha guardada)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Guardar a versão atual (para reverter em caso de falha)
+        id: previous
+        run: echo "image=$(az webapp config show -g $RESOURCE_GROUP -n $WEB_APP --query linuxFxVersion -o tsv)" >> "$GITHUB_OUTPUT"
+
+      # Segredos vêm do GitHub e são mascarados nos logs; --output none evita que a Azure os devolva na saída
+      - name: Configurar as variáveis da aplicação
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+        run: |
+          az webapp config appsettings set -g $RESOURCE_GROUP -n $WEB_APP --output none --settings \
+            WEBSITES_PORT=8080 \
+            DATABASE_SSL=true \
+            JWT_EXPIRES_IN=7d \
+            EMAIL_FROM=onboarding@resend.dev \
+            FRONTEND_URL=$APP_URL \
+            DATABASE_URL="$DATABASE_URL" \
+            JWT_SECRET="$JWT_SECRET" \
+            RESEND_API_KEY="$RESEND_API_KEY" \
+            NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY"
+
+      - name: Apontar o Web App para a nova imagem
+        run: az webapp config set -g $RESOURCE_GROUP -n $WEB_APP --linux-fx-version "DOCKER|$IMAGE:${{ github.sha }}" --output none
+
+      # Confirma que a versão NOVA está no ar e com o banco conectado (até ~8 min: download da imagem e migrações)
+      - name: Verificar a publicação
+        id: verify
+        run: |
+          for attempt in $(seq 1 48); do
+            body=$(curl -s --max-time 10 "$APP_URL/api/health" || true)
+            if echo "$body" | grep -q '"version":"${{ github.sha }}"' && echo "$body" | grep -q '"database":"connected"'; then
+              echo "No ar: $body"
+              exit 0
+            fi
+            echo "Tentativa $attempt: aguardando a nova versão..."
+            sleep 10
+          done
+          echo "A nova versão não respondeu a tempo."
+          exit 1
+
+      - name: Reverter para a versão anterior
+        if: failure() && steps.previous.outputs.image != ''
+        run: |
+          echo "Revertendo para ${{ steps.previous.outputs.image }}"
+          az webapp config set -g $RESOURCE_GROUP -n $WEB_APP --linux-fx-version "${{ steps.previous.outputs.image }}" --output none
