@@ -17,12 +17,15 @@ async function create(userId, project) {
   return result.rows[0];
 }
 
+// Nota: cada projeto vem com a prévia do diagrama de Contexto (nível 1) para o card do dashboard — uma única
+// consulta, sem uma requisição por projeto. Sem diagrama de Contexto salvo, preview é null.
 async function findAllByUser(userId) {
   const query = `
-    SELECT ${PUBLIC_COLUMNS}
-    FROM projects
-    WHERE user_id = $1
-    ORDER BY updated_at DESC
+    SELECT p.id, p.name, p.description, p.created_at, p.updated_at, d.data AS preview
+    FROM projects p
+    LEFT JOIN diagrams d ON d.project_id = p.id AND d.level = 'context'
+    WHERE p.user_id = $1
+    ORDER BY p.updated_at DESC
   `;
 
   const result = await pool.query(query, [userId]);

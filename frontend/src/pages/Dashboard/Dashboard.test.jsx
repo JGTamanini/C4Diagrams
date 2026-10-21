@@ -57,7 +57,29 @@ describe('Dashboard', () => {
       expect(await screen.findByText('Loja Online')).toBeInTheDocument();
       expect(cardNames()).toEqual(['Loja Online', 'Blog']);
       expect(screen.getByText('Editado em 28/09/2026')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Loja Online' })).toHaveAttribute('href', '/projetos/p1');
+    });
+
+    it('deve abrir o modal do projeto ao clicar no card, com atalho para o editor', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja, blog]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Loja Online' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Loja Online' });
+      expect(within(dialog).getByRole('link', { name: 'Abrir editor' })).toHaveAttribute('href', '/projetos/p1');
+    });
+
+    it('deve fechar o modal do projeto sem alterar nada', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Loja Online' }));
+      await user.click(within(screen.getByRole('dialog', { name: 'Loja Online' })).getByRole('button', { name: 'Fechar' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(updateProject).not.toHaveBeenCalled();
     });
 
     it('deve exibir o estado vazio com chamada para criar o primeiro projeto', async () => {
@@ -67,7 +89,7 @@ describe('Dashboard', () => {
       renderDashboard();
 
       expect(await screen.findByText('Você ainda não tem projetos criados.')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Crie um agora' }));
+      await user.click(screen.getByRole('button', { name: 'Criar meu primeiro projeto' }));
       expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
     });
 
@@ -94,7 +116,7 @@ describe('Dashboard', () => {
       await screen.findByText('Blog');
 
       await user.click(screen.getByRole('button', { name: 'Novo projeto' }));
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja Online');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja Online');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(createProject).toHaveBeenCalledWith({ name: 'Loja Online', description: '' });
@@ -136,12 +158,12 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Blog');
 
-      await user.click(screen.getByRole('button', { name: 'Editar projeto Blog' }));
-      const nameInput = screen.getByLabelText('Nome do Projeto');
+      await user.click(screen.getByRole('button', { name: 'Blog' }));
+      const nameInput = screen.getByLabelText('Nome do projeto');
       expect(nameInput).toHaveValue('Blog');
       await user.clear(nameInput);
       await user.type(nameInput, 'Blog Técnico');
-      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+      await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
 
       expect(updateProject).toHaveBeenCalledWith('p2', { name: 'Blog Técnico', description: '' });
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -158,7 +180,8 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
       const dialog = screen.getByRole('alertdialog', { name: 'Excluir projeto' });
       expect(dialog).toHaveTextContent('O projeto "Loja Online" e todos os seus diagramas serão excluídos permanentemente.');
       await user.click(within(dialog).getByRole('button', { name: 'Excluir' }));
@@ -175,7 +198,8 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
       await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
       expect(deleteProject).not.toHaveBeenCalled();
@@ -191,7 +215,8 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
       await user.click(screen.getByRole('button', { name: 'Excluir' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível excluir o projeto. Tente novamente.');
