@@ -30,7 +30,7 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /entrar/i })).toBeInTheDocument();
   });
 
@@ -59,7 +59,7 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => {
@@ -76,7 +76,7 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/projetos'));
@@ -93,7 +93,7 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'SenhaErrada@123');
+    await user.type(screen.getByLabelText('Senha'), 'SenhaErrada@123');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(await screen.findByText(/e-mail ou senha inválidos/i)).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(await screen.findByText(/bloqueada.*5 minuto/i)).toBeInTheDocument();
@@ -127,11 +127,30 @@ describe('Login', () => {
     renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(await screen.findByText(/token inválido/i)).toBeInTheDocument();
     expect(localStorage.getItem('token')).toBeNull();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('deve indicar o carregamento enquanto entra, sem permitir envio duplo', async () => {
+    const user = userEvent.setup();
+    let finish;
+    api.post.mockReturnValue(new Promise((resolve, reject) => { finish = reject; }));
+    renderWithRouter(<Login />);
+
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@123');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    const button = screen.getByRole('button', { name: 'Entrar' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+
+    finish({ response: { data: { message: 'Credenciais inválidas.' } } });
+    expect(await screen.findByText('Credenciais inválidas.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled();
   });
 });
