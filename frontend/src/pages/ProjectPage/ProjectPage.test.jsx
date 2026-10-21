@@ -36,6 +36,12 @@ const editor = {
   updateEdge: vi.fn(),
   removeNode: vi.fn(),
   removeEdge: vi.fn(),
+  removeSelected: vi.fn(),
+  hasSelection: false,
+  undo: vi.fn(),
+  redo: vi.fn(),
+  canUndo: false,
+  canRedo: false,
   save: vi.fn(),
   saveStatus: 'saved',
 };
@@ -180,6 +186,54 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('barra de ações', () => {
+    it('deve oferecer desfazer, refazer e excluir selecionados, desabilitados quando não há o que fazer', async () => {
+      await renderLoaded();
+
+      expect(screen.getByRole('button', { name: 'Desfazer (Ctrl+Z)' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Refazer (Ctrl+Y)' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Excluir selecionados (Delete)' })).toBeDisabled();
+    });
+
+    it('deve acionar o editor pelos botões', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true, hasSelection: true });
+
+      await user.click(screen.getByRole('button', { name: 'Desfazer (Ctrl+Z)' }));
+      await user.click(screen.getByRole('button', { name: 'Refazer (Ctrl+Y)' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir selecionados (Delete)' }));
+
+      expect(editor.undo).toHaveBeenCalledTimes(1);
+      expect(editor.redo).toHaveBeenCalledTimes(1);
+      expect(editor.removeSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['{Control>}z{/Control}', 'undo'],
+      ['{Meta>}z{/Meta}', 'undo'],
+      ['{Control>}y{/Control}', 'redo'],
+      ['{Control>}{Shift>}z{/Shift}{/Control}', 'redo'],
+    ])('deve aceitar o atalho %s', async (keys, action) => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true });
+
+      await user.keyboard(keys);
+
+      expect(editor[action]).toHaveBeenCalledTimes(1);
+    });
+
+    it('não deve desfazer o diagrama enquanto o usuário digita num campo (o Ctrl+Z é do texto)', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true });
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      await user.click(screen.getByLabelText('Título'));
+      await user.keyboard('{Control>}z{/Control}');
+
+      expect(editor.undo).not.toHaveBeenCalled();
     });
   });
 

@@ -52,8 +52,17 @@ describe('DiagramCanvas', () => {
   it('deve indicar quando o nível ainda não tem elementos, sem legenda', () => {
     renderCanvas({ nodes: [] });
 
-    expect(screen.getByText('Este nível ainda não tem elementos. Arraste um elemento da paleta para começar.')).toBeInTheDocument();
+    expect(screen.getByText('Este nível ainda não tem elementos')).toBeInTheDocument();
+    expect(screen.getByText('Arraste um elemento da paleta (ou clique nele) para começar.')).toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-hints')).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Legenda' })).not.toBeInTheDocument();
+  });
+
+  it('deve ensinar a editar, conectar e excluir quando houver elementos', () => {
+    renderCanvas();
+
+    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Duplo clique para editar');
+    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Delete exclui');
   });
 
   it('deve exibir a paleta do nível e a legenda do diagrama', () => {

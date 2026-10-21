@@ -50,6 +50,14 @@ describe('notação C4', () => {
     expect(isValidRelationship({ source: 'n1', target: 'n1' })).toBe(false);
   });
 
+  it('deve aceitar uma relação por sentido entre o mesmo par (o propósito vai no rótulo)', () => {
+    const edges = [{ id: 'e1', source: 'n1', target: 'n2' }];
+
+    expect(isValidRelationship({ source: 'n1', target: 'n2' }, edges)).toBe(false);
+    expect(isValidRelationship({ source: 'n2', target: 'n1' }, edges)).toBe(true);
+    expect(isValidRelationship({ source: 'n1', target: 'n3' }, edges)).toBe(true);
+  });
+
   it('deve mostrar a tecnologia junto ao rótulo da conexão', () => {
     expect(withTechnologyLabel({ id: 'e1', label: 'Usa', data: { technology: 'JSON/HTTPS' } }).label).toBe('Usa [JSON/HTTPS]');
     expect(withTechnologyLabel({ id: 'e2', label: 'Usa', data: {} }).label).toBe('Usa');

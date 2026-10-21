@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
 import C4Node from './C4Node';
 
-function renderNode(type, data) {
+function renderNode(type, data, selected = false) {
   return render(
     <ReactFlowProvider>
-      <C4Node id="n1" type={type} data={data} />
+      <C4Node id="n1" type={type} data={data} selected={selected} />
     </ReactFlowProvider>
   );
 }
@@ -39,5 +39,17 @@ describe('C4Node', () => {
     const { container } = renderNode('c4-system', { label: 'Loja' });
 
     expect(container.querySelectorAll('.react-flow__handle')).toHaveLength(2);
+  });
+
+  it('deve destacar o elemento selecionado', () => {
+    const { rerender } = renderNode('c4-system', { label: 'Loja' });
+    expect(screen.getByTestId('c4-node')).toHaveAttribute('data-selected', 'false');
+
+    rerender(
+      <ReactFlowProvider>
+        <C4Node id="n1" type="c4-system" data={{ label: 'Loja' }} selected />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByTestId('c4-node')).toHaveAttribute('data-selected', 'true');
   });
 });

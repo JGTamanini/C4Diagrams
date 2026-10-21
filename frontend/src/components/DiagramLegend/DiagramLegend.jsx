@@ -12,9 +12,9 @@ function DiagramLegend({ nodes, edges }) {
   return (
     <section
       aria-label="Legenda"
-      className="absolute right-4 bottom-4 z-10 rounded-md border border-line bg-surface/90 px-4 py-3 text-xs text-text-secondary"
+      className="absolute right-4 bottom-4 z-10 rounded-[var(--radius-control)] border border-line bg-surface/90 px-4 py-3 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
     >
-      <h2 className="mb-2 font-medium text-text-primary">Legenda</h2>
+      <h2 className="mb-2 font-semibold text-text-primary">Legenda</h2>
       <ul className="flex flex-col gap-1.5">
         {usedTypes.map((type) => {
           const element = C4_ELEMENTS[type];

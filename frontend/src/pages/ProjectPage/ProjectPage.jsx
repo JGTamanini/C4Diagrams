@@ -8,6 +8,7 @@ import Button from '../../components/Button/Button';
 import { buttonClasses } from '../../components/Button/buttonStyles';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
+import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { LEVELS } from '../../constants/c4Notation';
@@ -160,9 +161,12 @@ function ProjectPage() {
       </header>
 
       <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-2">
-        <h1 className="truncate text-base font-medium text-text-primary">
-          {activeLevel.title} — {project.name}
-        </h1>
+        <div className="flex min-w-0 items-center gap-4">
+          <h1 className="truncate text-base font-semibold text-text-primary">
+            {activeLevel.title} — {project.name}
+          </h1>
+          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} />}
+        </div>
         <div className="flex shrink-0 items-center gap-4">
           <output
             data-testid="save-status"

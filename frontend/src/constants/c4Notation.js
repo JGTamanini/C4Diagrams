@@ -12,14 +12,15 @@ export const LEVEL_IDS = LEVELS.map((level) => level.id);
 
 const WHITE = '#FFFFFF';
 
+// Nota: shortName é o rótulo curto da paleta (cabe numa linha sob a miniatura).
 // Nota: no c4model.com o sistema externo continua "[Software System]" — o cinza (explicado na legenda) indica que é externo
 export const C4_ELEMENTS = {
-  'c4-person': { name: 'Pessoa', type: 'Person', background: '#08427B', border: '#073B6F', color: WHITE, shape: 'person' },
-  'c4-system': { name: 'Sistema de Software', type: 'Software System', background: '#1168BD', border: '#3C7FC0', color: WHITE, shape: 'box' },
-  'c4-system-external': { name: 'Sistema Externo', type: 'Software System', background: '#999999', border: '#8A8A8A', color: WHITE, shape: 'box' },
-  'c4-container': { name: 'Container', type: 'Container', background: '#438DD5', border: '#3C7FC0', color: WHITE, shape: 'box', hasTechnology: true },
-  'c4-container-db': { name: 'Banco de Dados', type: 'Container', background: '#438DD5', border: '#3C7FC0', color: WHITE, shape: 'database', hasTechnology: true },
-  'c4-component': { name: 'Componente', type: 'Component', background: '#85BBF0', border: '#78A8D8', color: '#000000', shape: 'box', hasTechnology: true },
+  'c4-person': { name: 'Pessoa', shortName: 'Pessoa', type: 'Person', background: '#08427B', border: '#073B6F', color: WHITE, shape: 'person' },
+  'c4-system': { name: 'Sistema de Software', shortName: 'Sistema', type: 'Software System', background: '#1168BD', border: '#3C7FC0', color: WHITE, shape: 'box' },
+  'c4-system-external': { name: 'Sistema Externo', shortName: 'Sistema externo', type: 'Software System', background: '#999999', border: '#8A8A8A', color: WHITE, shape: 'box' },
+  'c4-container': { name: 'Container', shortName: 'Container', type: 'Container', background: '#438DD5', border: '#3C7FC0', color: WHITE, shape: 'box', hasTechnology: true },
+  'c4-container-db': { name: 'Banco de Dados', shortName: 'Banco de dados', type: 'Container', background: '#438DD5', border: '#3C7FC0', color: WHITE, shape: 'database', hasTechnology: true },
+  'c4-component': { name: 'Componente', shortName: 'Componente', type: 'Component', background: '#85BBF0', border: '#78A8D8', color: '#000000', shape: 'box', hasTechnology: true },
 };
 
 // Elementos de cada nível (c4model.com): o nível detalha o anterior, então pessoas e sistemas externos
@@ -40,9 +41,11 @@ export const DEFAULT_RELATIONSHIP_LABEL = 'Usa';
 // O C4-PlantUML usa cinza-escuro sobre fundo branco; no canvas escuro, o equivalente legível é um tom quase branco
 export const RELATIONSHIP_COLOR = '#E6EDF3';
 
-// Mesma regra do backend: uma conexão não liga um elemento a ele mesmo
-export function isValidRelationship({ source, target }) {
-  return source !== target;
+// Uma conexão não liga um elemento a ele mesmo (mesma regra do backend) e só existe uma por sentido entre o mesmo
+// par — se houver mais de um propósito, ele vai no rótulo. A → B e B → A continuam possíveis.
+export function isValidRelationship({ source, target }, edges = []) {
+  if (source === target) return false;
+  return !edges.some((edge) => edge.source === source && edge.target === target);
 }
 
 // Mesmos limites validados pelo backend

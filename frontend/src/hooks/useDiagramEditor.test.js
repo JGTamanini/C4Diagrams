@@ -320,6 +320,15 @@ describe('useDiagramEditor', () => {
       expect(result.current.saveStatus).toBe('pending');
     });
 
+    it('não deve criar uma segunda relação no mesmo sentido entre o mesmo par', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.connect({ source: 'n1', target: 'n2' }));
+
+      expect(result.current.edges).toHaveLength(1);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
     it('não deve ligar um elemento a ele mesmo', async () => {
       const { result } = await renderLoadedEditor();
 
@@ -366,6 +375,14 @@ describe('useDiagramEditor', () => {
       );
     });
 
+    it('deve gravar a tecnologia informada na conexão', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.updateEdge('e1', { label: 'Compra em', technology: 'HTTPS' }));
+
+      expect(result.current.edges[0]).toMatchObject({ label: 'Compra em', data: { technology: 'HTTPS' } });
+    });
+
     it('deve excluir um elemento junto com as conexões dele', async () => {
       const { result } = await renderLoadedEditor();
 
@@ -384,6 +401,131 @@ describe('useDiagramEditor', () => {
       expect(result.current.edges).toEqual([]);
       expect(result.current.nodes).toHaveLength(2);
       expect(result.current.saveStatus).toBe('pending');
+    });
+  });
+
+  describe('desfazer e refazer (RF23)', () => {
+    it('deve desfazer e refazer a adição de um elemento, marcando para salvar', async () => {
+      const { result } = await renderLoadedEditor();
+      expect(result.current.canUndo).toBe(false);
+
+      act(() => result.current.addNode('c4-system-external', { x: 0, y: 0 }));
+      expect(result.current.canUndo).toBe(true);
+
+      act(() => result.current.undo());
+      expect(result.current.nodes.map((n) => n.id)).toEqual(['n1', 'n2']);
+      expect(result.current.canRedo).toBe(true);
+      expect(result.current.saveStatus).toBe('pending');
+
+      act(() => result.current.redo());
+      expect(result.current.nodes).toHaveLength(3);
+      expect(result.current.canRedo).toBe(false);
+    });
+
+    it('deve desfazer um movimento inteiro de uma vez, voltando à posição de antes de arrastar', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.onNodesChange([{ type: 'position', id: 'n1', position: { x: 10, y: 10 }, dragging: true }]));
+      act(() => result.current.onNodesChange([{ type: 'position', id: 'n1', position: { x: 40, y: 40 }, dragging: true }]));
+      dragEnd(result, 'n1', { x: 80, y: 80 });
+
+      act(() => result.current.undo());
+
+      expect(result.current.nodes[0].position).toEqual({ x: 0, y: 0 });
+      expect(result.current.canUndo).toBe(false);
+    });
+
+    it('deve tratar a exclusão pelo teclado (elemento e conexões avisados em sequência) como um passo só', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => {
+        result.current.onNodesChange([{ type: 'remove', id: 'n2' }]);
+        result.current.onEdgesChange([{ type: 'remove', id: 'e1' }]);
+      });
+      act(() => result.current.undo());
+
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.edges).toHaveLength(1);
+      expect(result.current.canUndo).toBe(false);
+    });
+
+    it('não deve registrar seleção no histórico', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.onNodesChange([{ type: 'select', id: 'n1', selected: true }]));
+
+      expect(result.current.canUndo).toBe(false);
+    });
+
+    it('deve descartar o que podia ser refeito quando houver uma edição nova', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.removeEdge('e1'));
+      act(() => result.current.undo());
+
+      act(() => result.current.updateNode('n1', { label: 'Cliente VIP' }));
+
+      expect(result.current.canRedo).toBe(false);
+    });
+
+    it('deve manter um histórico separado para cada nível', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.removeNode('n2'));
+
+      act(() => result.current.selectLevel('container'));
+      expect(result.current.canUndo).toBe(false);
+      act(() => result.current.undo());
+
+      act(() => result.current.selectLevel('context'));
+      expect(result.current.nodes.map((n) => n.id)).toEqual(['n1']);
+      expect(result.current.canUndo).toBe(true);
+    });
+
+    it('não deve fazer nada ao desfazer ou refazer sem histórico', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.undo());
+      act(() => result.current.redo());
+
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve guardar no máximo os 50 passos mais recentes', async () => {
+      const { result } = await renderLoadedEditor();
+      for (let i = 0; i < 55; i += 1) {
+        act(() => result.current.updateNode('n1', { label: `Cliente ${i}` }));
+      }
+
+      for (let i = 0; i < 60; i += 1) {
+        act(() => result.current.undo());
+      }
+
+      expect(result.current.nodes[0].data.label).toBe('Cliente 4');
+    });
+  });
+
+  describe('excluir selecionados', () => {
+    it('deve excluir os elementos e conexões selecionados, com as conexões dos elementos, num passo só', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.onNodesChange([{ type: 'select', id: 'n2', selected: true }]));
+      expect(result.current.hasSelection).toBe(true);
+
+      act(() => result.current.removeSelected());
+
+      expect(result.current.nodes.map((n) => n.id)).toEqual(['n1']);
+      expect(result.current.edges).toEqual([]);
+      act(() => result.current.undo());
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.edges).toHaveLength(1);
+    });
+
+    it('não deve fazer nada sem seleção', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.removeSelected());
+
+      expect(result.current.hasSelection).toBe(false);
+      expect(result.current.saveStatus).toBe('saved');
     });
   });
 
