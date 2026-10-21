@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
+import { Plus, RotateCw } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 import ProjectCard from '../../components/ProjectCard/ProjectCard';
 import ProjectFormModal from '../../components/ProjectFormModal/ProjectFormModal';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
-import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import Button from '../../components/Button/Button';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import { listProjects, createProject, updateProject, deleteProject } from '../../services/projects';
 
@@ -96,10 +98,10 @@ function Dashboard() {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-medium text-text-primary">Meus Projetos</h1>
-          <PrimaryButton type="button" className="px-5" onClick={openCreate}>
-            Novo Projeto
-          </PrimaryButton>
+          <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
+          <Button icon={Plus} onClick={openCreate}>
+            Novo projeto
+          </Button>
         </div>
 
         {actionError && (
@@ -119,16 +121,16 @@ function Dashboard() {
             <p role="alert" className="mb-4 text-sm text-danger">
               Não foi possível carregar seus projetos.
             </p>
-            <button type="button" onClick={retryLoad} className="text-sm text-accent">
+            <Button variant="secondary" size="sm" icon={RotateCw} onClick={retryLoad}>
               Tentar novamente
-            </button>
+            </Button>
           </div>
         )}
 
         {status === 'ready' && projects.length === 0 && (
           <div className="py-20 text-center">
             <p className="mb-2 text-text-secondary">Você ainda não tem projetos criados.</p>
-            <button type="button" onClick={openCreate} className="text-sm font-medium uppercase text-accent">
+            <button type="button" onClick={openCreate} className="text-link text-sm font-medium">
               Crie um agora
             </button>
           </div>
@@ -148,24 +150,31 @@ function Dashboard() {
         )}
       </main>
 
-      {formModal && (
-        <ProjectFormModal
-          mode={formModal.mode}
-          initialValues={formModal.project}
-          onSubmit={handleFormSubmit}
-          onClose={closeForm}
-        />
-      )}
+      {/* AnimatePresence: mantém o modal na tela durante a animação de saída */}
+      <AnimatePresence>
+        {formModal && (
+          <ProjectFormModal
+            key="project-form"
+            mode={formModal.mode}
+            initialValues={formModal.project}
+            onSubmit={handleFormSubmit}
+            onClose={closeForm}
+          />
+        )}
+      </AnimatePresence>
 
-      {projectToDelete && (
-        <ConfirmDialog
-          title="Excluir projeto"
-          message={`O projeto "${projectToDelete.name}" e todos os seus diagramas serão excluídos permanentemente. Esta ação não pode ser desfeita.`}
-          confirmLabel="Excluir"
-          onConfirm={handleConfirmDelete}
-          onCancel={cancelDelete}
-        />
-      )}
+      <AnimatePresence>
+        {projectToDelete && (
+          <ConfirmDialog
+            key="confirm-delete"
+            title="Excluir projeto"
+            message={`O projeto "${projectToDelete.name}" e todos os seus diagramas serão excluídos permanentemente. Esta ação não pode ser desfeita.`}
+            confirmLabel="Excluir"
+            onConfirm={handleConfirmDelete}
+            onCancel={cancelDelete}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

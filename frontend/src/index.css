@@ -1,22 +1,102 @@
 @import 'tailwindcss';
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
 @import '@fontsource/jetbrains-mono/500.css';
 
+/* Tokens visuais da interface (independentes da notação C4, que tem cores próprias em constants/c4Notation.js) */
 @theme {
-  --color-canvas: #0D1117;
-  --color-canvas-deep: #0A0D12;
-  --color-surface: #161B22;
-  --color-line: #30363D;
-  --color-line-subtle: #21262D;
-  --color-accent: #58A6FF;
-  --color-accent-fg: #04263F;
+  /* Superfícies: do fundo mais escuro ao mais elevado, com leve tom azulado */
+  --color-canvas: #0B0F17;
+  --color-canvas-deep: #070A10;
+  --color-surface: #111826;
+  --color-surface-raised: #172033;
+  --color-line: #263249;
+  --color-line-subtle: #1A2336;
+
+  /* Azul principal: fundo de botões (texto branco com contraste AA) e versão clara para textos e links */
+  --color-accent: #2F6BFF;
+  --color-accent-hover: #4A7DFF;
+  --color-accent-active: #2459DB;
+  --color-accent-fg: #FFFFFF;
+  --color-accent-text: #7AA7FF;
+
+  /* Violeta: destaque secundário, usado em degradês e pontos de atenção — quebra a sensação de "tudo opaco" */
+  --color-highlight: #8B5CF6;
+  --color-highlight-text: #B9A2FF;
+
   --color-success: #3FB950;
-  --color-danger: #E24B4A;
-  --color-text-primary: #F0F6FC;
-  --color-text-secondary: #8B949E;
-  --color-text-muted: #6E7681;
+  --color-danger: #F25555;
+  --color-danger-hover: #F46B6B;
+  --color-text-primary: #EEF2FA;
+  --color-text-secondary: #9DA9C0;
+  --color-text-muted: #6E7A93;
 
   --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-glow: 0 0 0 1px rgb(47 107 255 / 0.4), 0 8px 24px -8px rgb(47 107 255 / 0.45);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tudo que é clicável mostra a mãozinha e não deixa o texto ser selecionado por engano */
+  button,
+  [role='button'],
+  [role='tab'],
+  summary {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Foco visível só para quem navega pelo teclado (o clique do mouse não desenha o anel) */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-text);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: rgb(47 107 255 / 0.35);
+  }
+
+  /* Respeita quem desativou animações no sistema operacional */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Link de texto: cor de destaque, sublinhado suave ao passar o mouse */
+  .text-link {
+    color: var(--color-accent-text);
+    text-underline-offset: 3px;
+    transition: color 150ms var(--ease-out-soft);
+  }
+
+  .text-link:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+  }
 }

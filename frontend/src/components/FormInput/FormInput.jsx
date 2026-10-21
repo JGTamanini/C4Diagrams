@@ -10,11 +10,16 @@ function FormInput({
   maxLength,
   inputRef,
 }) {
-  const fieldClassName = `rounded-md border border-line bg-canvas-deep px-3 text-text-primary outline-none focus:border-accent ${className}`;
+  // Nota: o anel de foco substitui o contorno padrão; a borda reage ao mouse e ao foco com transição suave
+  const fieldClassName =
+    'rounded-[var(--radius-control)] border border-line bg-canvas-deep px-3 text-text-primary outline-none ' +
+    'transition-[border-color,box-shadow,background-color] duration-150 ease-[var(--ease-out-soft)] ' +
+    'placeholder:text-text-muted hover:border-text-muted/60 focus:border-accent focus:bg-canvas ' +
+    `focus:shadow-[0_0_0_3px_rgb(47_107_255/0.25)] focus-visible:outline-none ${className}`;
 
   return (
     <>
-      <label htmlFor={id} className="mb-1 text-sm text-text-secondary">
+      <label htmlFor={id} className="mb-1.5 text-sm font-medium text-text-secondary">
         {label}
       </label>
       {multiline ? (

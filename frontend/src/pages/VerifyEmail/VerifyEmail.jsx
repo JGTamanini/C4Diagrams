@@ -77,7 +77,7 @@ function VerifyEmail() {
           <output className="mb-4 max-w-xs text-sm text-text-secondary">
             {message}
           </output>
-          <Link to="/login" className="text-sm text-accent">
+          <Link to="/login" className="text-link text-sm">
             Ir para o login
           </Link>
         </>

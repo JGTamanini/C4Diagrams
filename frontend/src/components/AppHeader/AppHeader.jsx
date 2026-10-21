@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import Button from '../Button/Button';
 import Brand from '../Brand/Brand';
 import { getUser, clearSession } from '../../services/session';
 
@@ -27,20 +29,16 @@ function AppHeader() {
           <>
             <span
               aria-hidden="true"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent font-mono text-sm font-medium text-accent-fg"
+              className="flex h-9 w-9 select-none items-center justify-center rounded-full bg-linear-to-br from-accent to-highlight font-mono text-sm font-medium text-white"
             >
               {getInitials(user.name)}
             </span>
-            <span className="hidden text-sm text-text-primary sm:inline">{user.name}</span>
+            <span className="hidden select-none text-sm text-text-primary sm:inline">{user.name}</span>
           </>
         )}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-md border border-line px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary"
-        >
+        <Button variant="ghost" size="sm" icon={LogOut} onClick={handleLogout}>
           Sair
-        </button>
+        </Button>
       </div>
     </header>
   );

@@ -5,7 +5,7 @@ import DiagramIllustration from '../../components/DiagramIllustration/DiagramIll
 import AuthCard from '../../components/AuthCard/AuthCard';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
-import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import Button from '../../components/Button/Button';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 
 const resetNodes = [
@@ -52,7 +52,9 @@ function ResetPassword() {
             Mínimo 8 caracteres, com maiúscula, minúscula e caractere especial.
           </p>
 
-          <PrimaryButton className="">Redefinir senha</PrimaryButton>
+          <Button type="submit" className="w-full">
+            Redefinir senha
+          </Button>
         </form>
 
         {errorMessage && (

@@ -1,6 +1,12 @@
 import { useEffect, useId } from 'react';
+import { motion } from 'motion/react';
+import { X } from 'lucide-react';
+import IconButton from '../Button/IconButton';
 
-// Nota: casca comum dos modais — overlay, semântica de diálogo acessível e fechamento com Esc
+const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
+
+// Nota: casca comum dos modais — overlay, semântica de diálogo acessível e fechamento com Esc.
+// Entra com fade + leve escala; a saída animada depende de um <AnimatePresence> em volta, em quem o renderiza.
 function Modal({ title, role = 'dialog', onClose, closable = false, children }) {
   const titleId = useId();
 
@@ -14,31 +20,32 @@ function Modal({ title, role = 'dialog', onClose, closable = false, children }) 
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         role={role}
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-lg rounded-lg border border-line bg-surface p-6 shadow-xl"
+        className="w-full max-w-lg rounded-[var(--radius-card)] border border-line bg-surface p-6 shadow-[var(--shadow-card)]"
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 4 }}
+        transition={{ duration: 0.22, ease: EASE_OUT_SOFT }}
       >
         <div className="mb-6 flex items-start justify-between gap-4">
-          <h2 id={titleId} className="text-xl font-medium text-text-primary">
+          <h2 id={titleId} className="text-xl font-semibold text-text-primary">
             {title}
           </h2>
-          {closable && (
-            <button
-              type="button"
-              aria-label="Fechar"
-              onClick={onClose}
-              className="text-xl leading-none text-text-secondary hover:text-text-primary"
-            >
-              ×
-            </button>
-          )}
+          {closable && <IconButton icon={X} label="Fechar" onClick={onClose} className="-mr-2 -mt-1" />}
         </div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

@@ -5,7 +5,7 @@ import DiagramIllustration from '../../components/DiagramIllustration/DiagramIll
 import AuthCard from '../../components/AuthCard/AuthCard';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
-import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import Button from '../../components/Button/Button';
 import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailConfirmationCard';
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
@@ -74,7 +74,9 @@ function Register() {
           <FormInput id="email" label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mb-3" />
           <FormInput id="password" label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mb-5" />
 
-          <PrimaryButton className="mb-5">Cadastrar</PrimaryButton>
+          <Button type="submit" className="w-full mb-5">
+            Cadastrar
+          </Button>
         </form>
 
         {errorMessage && (
@@ -85,7 +87,7 @@ function Register() {
 
         <p className="text-center text-sm text-text-secondary">
           Já tem uma conta?{' '}
-          <Link to="/login" className="text-accent">
+          <Link to="/login" className="text-link">
             Entrar
           </Link>
         </p>

@@ -12,7 +12,7 @@ function handleDragStart(event, type) {
 function ElementPalette({ level, onAdd }) {
   return (
     <aside className="flex w-48 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line p-4">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-text-secondary">Elementos</h2>
+      <h2 className="text-xs font-medium text-text-secondary">Elementos</h2>
       <ul className="flex flex-col gap-2">
         {LEVEL_ELEMENTS[level].map((type) => {
           const element = C4_ELEMENTS[type];

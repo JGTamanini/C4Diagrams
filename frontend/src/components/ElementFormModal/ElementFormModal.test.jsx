@@ -20,7 +20,7 @@ describe('ElementFormModal (RF22 - versão mínima)', () => {
     it('deve abrir com os valores atuais e o tipo do elemento, focando o título', () => {
       renderModal(containerTarget);
 
-      expect(screen.getByRole('dialog', { name: 'Editar Elemento' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Editar elemento' })).toBeInTheDocument();
       expect(screen.getByText('Container')).toBeInTheDocument();
       expect(screen.getByLabelText('Título')).toHaveValue('API');
       expect(screen.getByLabelText('Título')).toHaveFocus();
@@ -85,7 +85,7 @@ describe('ElementFormModal (RF22 - versão mínima)', () => {
       const user = userEvent.setup();
       const { onSave } = renderModal(edgeTarget);
 
-      expect(screen.getByRole('dialog', { name: 'Editar Conexão' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Editar conexão' })).toBeInTheDocument();
       expect(screen.queryByLabelText('Descrição')).not.toBeInTheDocument();
       await user.clear(screen.getByLabelText('Rótulo'));
       await user.type(screen.getByLabelText('Rótulo'), 'Envia pedidos para');
