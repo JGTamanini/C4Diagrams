@@ -136,12 +136,38 @@
   rx: 6;
 }
 
-/* Pontos de conexão aparecem ao passar o mouse sobre o elemento (ou enquanto se conecta) */
+/* Pontos de conexão: aparecem ao passar o mouse sobre o elemento, maiores e com área de clique além do desenho */
 .react-flow__handle {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
   opacity: 0;
   transition: opacity 150ms var(--ease-out-soft), transform 150ms var(--ease-out-soft);
+}
+
+.react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 9999px;
+}
+
+/* Alvo de corpo inteiro durante a conexão: cobre o elemento e se destaca ao receber o mouse */
+.react-flow__handle.c4-drop-target {
+  inset: -6px;
+  width: auto;
+  height: auto;
+  transform: none;
+  border: 2px dashed transparent;
+  border-radius: 18px;
+  background: transparent;
+  opacity: 1;
+}
+
+.react-flow__handle.c4-drop-target:hover {
+  border-color: var(--color-accent-text);
+  background: rgb(61 111 214 / 0.12);
+  transform: none;
 }
 
 .react-flow__node:hover .react-flow__handle,
@@ -155,4 +181,12 @@
 
 .react-flow__handle-bottom:hover {
   transform: translate(-50%, 50%) scale(1.3);
+}
+
+.react-flow__handle-left:hover {
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+.react-flow__handle-right:hover {
+  transform: translate(50%, -50%) scale(1.3);
 }

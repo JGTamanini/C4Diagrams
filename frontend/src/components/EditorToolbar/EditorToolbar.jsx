@@ -32,12 +32,16 @@ function EditorToolbar({ editor }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
+  // Histórico e exclusão em grupos separados: ações de natureza diferente, sem parecer uma coisa só
   return (
-    <div role="toolbar" aria-label="Ações do diagrama" className="flex items-center gap-0.5 rounded-[var(--radius-control)] border border-line bg-surface p-0.5">
-      <IconButton icon={Undo2} label="Desfazer (Ctrl+Z)" onClick={undo} disabled={!canUndo} />
-      <IconButton icon={Redo2} label="Refazer (Ctrl+Y)" onClick={redo} disabled={!canRedo} />
-      <span aria-hidden="true" className="mx-1 h-5 w-px bg-line" />
-      <IconButton icon={Trash2} label="Excluir selecionados (Delete)" tone="danger" onClick={removeSelected} disabled={!hasSelection} />
+    <div role="toolbar" aria-label="Ações do diagrama" className="flex items-center gap-3">
+      <div className="flex items-center gap-0.5 rounded-[var(--radius-control)] border border-line bg-surface p-0.5">
+        <IconButton icon={Undo2} label="Desfazer (Ctrl+Z)" onClick={undo} disabled={!canUndo} />
+        <IconButton icon={Redo2} label="Refazer (Ctrl+Y)" onClick={redo} disabled={!canRedo} />
+      </div>
+      <div className="rounded-[var(--radius-control)] border border-line bg-surface p-0.5">
+        <IconButton icon={Trash2} label="Excluir selecionados (Delete)" tone="danger" onClick={removeSelected} disabled={!hasSelection} />
+      </div>
     </div>
   );
 }

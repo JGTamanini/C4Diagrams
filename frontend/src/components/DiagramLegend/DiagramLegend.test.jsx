@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import DiagramLegend from './DiagramLegend';
 
 const node = (id, type) => ({ id, type, position: { x: 0, y: 0 }, data: { label: id } });
@@ -27,6 +28,17 @@ describe('DiagramLegend', () => {
     render(<DiagramLegend nodes={[node('a', 'c4-person'), node('b', 'c4-system')]} edges={[{ id: 'e1' }]} />);
 
     expect(screen.getByText('Relacionamento (rótulo [tecnologia])')).toBeInTheDocument();
+  });
+
+  it('deve começar aberta e poder ser recolhida, para não cobrir elementos do diagrama', async () => {
+    const user = userEvent.setup();
+    render(<DiagramLegend nodes={[node('a', 'c4-person')]} edges={[]} />);
+    const details = screen.getByRole('region', { name: 'Legenda' }).querySelector('details');
+    expect(details).toHaveAttribute('open');
+
+    await user.click(screen.getByText('Legenda'));
+
+    expect(details).not.toHaveAttribute('open');
   });
 
   it('não deve aparecer em um diagrama vazio', () => {

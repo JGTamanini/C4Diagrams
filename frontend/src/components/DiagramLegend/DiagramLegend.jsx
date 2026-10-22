@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { C4_ELEMENTS, RELATIONSHIP_COLOR } from '../../constants/c4Notation';
 
 const ELEMENT_ORDER = Object.keys(C4_ELEMENTS);
@@ -12,10 +13,15 @@ function DiagramLegend({ nodes, edges }) {
   return (
     <section
       aria-label="Legenda"
-      className="absolute right-4 bottom-4 z-10 rounded-[var(--radius-control)] border border-line bg-surface/90 px-4 py-3 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
+      className="absolute right-4 bottom-4 z-10 rounded-[var(--radius-control)] border border-line bg-surface/90 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
     >
-      <h2 className="mb-2 font-semibold text-text-primary">Legenda</h2>
-      <ul className="flex flex-col gap-1.5">
+      {/* Recolhível (aberta por padrão): não cobre elementos quando o diagrama ocupa o canto */}
+      <details open className="group px-4 py-3">
+        <summary className="flex list-none items-center justify-between gap-6 font-semibold text-text-primary [&::-webkit-details-marker]:hidden">
+          Legenda
+          <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 text-text-muted transition-transform duration-150 group-open:rotate-180" />
+        </summary>
+      <ul className="mt-2 flex flex-col gap-1.5">
         {usedTypes.map((type) => {
           const element = C4_ELEMENTS[type];
           return (
@@ -37,6 +43,7 @@ function DiagramLegend({ nodes, edges }) {
           <span>Relacionamento (rótulo [tecnologia])</span>
         </p>
       )}
+      </details>
     </section>
   );
 }

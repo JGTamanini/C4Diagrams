@@ -96,6 +96,7 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
           deleteKeyCode={DELETE_KEYS}
           connectionLineComponent={FloatingConnectionLine}
+          connectionRadius={36}
           zoomOnDoubleClick={false}
           colorMode="dark"
           fitView

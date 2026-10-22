@@ -83,7 +83,8 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Diagrama de Contexto — Loja Online' })).toBeInTheDocument();
       expect(getProject).toHaveBeenCalledWith('p1');
       expect(useDiagramEditor).toHaveBeenCalledWith('p1');
-      expect(screen.getByTestId('project-name')).toHaveTextContent('Loja Online');
+      // O nome do projeto aparece só no título (não repetido na barra superior)
+      expect(screen.getAllByText(/Loja Online/)).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Meus projetos' })).toHaveAttribute('href', '/projetos');
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-count', '2');
     });

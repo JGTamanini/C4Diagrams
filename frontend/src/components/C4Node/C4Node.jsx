@@ -1,4 +1,5 @@
-import { Handle, Position } from '@xyflow/react';
+import { useEffect } from 'react';
+import { Handle, Position, useConnection, useUpdateNodeInternals } from '@xyflow/react';
 import { C4_ELEMENTS, typeLabel } from '../../constants/c4Notation';
 
 const BODY_SHAPE_CLASSES = {
@@ -14,8 +15,16 @@ const RESTING_SHADOW = '0 10px 24px -10px rgb(0 0 0 / 0.7)';
 // Nota: desenha o elemento segundo a notação C4 oficial — nome, [tipo(: tecnologia)] e descrição, com as cores e
 // formas do tipo (silhueta para pessoa, cilindro para banco de dados). Sombra, hover e anel de seleção são da
 // interface e não alteram a notação.
-function C4Node({ type, data, selected = false }) {
+function C4Node({ id, type, data, selected = false }) {
   const element = C4_ELEMENTS[type];
+  // Enquanto outro elemento está sendo conectado, este inteiro vira alvo: basta passar o mouse sobre ele
+  const isConnectionTarget = useConnection((connection) => connection.inProgress && connection.fromNode?.id !== id);
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  // Ponto de conexão criado/removido dinamicamente precisa ser registrado no React Flow para receber a conexão
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, isConnectionTarget, updateNodeInternals]);
   const colors = { backgroundColor: element.background, borderColor: element.border, color: element.color };
 
   return (
@@ -25,7 +34,13 @@ function C4Node({ type, data, selected = false }) {
       data-selected={selected}
       className="group flex w-[200px] flex-col items-center transition-transform duration-150 hover:-translate-y-0.5"
     >
+      {/* Pontos de conexão nos quatro lados (a conexão é flutuante: o lado escolhido não fica salvo) */}
       <Handle type="target" position={Position.Top} />
+      <Handle type="source" id="esquerda" position={Position.Left} />
+      <Handle type="source" id="direita" position={Position.Right} />
+      {isConnectionTarget && (
+        <Handle type="target" id="corpo" position={Position.Top} data-testid="c4-node-drop-target" className="c4-drop-target" />
+      )}
 
       {element.shape === 'person' && (
         <span aria-hidden="true" className="-mb-3 block h-12 w-12 rounded-full border-2" style={colors} />

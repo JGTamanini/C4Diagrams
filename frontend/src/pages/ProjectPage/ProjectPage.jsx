@@ -155,9 +155,6 @@ function ProjectPage() {
             Meus projetos
           </Link>
         </div>
-        <span data-testid="project-name" className="truncate text-sm font-medium text-text-primary">
-          {project.name}
-        </span>
       </header>
 
       <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-2">
