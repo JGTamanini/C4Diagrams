@@ -36,7 +36,7 @@ describe('App - rotas de projetos', () => {
 
     renderAt('/projetos');
 
-    expect(await screen.findByRole('heading', { name: 'Meus Projetos' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Meus projetos' })).toBeInTheDocument();
   });
 
   it('deve exibir a página do projeto em /projetos/:id para usuário autenticado', async () => {
@@ -61,7 +61,7 @@ describe('App - telas públicas com usuário logado', () => {
   it.each(['/login', '/cadastro', '/forgot-password'])('deve levar %s para /projetos', async (path) => {
     renderAt(path);
 
-    expect(await screen.findByRole('heading', { name: 'Meus Projetos' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Meus projetos' })).toBeInTheDocument();
   });
 
   it('deve manter /reset-password acessível, pois é aberta por link de e-mail', () => {

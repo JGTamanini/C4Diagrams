@@ -6,7 +6,7 @@ import DiagramIllustration from '../../components/DiagramIllustration/DiagramIll
 import AuthCard from '../../components/AuthCard/AuthCard';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
-import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import Button from '../../components/Button/Button';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 
 const loginNodes = [
@@ -69,12 +69,14 @@ function Login() {
           <FormInput id="password" label="Senha" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mb-2" />
 
           <div className="mb-6 text-right">
-            <Link to="/forgot-password" className="text-sm text-accent">
+            <Link to="/forgot-password" className="text-link text-sm">
               Esqueci minha senha
             </Link>
           </div>
 
-          <PrimaryButton>Entrar</PrimaryButton>
+          <Button type="submit" className="w-full mb-6">
+            Entrar
+          </Button>
         </form>
 
         {errorMessage && (
@@ -85,7 +87,7 @@ function Login() {
 
         <p className="text-center text-sm text-text-secondary">
           Não tem conta?{' '}
-          <Link to="/cadastro" className="text-accent">
+          <Link to="/cadastro" className="text-link">
             Cadastre-se
           </Link>
         </p>

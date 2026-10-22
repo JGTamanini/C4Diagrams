@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from '../Modal/Modal';
 import FormInput from '../FormInput/FormInput';
-import PrimaryButton from '../PrimaryButton/PrimaryButton';
-import SecondaryButton from '../SecondaryButton/SecondaryButton';
+import { Trash2 } from 'lucide-react';
+import Button from '../Button/Button';
 import {
   C4_ELEMENTS,
   DESCRIPTION_MAX_LENGTH,
@@ -42,7 +42,7 @@ function ElementFormModal({ target, onSave, onDelete, onClose }) {
   }
 
   return (
-    <Modal title={isNode ? 'Editar Elemento' : 'Editar Conexão'} onClose={onClose} closable>
+    <Modal title={isNode ? 'Editar elemento' : 'Editar conexão'} onClose={onClose} closable>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-1">
         {isNode && <p className="mb-4 text-sm text-text-muted">{element.name}</p>}
 
@@ -86,12 +86,14 @@ function ElementFormModal({ target, onSave, onDelete, onClose }) {
         )}
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <button type="button" onClick={onDelete} className="text-sm font-medium text-danger hover:underline">
+          <Button variant="danger-ghost" icon={Trash2} onClick={onDelete} className="-ml-3">
             Excluir
-          </button>
+          </Button>
           <div className="flex gap-3">
-            <SecondaryButton onClick={onClose}>Cancelar</SecondaryButton>
-            <PrimaryButton className="px-6">Salvar</PrimaryButton>
+            <Button variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">Salvar</Button>
           </div>
         </div>
       </form>

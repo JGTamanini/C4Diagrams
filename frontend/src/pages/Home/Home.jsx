@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { hasActiveSession } from '../../services/session';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
+import { buttonClasses } from '../../components/Button/buttonStyles';
 
 const homeNodes = [
   { x: 75, y: 0, label: 'Person', sublabel: 'Engenheiro', ...NODE_TYPES.person },
@@ -35,24 +36,15 @@ function Home() {
 
         <nav className="mt-4 flex gap-4">
           {hasActiveSession() ? (
-            <Link
-              to="/projetos"
-              className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"
-            >
+            <Link to="/projetos" className={buttonClasses()}>
               Ir para meus projetos
             </Link>
           ) : (
             <>
-              <Link
-                to="/cadastro"
-                className="rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-fg"
-              >
+              <Link to="/cadastro" className={buttonClasses()}>
                 Começar agora
               </Link>
-              <Link
-                to="/login"
-                className="rounded-md px-6 py-3 text-sm font-medium text-text-secondary"
-              >
+              <Link to="/login" className={buttonClasses({ variant: 'secondary' })}>
                 Entrar
               </Link>
             </>

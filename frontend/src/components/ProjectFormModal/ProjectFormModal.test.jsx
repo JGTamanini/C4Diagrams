@@ -15,7 +15,7 @@ describe('ProjectFormModal', () => {
     it('deve exibir o título, os campos e o botão Criar, com foco no nome', () => {
       renderModal();
 
-      expect(screen.getByRole('dialog', { name: 'Novo Projeto' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
       expect(screen.getByLabelText('Nome do Projeto')).toHaveFocus();
       expect(screen.getByLabelText('Nome do Projeto')).toHaveAttribute('maxLength', '255');
       expect(screen.getByLabelText('Descrição')).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('ProjectFormModal', () => {
       const user = userEvent.setup();
       const { onSubmit } = renderModal({ mode: 'edit', initialValues: { name: 'Loja', description: null } });
 
-      expect(screen.getByRole('dialog', { name: 'Editar Projeto' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Editar projeto' })).toBeInTheDocument();
       expect(screen.getByLabelText('Nome do Projeto')).toHaveValue('Loja');
       expect(screen.getByLabelText('Descrição')).toHaveValue('');
 

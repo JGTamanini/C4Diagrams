@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
+import { ArrowLeft, Save } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Brand from '../../components/Brand/Brand';
-import PrimaryButton from '../../components/PrimaryButton/PrimaryButton';
+import Button from '../../components/Button/Button';
+import { buttonClasses } from '../../components/Button/buttonStyles';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
@@ -57,9 +60,7 @@ function findEditTarget(editor, editing) {
 
 function ElementEditor({ editor, editing, onClose }) {
   const target = findEditTarget(editor, editing);
-  if (!target) return null;
-
-  const isNode = editing.kind === 'node';
+  const isNode = editing?.kind === 'node';
 
   function handleSave(values) {
     if (isNode) editor.updateNode(editing.id, values);
@@ -73,7 +74,20 @@ function ElementEditor({ editor, editing, onClose }) {
     onClose();
   }
 
-  return <ElementFormModal target={target} onSave={handleSave} onDelete={handleDelete} onClose={onClose} />;
+  // Nota: AnimatePresence mantém o modal na tela durante a animação de saída
+  return (
+    <AnimatePresence>
+      {target && (
+        <ElementFormModal
+          key={`${editing.kind}-${editing.id}`}
+          target={target}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onClose={onClose}
+        />
+      )}
+    </AnimatePresence>
+  );
 }
 
 // Nota: editor de diagramas do projeto (wireframe 7) — níveis, paleta, conexões, modal de edição (RF22),
@@ -111,7 +125,7 @@ function ProjectPage() {
           <p role="alert" className="mb-4 text-text-secondary">
             {errorMessage}
           </p>
-          <Link to="/projetos" className="text-sm text-accent">
+          <Link to="/projetos" className="text-link text-sm">
             Voltar para meus projetos
           </Link>
         </div>
@@ -135,7 +149,8 @@ function ProjectPage() {
       <header className="flex items-center justify-between border-b border-line px-6 py-3">
         <div className="flex items-center gap-6">
           <Brand className="" />
-          <Link to="/projetos" className="text-sm text-text-secondary hover:text-text-primary">
+          <Link to="/projetos" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             Meus projetos
           </Link>
         </div>
@@ -155,9 +170,9 @@ function ProjectPage() {
           >
             {SAVE_STATUS_TEXT[editor.saveStatus]}
           </output>
-          <PrimaryButton type="button" className="px-4 py-2" onClick={editor.save}>
+          <Button size="sm" icon={Save} onClick={editor.save}>
             Salvar
-          </PrimaryButton>
+          </Button>
         </div>
       </div>
 
@@ -175,8 +190,10 @@ function ProjectPage() {
             role="tab"
             aria-selected={level.id === editor.activeLevel}
             onClick={() => editor.selectLevel(level.id)}
-            className={`border-r border-line px-5 py-2 text-xs ${
-              level.id === editor.activeLevel ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'
+            className={`border-r border-line px-5 py-2.5 text-xs transition-colors duration-150 ${
+              level.id === editor.activeLevel
+                ? 'bg-surface-raised text-text-primary shadow-[inset_0_2px_0_0_var(--color-accent)]'
+                : 'text-text-secondary hover:bg-surface hover:text-text-primary'
             }`}
           >
             {level.label}
