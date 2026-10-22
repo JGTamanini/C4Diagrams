@@ -1,6 +1,14 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MousePointerClick } from 'lucide-react';
-import { ReactFlow, ReactFlowProvider, Background, Controls, ConnectionMode, MarkerType, useReactFlow } from '@xyflow/react';
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Controls,
+  ConnectionMode,
+  MarkerType,
+  useReactFlow,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPalette';
@@ -31,8 +39,10 @@ const NODE_CENTER_OFFSET = { x: 100, y: 50 };
 
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
-// Enquadramento inicial: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
+// Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
 const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
+// Quadros a esperar pela medição dos elementos antes de enquadrar mesmo assim (~0,5 s)
+const MAX_FIT_ATTEMPTS = 30;
 
 function handleDragOver(event) {
   event.preventDefault();
@@ -40,8 +50,32 @@ function handleDragOver(event) {
 }
 
 function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, onConnect, onAddNode, onEditNode, onEditEdge }) {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
   const dropAreaRef = useRef(null);
+  const fittedLevelRef = useRef(null);
+
+  // Nota: enquadra cada nível ao abri-lo, esperando (quadro a quadro, com limite) o React Flow medir os elementos
+  // desse nível. O provider sobrevive à troca de nível, e o fitView automático enquadrava com as medidas antigas.
+  useEffect(() => {
+    if (fittedLevelRef.current === level || nodes.length === 0) return undefined;
+
+    let frame;
+    let attempts = 0;
+    const fitWhenMeasured = () => {
+      const current = getNodes();
+      const measured = current.length > 0 && current.every((node) => getInternalNode(node.id)?.measured?.width);
+      if (measured || attempts >= MAX_FIT_ATTEMPTS) {
+        fittedLevelRef.current = level;
+        void fitView(FIT_VIEW_OPTIONS);
+        return;
+      }
+      attempts += 1;
+      frame = requestAnimationFrame(fitWhenMeasured);
+    };
+
+    frame = requestAnimationFrame(fitWhenMeasured);
+    return () => cancelAnimationFrame(frame);
+  }, [level, nodes.length, fitView, getNodes, getInternalNode]);
   // Nota: só para exibição — tipo flutuante e deslocamento das relações paralelas não vão para a API
   const displayedEdges = useMemo(() => {
     const offsets = parallelOffsets(edges);
@@ -99,11 +133,9 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
           connectionRadius={36}
           zoomOnDoubleClick={false}
           colorMode="dark"
-          fitView
-          fitViewOptions={FIT_VIEW_OPTIONS}
         >
           <Background gap={22} size={1.4} />
-          <Controls showInteractive={false} />
+          <Controls showInteractive={false} fitViewOptions={FIT_VIEW_OPTIONS} />
         </ReactFlow>
 
         {nodes.length === 0 ? (
