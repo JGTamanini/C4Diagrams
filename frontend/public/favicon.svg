@@ -2,7 +2,7 @@
   <!-- Ícone provisório do C4Diagrams (até a identidade visual definitiva): "C4" sobre o degradê da interface -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2F6BFF"/>
+      <stop offset="0" stop-color="#3D6FD6"/>
       <stop offset="1" stop-color="#8B5CF6"/>
     </linearGradient>
   </defs>

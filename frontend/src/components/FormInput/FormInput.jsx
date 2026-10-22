@@ -14,8 +14,8 @@ function FormInput({
   const fieldClassName =
     'rounded-[var(--radius-control)] border border-line bg-canvas-deep px-3 text-text-primary outline-none ' +
     'transition-[border-color,box-shadow,background-color] duration-150 ease-[var(--ease-out-soft)] ' +
-    'placeholder:text-text-muted hover:border-text-muted/60 focus:border-accent focus:bg-canvas ' +
-    `focus:shadow-[0_0_0_3px_rgb(47_107_255/0.25)] focus-visible:outline-none ${className}`;
+    'placeholder:text-text-muted hover:border-text-secondary/70 hover:bg-canvas focus:border-accent focus:bg-canvas ' +
+    `focus:shadow-[0_0_0_3px_rgb(61_111_214/0.3)] focus-visible:outline-none ${className}`;
 
   return (
     <>
