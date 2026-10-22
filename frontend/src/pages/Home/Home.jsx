@@ -57,7 +57,7 @@ function PrimaryCallToAction({ loggedIn }) {
 }
 
 // Moldura simples de janela para as capturas do produto
-function Screenshot({ image, eager = false, className = '' }) {
+function Screenshot({ image, className = '' }) {
   return (
     <figure className={`overflow-hidden rounded-[var(--radius-card)] border border-line bg-canvas-deep shadow-[0_30px_60px_-30px_rgb(0_0_0/0.9)] ${className}`}>
       <img
@@ -65,7 +65,7 @@ function Screenshot({ image, eager = false, className = '' }) {
         alt={image.alt}
         width={image.width}
         height={image.height}
-        loading={eager ? 'eager' : 'lazy'}
+        loading="lazy"
         decoding="async"
         className="block h-auto w-full select-none"
         draggable={false}
@@ -110,7 +110,7 @@ function Home() {
   const loggedIn = hasActiveSession();
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-canvas font-sans">
+    <div className="min-h-screen overflow-x-clip bg-canvas font-sans">
       <header className="sticky top-0 z-20 border-b border-line-subtle bg-canvas/85 backdrop-blur-md">
         <nav aria-label="Principal" className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Brand className="" />
@@ -134,90 +134,80 @@ function Home() {
       </header>
 
       <main>
-        <section className="mx-auto max-w-6xl px-6 pt-20 pb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: EASE_OUT_SOFT }}
-            className="max-w-3xl"
-          >
-            <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-text-primary md:text-[3.4rem]">
-              Arquitetura de software clara, do contexto ao componente
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-              Monte seus diagramas C4 no navegador com a notação oficial, organize os três níveis em um só projeto e conte
-              com validação e assistência de IA para evoluir o modelo.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <PrimaryCallToAction loggedIn={loggedIn} />
-              <a href="#como-funciona" className={buttonClasses({ variant: 'secondary' })}>
-                Como funciona
-              </a>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.15, ease: EASE_OUT_SOFT }}
-            className="mt-14"
-          >
-            <Screenshot
-              eager
-              image={{
-                src: '/screens/editor.jpg',
-                alt: 'Editor do C4Diagrams com um diagrama de Containers: cliente, aplicação web, API, banco de dados e gateway de pagamento',
-                width: 2160,
-                height: 1290,
-              }}
-            />
-          </motion.div>
-        </section>
-
-        <section aria-labelledby="funcionalidades" className="mx-auto max-w-6xl px-6 py-16">
-          <h2 id="funcionalidades" className="sr-only">
-            Funcionalidades
-          </h2>
-          <div className="flex flex-col gap-24">
-            {FEATURES.map((feature, index) => (
-              <Reveal key={feature.title} className="grid items-center gap-10 md:grid-cols-[0.9fr_1.1fr]">
-                <div className={index % 2 === 1 ? 'md:order-2' : ''}>
-                  <h3 className="text-2xl font-semibold tracking-tight text-text-primary">{feature.title}</h3>
-                  <p className="mt-3 leading-relaxed text-text-secondary">{feature.text}</p>
-                </div>
-                {feature.visual === 'toolbar' ? <ToolbarPreview /> : <Screenshot image={feature.image} />}
-              </Reveal>
-            ))}
-
-            <Reveal className="border-t border-line-subtle pt-10">
-              <div className="flex flex-wrap items-baseline gap-3">
-                <h3 className="text-2xl font-semibold tracking-tight text-text-primary">Assistência de IA</h3>
-                <span className="text-sm font-medium text-highlight-text">Em breve</span>
-              </div>
-              <p className="mt-3 max-w-2xl leading-relaxed text-text-secondary">
-                Sugestões de elementos e relações, e validação da estrutura enquanto você modela.
+        {/* Seções em faixas de fundo alternadas, para cada uma ser lida como um bloco */}
+        <section className="relative flex min-h-[calc(100svh-65px)] items-center bg-[radial-gradient(var(--color-line-subtle)_1px,transparent_1px)] bg-size-[22px_22px]">
+          <div className="mx-auto w-full max-w-6xl px-6 py-20">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: EASE_OUT_SOFT }}
+              className="max-w-3xl"
+            >
+              <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-text-primary md:text-[3.4rem]">
+                Arquitetura de software clara, do contexto ao componente
+              </h1>
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
+                Monte seus diagramas C4 no navegador com a notação oficial, organize os três níveis em um só projeto e conte
+                com validação e assistência de IA para evoluir o modelo.
               </p>
-            </Reveal>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <PrimaryCallToAction loggedIn={loggedIn} />
+                <a href="#como-funciona" className={buttonClasses({ variant: 'secondary' })}>
+                  Como funciona
+                </a>
+              </div>
+            </motion.div>
           </div>
         </section>
 
-        <section id="como-funciona" aria-labelledby="como-funciona-titulo" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
-          <h2 id="como-funciona-titulo" className="text-3xl font-semibold tracking-tight text-text-primary">
-            Como funciona
-          </h2>
-          <ol className="mt-10 grid gap-10 md:grid-cols-3">
-            {STEPS.map((step, index) => (
-              <li key={step.title} className="border-t border-line pt-5">
-                <span className="font-mono text-sm text-text-muted">{String(index + 1).padStart(2, '0')}</span>
-                <h3 className="mt-2 text-lg font-semibold text-text-primary">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{step.text}</p>
-              </li>
-            ))}
-          </ol>
+        <section aria-labelledby="funcionalidades" className="border-y border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <h2 id="funcionalidades" className="text-3xl font-semibold tracking-tight text-text-primary">
+              O que o C4Diagrams faz por você
+            </h2>
+            <div className="mt-14 flex flex-col gap-24">
+              {FEATURES.map((feature, index) => (
+                <Reveal key={feature.title} className="grid items-center gap-10 md:grid-cols-[0.9fr_1.1fr]">
+                  <div className={index % 2 === 1 ? 'md:order-2' : ''}>
+                    <h3 className="text-2xl font-semibold tracking-tight text-text-primary">{feature.title}</h3>
+                    <p className="mt-3 leading-relaxed text-text-secondary">{feature.text}</p>
+                  </div>
+                  {feature.visual === 'toolbar' ? <ToolbarPreview /> : <Screenshot image={feature.image} />}
+                </Reveal>
+              ))}
+
+              <Reveal className="border-t border-line pt-10">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <h3 className="text-2xl font-semibold tracking-tight text-text-primary">Assistência de IA</h3>
+                  <span className="text-sm font-medium text-highlight-text">Em breve</span>
+                </div>
+                <p className="mt-3 max-w-2xl leading-relaxed text-text-secondary">
+                  Sugestões de elementos e relações, e validação da estrutura enquanto você modela.
+                </p>
+              </Reveal>
+            </div>
+          </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 pb-24">
-          <div className="flex flex-col items-start justify-between gap-6 border-t border-line pt-12 md:flex-row md:items-center">
+        <section id="como-funciona" aria-labelledby="como-funciona-titulo" className="scroll-mt-16">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <h2 id="como-funciona-titulo" className="text-3xl font-semibold tracking-tight text-text-primary">
+              Como funciona
+            </h2>
+            <ol className="mt-10 grid gap-10 md:grid-cols-3">
+              {STEPS.map((step, index) => (
+                <li key={step.title} className="border-t border-line pt-5">
+                  <span className="font-mono text-sm text-text-muted">{String(index + 1).padStart(2, '0')}</span>
+                  <h3 className="mt-2 text-lg font-semibold text-text-primary">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{step.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="border-y border-line bg-surface">
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-16 md:flex-row md:items-center">
             <h2 className="text-2xl font-semibold tracking-tight text-text-primary md:text-3xl">
               Pronto para documentar sua arquitetura?
             </h2>
@@ -226,7 +216,7 @@ function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-line-subtle">
+      <footer>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-xs text-text-muted sm:flex-row">
           <Brand className="" />
           <span>Projeto de Trabalho de Conclusão de Curso · 2026</span>

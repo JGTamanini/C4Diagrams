@@ -38,11 +38,18 @@ describe('Home', () => {
     links.forEach((link) => expect(link).toHaveAttribute('href', '/cadastro'));
   });
 
-  it('deve mostrar o produto de verdade: capturas do editor com descrição para leitores de tela', () => {
+  it('deve mostrar o produto de verdade nas funcionalidades, com descrição para leitores de tela', () => {
     renderHome();
 
-    expect(screen.getByRole('img', { name: /editor do c4diagrams com um diagrama de containers/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getByRole('img', { name: /paleta de elementos do nível container/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('img')).toHaveLength(3);
+  });
+
+  it('deve manter a barra de navegação fixa no topo ao rolar (sem contêiner que anule o sticky)', () => {
+    const { container } = renderHome();
+
+    expect(screen.getByRole('banner')).toHaveClass('sticky', 'top-0');
+    expect(container.firstChild).not.toHaveClass('overflow-x-hidden');
   });
 
   it('deve apresentar as funcionalidades, com a IA marcada como em breve', () => {
