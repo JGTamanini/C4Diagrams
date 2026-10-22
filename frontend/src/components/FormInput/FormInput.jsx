@@ -1,12 +1,20 @@
 import { useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Eye, EyeOff } from 'lucide-react';
 
 // Nota: o anel de foco substitui o contorno padrão; a borda reage ao mouse e ao foco com transição suave
 const FIELD_CLASSES =
   'rounded-[var(--radius-control)] border border-line bg-canvas-deep px-3 text-text-primary outline-none ' +
   'transition-[border-color,box-shadow,background-color] duration-150 ease-[var(--ease-out-soft)] ' +
-  'placeholder:text-text-muted hover:border-text-muted/60 focus:border-accent focus:bg-canvas ' +
-  'focus:shadow-[0_0_0_3px_rgb(47_107_255/0.25)] focus-visible:outline-none';
+  'placeholder:text-text-muted hover:border-text-secondary/70 hover:bg-canvas focus:border-accent focus:bg-canvas ' +
+  'focus:shadow-[0_0_0_3px_rgb(61_111_214/0.3)] focus-visible:outline-none';
+
+// "Piscada": o ícone fecha verticalmente (como uma pálpebra) e abre já no novo estado
+const BLINK = {
+  initial: { scaleY: 0.1, opacity: 0.4 },
+  animate: { scaleY: 1, opacity: 1, transition: { duration: 0.14, ease: 'easeOut' } },
+  exit: { scaleY: 0.1, opacity: 0.4, transition: { duration: 0.1, ease: 'easeIn' } },
+};
 
 // Nota: campo de senha com o "olho" no final — o usuário confere o que digitou; o foco volta ao campo
 function PasswordInput({ id, value, onChange, required, maxLength, inputRef, className }) {
@@ -24,6 +32,7 @@ function PasswordInput({ id, value, onChange, required, maxLength, inputRef, cla
   }
 
   const Icon = visible ? EyeOff : Eye;
+  const label = visible ? 'Ocultar senha' : 'Mostrar senha';
 
   return (
     <div className={`relative flex ${className}`}>
@@ -41,11 +50,15 @@ function PasswordInput({ id, value, onChange, required, maxLength, inputRef, cla
         type="button"
         onClick={toggleVisibility}
         aria-pressed={visible}
-        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
-        title={visible ? 'Ocultar senha' : 'Mostrar senha'}
-        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[var(--radius-control)] text-text-muted transition-colors duration-150 hover:text-text-primary"
+        aria-label={label}
+        title={label}
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-[var(--radius-control)] text-text-muted transition-colors duration-150 hover:text-text-primary active:scale-90"
       >
-        <Icon aria-hidden="true" className="h-4 w-4" />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span key={visible ? 'aberto' : 'fechado'} {...BLINK} className="flex">
+            <Icon aria-hidden="true" className="h-4 w-4" />
+          </motion.span>
+        </AnimatePresence>
       </button>
     </div>
   );
