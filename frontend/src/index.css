@@ -14,12 +14,13 @@
   --color-line: #263249;
   --color-line-subtle: #1A2336;
 
-  /* Azul principal: fundo de botões (texto branco com contraste AA) e versão clara para textos e links */
-  --color-accent: #2F6BFF;
-  --color-accent-hover: #4A7DFF;
-  --color-accent-active: #2459DB;
+  /* Azul principal (menos saturado): fundo de botões, com texto branco em contraste AA, e versão clara para
+     textos e links */
+  --color-accent: #3D6FD6;
+  --color-accent-hover: #4F7FE2;
+  --color-accent-active: #3462C2;
   --color-accent-fg: #FFFFFF;
-  --color-accent-text: #7AA7FF;
+  --color-accent-text: #8AAEF0;
 
   /* Violeta: destaque secundário, usado em degradês e pontos de atenção — quebra a sensação de "tudo opaco" */
   --color-highlight: #8B5CF6;
@@ -39,7 +40,8 @@
   --radius-card: 14px;
 
   --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  --shadow-glow: 0 0 0 1px rgb(47 107 255 / 0.4), 0 8px 24px -8px rgb(47 107 255 / 0.45);
+  --shadow-glow: 0 0 0 1px rgb(79 127 226 / 0.45), 0 10px 26px -8px rgb(61 111 214 / 0.55);
+  --shadow-raised: 0 10px 22px -10px rgb(0 0 0 / 0.75);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -71,19 +73,21 @@
   }
 
   ::selection {
-    background-color: rgb(47 107 255 / 0.35);
+    background-color: rgb(61 111 214 / 0.35);
   }
+}
 
-  /* Respeita quem desativou animações no sistema operacional */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
+/* Respeita quem desativou animações no sistema operacional. Fica fora das camadas do Tailwind de propósito:
+   estilos sem camada vencem os das camadas (inclusive as classes utilitárias), sem precisar de !important.
+   As animações feitas em JavaScript (Motion) seguem a mesma preferência via <MotionConfig reducedMotion="user">. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 }
 

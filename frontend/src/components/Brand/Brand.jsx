@@ -1,6 +1,6 @@
 function Brand({ className = 'mb-10' }) {
   return (
-    <span className={`${className} block font-mono text-sm font-medium text-text-primary`}>
+    <span className={`${className} block font-mono text-sm font-medium text-text-primary select-none`}>
       C4//diagrams
     </span>
   );
