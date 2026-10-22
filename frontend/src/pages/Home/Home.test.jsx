@@ -38,12 +38,21 @@ describe('Home', () => {
     links.forEach((link) => expect(link).toHaveAttribute('href', '/cadastro'));
   });
 
+  it('deve mostrar o produto de verdade: capturas do editor com descrição para leitores de tela', () => {
+    renderHome();
+
+    expect(screen.getByRole('img', { name: /editor do c4diagrams com um diagrama de containers/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(4);
+  });
+
   it('deve apresentar as funcionalidades, com a IA marcada como em breve', () => {
     renderHome();
 
-    ['Três níveis, um só modelo', 'Notação C4 oficial', 'Salvamento automático', 'Assistência de IA'].forEach((name) => {
-      expect(screen.getByRole('heading', { name })).toBeInTheDocument();
-    });
+    ['Os elementos certos em cada nível', 'Notação C4 oficial, com legenda', 'Salvo a cada alteração', 'Assistência de IA'].forEach(
+      (name) => {
+        expect(screen.getByRole('heading', { name })).toBeInTheDocument();
+      }
+    );
     expect(screen.getByText('Em breve')).toBeInTheDocument();
   });
 

@@ -2,14 +2,7 @@ const NODE_WIDTH = 108;
 const NODE_HEIGHT = 52;
 const PADDING = 30;
 
-// Como a grade de pontos some nas bordas: só à esquerda (coluna ao lado de um formulário) ou em todas as direções
-// (ilustração solta no meio da página)
-const GRID_FADES = {
-  left: 'linear-gradient(to right, transparent 0%, black 12%)',
-  radial: 'radial-gradient(ellipse at center, black 30%, transparent 72%)',
-};
-
-function DiagramIllustration({ nodes, connections, fade = 'left' }) {
+function DiagramIllustration({ nodes, connections }) {
   const xs = nodes.flatMap((n) => [n.x, n.x + NODE_WIDTH]);
   const ys = nodes.flatMap((n) => [n.y, n.y + NODE_HEIGHT]);
   const minX = Math.min(...xs);
@@ -20,14 +13,14 @@ function DiagramIllustration({ nodes, connections, fade = 'left' }) {
   const offsetY = PADDING - minY;
 
   return (
-    <div aria-hidden="true" className="pointer-events-none relative flex h-full select-none items-center justify-center overflow-hidden">
+    <div aria-hidden="true" className="pointer-events-none relative flex h-full select-none items-center justify-center overflow-hidden bg-canvas">
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: 'radial-gradient(var(--color-line) 1.5px, transparent 1.5px)',
           backgroundSize: '24px 24px',
-          WebkitMaskImage: GRID_FADES[fade],
-          maskImage: GRID_FADES[fade],
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 12%)',
         }}
       />
 
