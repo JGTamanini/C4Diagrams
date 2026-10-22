@@ -4,7 +4,7 @@ import { AnimatePresence } from 'motion/react';
 import { FolderPlus, Plus, RotateCw } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
-import ProjectCard from '../../components/ProjectCard/ProjectCard';
+import ProjectList from '../../components/ProjectList/ProjectList';
 import ProjectFormModal from '../../components/ProjectFormModal/ProjectFormModal';
 import ProjectDetailsModal from '../../components/ProjectDetailsModal/ProjectDetailsModal';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
@@ -23,7 +23,7 @@ const bannerConnections = [
   { x1: 108, y1: 66, x2: 150, y2: 106 },
 ];
 
-const SKELETON_CARDS = 4;
+const SKELETON_ROWS = 4;
 
 // Nota: projeto criado/editado vai para o topo — mantém a ordem por updated_at DESC sem nova requisição.
 // A resposta do PATCH não traz a prévia, então a que já estava na tela é preservada.
@@ -32,18 +32,17 @@ function moveToTop(projects, project) {
   return [{ preview: previous?.preview ?? null, ...project }, ...projects.filter((p) => p.id !== project.id)];
 }
 
-function LoadingCards() {
+function LoadingRows() {
   return (
     <>
       <output className="sr-only">Carregando projetos...</output>
-      <div aria-hidden="true" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: SKELETON_CARDS }, (_, index) => (
-          <div key={index} className="overflow-hidden rounded-[var(--radius-card)] border border-line-subtle bg-surface">
-            <div className="h-36 animate-pulse bg-surface-raised" />
-            <div className="space-y-2 p-4">
-              <div className="h-3.5 w-2/3 animate-pulse rounded bg-surface-raised" />
-              <div className="h-3 w-1/3 animate-pulse rounded bg-surface-raised" />
-            </div>
+      <div aria-hidden="true" className="overflow-hidden rounded-[var(--radius-card)] border border-line-subtle bg-surface">
+        {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+          <div key={index} className="flex items-center gap-6 border-b border-line-subtle px-4 py-4 last:border-b-0">
+            <div className="h-3.5 w-1/3 animate-pulse rounded bg-surface-raised" />
+            <div className="ml-auto h-3 w-20 animate-pulse rounded bg-surface-raised" />
+            <div className="h-7 w-7 animate-pulse rounded bg-surface-raised" />
+            <div className="h-7 w-7 animate-pulse rounded bg-surface-raised" />
           </div>
         ))}
       </div>
@@ -140,7 +139,7 @@ function Dashboard() {
       <AppHeader />
 
       {/* Faixa ilustrada que se dissolve no fundo (sem borda) */}
-      <div className="h-40 [mask-image:linear-gradient(to_bottom,black_45%,transparent)]">
+      <div className="h-56 [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
         <DiagramIllustration nodes={bannerNodes} connections={bannerConnections} />
       </div>
 
@@ -158,7 +157,7 @@ function Dashboard() {
           </p>
         )}
 
-        {status === 'loading' && <LoadingCards />}
+        {status === 'loading' && <LoadingRows />}
 
         {status === 'error' && (
           <div className="text-center">
@@ -174,11 +173,7 @@ function Dashboard() {
         {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} />}
 
         {status === 'ready' && projects.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} onOpen={setOpenProject} />
-            ))}
-          </div>
+          <ProjectList projects={projects} onEdit={setOpenProject} onDelete={setProjectToDelete} />
         )}
       </main>
 

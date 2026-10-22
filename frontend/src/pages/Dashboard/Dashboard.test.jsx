@@ -36,8 +36,11 @@ function renderDashboard() {
   );
 }
 
-function cardNames() {
-  return screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+// Nomes na ordem da lista (cada nome é o link para o editor)
+function projectNames() {
+  return within(screen.getByRole('table', { name: 'Meus projetos' }))
+    .getAllByRole('link')
+    .map((link) => link.textContent);
 }
 
 describe('Dashboard', () => {
@@ -55,16 +58,24 @@ describe('Dashboard', () => {
 
       expect(screen.getByRole('status')).toHaveTextContent('Carregando projetos...');
       expect(await screen.findByText('Loja Online')).toBeInTheDocument();
-      expect(cardNames()).toEqual(['Loja Online', 'Blog']);
-      expect(screen.getByText('Editado em 28/09/2026')).toBeInTheDocument();
+      expect(projectNames()).toEqual(['Loja Online', 'Blog']);
+      const table = screen.getByRole('table', { name: 'Meus projetos' });
+      expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+        'Nome',
+        'Editado em',
+        'Editar',
+        'Excluir',
+      ]);
+      expect(within(table).getByText('28/09/2026')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Loja Online' })).toHaveAttribute('href', '/projetos/p1');
     });
 
-    it('deve abrir o modal do projeto ao clicar no card, com atalho para o editor', async () => {
+    it('deve abrir o modal do projeto pelo botão Editar, com a prévia e o atalho para o editor', async () => {
       const user = userEvent.setup();
       listProjects.mockResolvedValue([loja, blog]);
 
       renderDashboard();
-      await user.click(await screen.findByRole('button', { name: 'Loja Online' }));
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
 
       const dialog = screen.getByRole('dialog', { name: 'Loja Online' });
       expect(within(dialog).getByRole('link', { name: 'Abrir editor' })).toHaveAttribute('href', '/projetos/p1');
@@ -75,7 +86,7 @@ describe('Dashboard', () => {
       listProjects.mockResolvedValue([loja]);
 
       renderDashboard();
-      await user.click(await screen.findByRole('button', { name: 'Loja Online' }));
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
       await user.click(within(screen.getByRole('dialog', { name: 'Loja Online' })).getByRole('button', { name: 'Fechar' }));
 
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -158,7 +169,7 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Blog');
 
-      await user.click(screen.getByRole('button', { name: 'Blog' }));
+      await user.click(screen.getByRole('button', { name: 'Editar projeto Blog' }));
       const nameInput = screen.getByLabelText('Nome do projeto');
       expect(nameInput).toHaveValue('Blog');
       await user.clear(nameInput);
@@ -167,7 +178,7 @@ describe('Dashboard', () => {
 
       expect(updateProject).toHaveBeenCalledWith('p2', { name: 'Blog Técnico', description: '' });
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-      expect(cardNames()).toEqual(['Blog Técnico', 'Loja Online']);
+      expect(projectNames()).toEqual(['Blog Técnico', 'Loja Online']);
     });
   });
 
@@ -180,15 +191,26 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
       const dialog = screen.getByRole('alertdialog', { name: 'Excluir projeto' });
       expect(dialog).toHaveTextContent('O projeto "Loja Online" e todos os seus diagramas serão excluídos permanentemente.');
       await user.click(within(dialog).getByRole('button', { name: 'Excluir' }));
 
       expect(deleteProject).toHaveBeenCalledWith('p1');
       await waitFor(() => expect(screen.queryByText('Loja Online')).not.toBeInTheDocument());
-      expect(cardNames()).toEqual(['Blog']);
+      expect(projectNames()).toEqual(['Blog']);
+    });
+
+    it('deve pedir a confirmação também pelo "Excluir projeto" do modal, fechando o modal', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
+
+      expect(screen.getByRole('alertdialog', { name: 'Excluir projeto' })).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Loja Online' })).not.toBeInTheDocument());
     });
 
     it('não deve excluir quando o usuário cancelar', async () => {
@@ -198,8 +220,7 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
       await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
       expect(deleteProject).not.toHaveBeenCalled();
@@ -215,8 +236,7 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Loja Online');
 
-      await user.click(screen.getByRole('button', { name: 'Loja Online' }));
-      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto Loja Online' }));
       await user.click(screen.getByRole('button', { name: 'Excluir' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível excluir o projeto. Tente novamente.');
