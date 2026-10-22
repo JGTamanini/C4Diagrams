@@ -147,7 +147,8 @@ function ProjectPage() {
 
   return (
     <div className="flex h-screen flex-col bg-canvas font-sans">
-      <header className="flex items-center justify-between border-b border-line px-6 py-3">
+      {/* Moldura (barras, paleta, abas) num tom acima do canvas, que é a área mais escura: seções bem separadas */}
+      <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-3">
         <div className="flex items-center gap-6">
           <Brand className="" />
           <Link to="/projetos" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
@@ -157,7 +158,7 @@ function ProjectPage() {
         </div>
       </header>
 
-      <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-2">
+      <div className="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-2 shadow-[0_6px_16px_-10px_rgb(0_0_0/0.8)]">
         <div className="flex min-w-0 items-center gap-4">
           <h1 className="truncate text-base font-semibold text-text-primary">
             {activeLevel.title} — {project.name}
@@ -183,7 +184,7 @@ function ProjectPage() {
 
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
-      <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line">
+      <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line bg-surface">
         {LEVELS.map((level) => (
           <button
             key={level.id}

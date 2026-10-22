@@ -137,10 +137,13 @@
 }
 
 /* Pontos de conexão: aparecem ao passar o mouse sobre o elemento, maiores e com área de clique além do desenho */
+/* z-index: os pontos laterais vêm antes do corpo do elemento no HTML; sem isso, o corpo ficava por cima da metade
+   interna deles e o clique movia o elemento em vez de começar a conexão */
 .react-flow__handle {
-  width: 14px;
-  height: 14px;
-  border-width: 2px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  border-width: 3px;
   opacity: 0;
   transition: opacity 150ms var(--ease-out-soft), transform 150ms var(--ease-out-soft);
 }
@@ -148,7 +151,7 @@
 .react-flow__handle::after {
   content: '';
   position: absolute;
-  inset: -9px;
+  inset: -12px;
   border-radius: 9999px;
 }
 

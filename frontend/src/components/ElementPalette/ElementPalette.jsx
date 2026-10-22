@@ -13,7 +13,7 @@ function handleDragStart(event, type) {
 // principal; o clique adiciona no centro e atende quem usa teclado.
 function ElementPalette({ level, onAdd }) {
   return (
-    <aside className="flex w-56 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-canvas p-4">
+    <aside className="flex w-56 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface p-4">
       <div>
         <h2 className="text-sm font-semibold text-text-primary">Elementos</h2>
         <p className="mt-0.5 text-xs text-text-muted">Arraste para o canvas ou clique</p>
@@ -30,7 +30,7 @@ function ElementPalette({ level, onAdd }) {
                 title={`${element.name} — arraste para o canvas ou clique para adicionar`}
                 onDragStart={(event) => handleDragStart(event, type)}
                 onClick={() => onAdd(type)}
-                className="flex h-[76px] w-full cursor-grab flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface text-[11px] font-medium text-text-secondary transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-0.5 hover:border-accent-text/50 hover:bg-surface-raised hover:text-text-primary active:scale-95 active:cursor-grabbing"
+                className="flex h-[76px] w-full cursor-grab flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-raised text-[11px] font-medium text-text-secondary transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-0.5 hover:border-accent-text/50 hover:bg-[#1e2a42] hover:text-text-primary active:scale-95 active:cursor-grabbing"
               >
                 <ElementGlyph type={type} />
                 <span className="truncate px-1">{element.shortName}</span>
