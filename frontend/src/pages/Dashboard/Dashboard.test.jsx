@@ -36,9 +36,9 @@ function renderDashboard() {
   );
 }
 
-// Nomes na ordem da lista (cada nome é o link para o editor)
+// Nomes na ordem dos cards (cada nome é o link para o editor)
 function projectNames() {
-  return within(screen.getByRole('table', { name: 'Meus projetos' }))
+  return within(screen.getByRole('list', { name: 'Meus projetos' }))
     .getAllByRole('link')
     .map((link) => link.textContent);
 }
@@ -59,14 +59,7 @@ describe('Dashboard', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Carregando projetos...');
       expect(await screen.findByText('Loja Online')).toBeInTheDocument();
       expect(projectNames()).toEqual(['Loja Online', 'Blog']);
-      const table = screen.getByRole('table', { name: 'Meus projetos' });
-      expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-        'Nome',
-        'Editado em',
-        'Editar',
-        'Excluir',
-      ]);
-      expect(within(table).getByText('28/09/2026')).toBeInTheDocument();
+      expect(screen.getByText('Editado em 28/09/2026')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Loja Online' })).toHaveAttribute('href', '/projetos/p1');
     });
 

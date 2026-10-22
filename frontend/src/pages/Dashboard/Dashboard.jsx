@@ -4,7 +4,7 @@ import { AnimatePresence } from 'motion/react';
 import { FolderPlus, Plus, RotateCw } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
-import ProjectList from '../../components/ProjectList/ProjectList';
+import ProjectCard from '../../components/ProjectCard/ProjectCard';
 import ProjectFormModal from '../../components/ProjectFormModal/ProjectFormModal';
 import ProjectDetailsModal from '../../components/ProjectDetailsModal/ProjectDetailsModal';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
@@ -23,7 +23,8 @@ const bannerConnections = [
   { x1: 108, y1: 66, x2: 150, y2: 106 },
 ];
 
-const SKELETON_ROWS = 4;
+const SKELETON_CARDS = 4;
+const GRID = 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
 // Nota: projeto criado/editado vai para o topo — mantém a ordem por updated_at DESC sem nova requisição.
 // A resposta do PATCH não traz a prévia, então a que já estava na tela é preservada.
@@ -32,17 +33,18 @@ function moveToTop(projects, project) {
   return [{ preview: previous?.preview ?? null, ...project }, ...projects.filter((p) => p.id !== project.id)];
 }
 
-function LoadingRows() {
+function LoadingCards() {
   return (
     <>
       <output className="sr-only">Carregando projetos...</output>
-      <div aria-hidden="true" className="overflow-hidden rounded-[var(--radius-card)] border border-line-subtle bg-surface">
-        {Array.from({ length: SKELETON_ROWS }, (_, index) => (
-          <div key={index} className="flex items-center gap-6 border-b border-line-subtle px-4 py-4 last:border-b-0">
-            <div className="h-3.5 w-1/3 animate-pulse rounded bg-surface-raised" />
-            <div className="ml-auto h-3 w-20 animate-pulse rounded bg-surface-raised" />
-            <div className="h-7 w-7 animate-pulse rounded bg-surface-raised" />
-            <div className="h-7 w-7 animate-pulse rounded bg-surface-raised" />
+      <div aria-hidden="true" className={GRID}>
+        {Array.from({ length: SKELETON_CARDS }, (_, index) => (
+          <div key={index} className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface-raised">
+            <div className="h-32 animate-pulse bg-canvas-deep" />
+            <div className="flex flex-col gap-2.5 p-4">
+              <div className="h-3.5 w-2/3 animate-pulse rounded bg-line" />
+              <div className="h-3 w-1/3 animate-pulse rounded bg-line-subtle" />
+            </div>
           </div>
         ))}
       </div>
@@ -52,7 +54,7 @@ function LoadingRows() {
 
 function EmptyState({ onCreate }) {
   return (
-    <div className="group mx-auto mt-4 flex max-w-xl flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-surface/60 px-8 py-14 text-center transition-[border-color,background-color] duration-300 hover:border-accent-text/40 hover:bg-surface">
+    <div className="group mx-auto mt-4 flex max-w-xl flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-canvas/40 px-8 py-14 text-center transition-[border-color,background-color] duration-300 hover:border-accent-text/40 hover:bg-surface-raised">
       <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent/12 text-accent-text transition-transform duration-300 group-hover:scale-105">
         <FolderPlus aria-hidden="true" className="h-6 w-6" />
       </span>
@@ -135,46 +137,55 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas font-sans">
+    <div className="flex min-h-screen flex-col bg-canvas font-sans">
       <AppHeader />
 
       {/* Faixa ilustrada que se dissolve no fundo (sem borda) */}
-      <div className="h-56 [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
+      <div className="h-48 shrink-0 [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
         <DiagramIllustration nodes={bannerNodes} connections={bannerConnections} />
       </div>
 
-      <main className="mx-auto max-w-6xl px-6 pb-12">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
-          <Button icon={Plus} onClick={openCreate}>
-            Novo projeto
-          </Button>
-        </div>
-
-        {actionError && (
-          <p role="alert" className="mb-4 text-sm text-danger">
-            {actionError}
-          </p>
-        )}
-
-        {status === 'loading' && <LoadingRows />}
-
-        {status === 'error' && (
-          <div className="text-center">
-            <p role="alert" className="mb-4 text-sm text-danger">
-              Não foi possível carregar seus projetos.
-            </p>
-            <Button variant="secondary" size="sm" icon={RotateCw} onClick={retryLoad}>
-              Tentar novamente
+      {/* Painel de conteúdo em faixa própria: toda a largura e o resto da altura da página */}
+      <main className="flex-1 border-t border-line bg-surface">
+        <div className="mx-auto max-w-7xl px-6 pt-8 pb-14">
+          <div className="mb-8 flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
+            <Button icon={Plus} onClick={openCreate}>
+              Novo projeto
             </Button>
           </div>
-        )}
 
-        {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} />}
+          {actionError && (
+            <p role="alert" className="mb-4 text-sm text-danger">
+              {actionError}
+            </p>
+          )}
 
-        {status === 'ready' && projects.length > 0 && (
-          <ProjectList projects={projects} onEdit={setOpenProject} onDelete={setProjectToDelete} />
-        )}
+          {status === 'loading' && <LoadingCards />}
+
+          {status === 'error' && (
+            <div className="text-center">
+              <p role="alert" className="mb-4 text-sm text-danger">
+                Não foi possível carregar seus projetos.
+              </p>
+              <Button variant="secondary" size="sm" icon={RotateCw} onClick={retryLoad}>
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} />}
+
+          {status === 'ready' && projects.length > 0 && (
+            <ul aria-label="Meus projetos" className={GRID}>
+              {projects.map((project) => (
+                <li key={project.id}>
+                  <ProjectCard project={project} onEdit={setOpenProject} onDelete={setProjectToDelete} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </main>
 
       {/* AnimatePresence: mantém cada modal na tela durante a animação de saída */}
