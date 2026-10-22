@@ -7,6 +7,12 @@ import { buttonClasses } from '../../components/Button/buttonStyles';
 
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
+// Faixas com fundo próprio que entram e saem em degradê a partir do fundo da página: a seção continua se
+// destacando, sem a linha dura entre uma e outra
+const BAND_FADE_IN_OUT =
+  'bg-[linear-gradient(to_bottom,var(--color-canvas),var(--color-surface)_180px,var(--color-surface)_calc(100%_-_180px),var(--color-canvas))]';
+const BAND_FADE_IN = 'bg-[linear-gradient(to_bottom,var(--color-canvas),var(--color-surface)_160px)]';
+
 // Capturas reais do editor (public/screens): mostrar o produto em vez de ilustrações genéricas
 const FEATURES = [
   {
@@ -135,8 +141,13 @@ function Home() {
 
       <main>
         {/* Seções em faixas de fundo alternadas, para cada uma ser lida como um bloco */}
-        <section className="relative flex min-h-[calc(100svh-65px)] items-center bg-[radial-gradient(var(--color-line-subtle)_1px,transparent_1px)] bg-size-[22px_22px]">
-          <div className="mx-auto w-full max-w-6xl px-6 py-20">
+        <section className="relative flex min-h-[calc(100svh-65px)] items-center">
+          {/* Grade de pontos que some aos poucos em direção à próxima seção */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--color-line-subtle)_1px,transparent_1px)] bg-size-[22px_22px] [mask-image:linear-gradient(to_bottom,black_50%,transparent)]"
+          />
+          <div className="relative mx-auto w-full max-w-6xl px-6 py-20">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -160,7 +171,7 @@ function Home() {
           </div>
         </section>
 
-        <section aria-labelledby="funcionalidades" className="border-y border-line bg-surface">
+        <section aria-labelledby="funcionalidades" className={BAND_FADE_IN_OUT}>
           <div className="mx-auto max-w-6xl px-6 py-24">
             <h2 id="funcionalidades" className="text-3xl font-semibold tracking-tight text-text-primary">
               O que o C4Diagrams faz por você
@@ -206,7 +217,7 @@ function Home() {
           </div>
         </section>
 
-        <section className="border-y border-line bg-surface">
+        <section className={BAND_FADE_IN}>
           <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-16 md:flex-row md:items-center">
             <h2 className="text-2xl font-semibold tracking-tight text-text-primary md:text-3xl">
               Pronto para documentar sua arquitetura?
@@ -216,7 +227,7 @@ function Home() {
         </section>
       </main>
 
-      <footer>
+      <footer className="bg-surface">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-6 text-xs text-text-muted sm:flex-row">
           <Brand className="" />
           <span>Projeto de Trabalho de Conclusão de Curso · 2026</span>
