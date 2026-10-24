@@ -4,8 +4,8 @@ export const NODE_TYPES = {
     labelColor: 'var(--color-text-primary)',
   },
   container: {
-    borderColor: 'var(--color-accent)',
-    labelColor: 'var(--color-accent)',
+    borderColor: 'var(--color-accent-text)',
+    labelColor: 'var(--color-accent-text)',
   },
   database: {
     borderColor: 'var(--color-success)',

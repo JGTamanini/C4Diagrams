@@ -13,7 +13,7 @@ function DiagramIllustration({ nodes, connections }) {
   const offsetY = PADDING - minY;
 
   return (
-    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas">
+    <div aria-hidden="true" className="pointer-events-none relative flex h-full select-none items-center justify-center overflow-hidden bg-canvas">
       <div
         className="absolute inset-0"
         style={{

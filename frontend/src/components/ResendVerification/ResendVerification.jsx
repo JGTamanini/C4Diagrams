@@ -41,7 +41,7 @@ function ResendVerification({ email: knownEmail }) {
       <button
         type="submit"
         disabled={sending}
-        className="self-center text-sm text-accent disabled:cursor-not-allowed disabled:opacity-60"
+        className="text-link self-center text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         {knownEmail ? 'Não recebeu? Reenviar' : 'Reenviar link'}
       </button>

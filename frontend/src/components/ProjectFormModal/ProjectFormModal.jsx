@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from '../Modal/Modal';
 import FormInput from '../FormInput/FormInput';
-import PrimaryButton from '../PrimaryButton/PrimaryButton';
-import SecondaryButton from '../SecondaryButton/SecondaryButton';
+import Button from '../Button/Button';
 
 const NAME_MAX_LENGTH = 255;
 
@@ -39,7 +38,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
   }
 
   return (
-    <Modal title={isEdit ? 'Editar Projeto' : 'Novo Projeto'} onClose={onClose} closable>
+    <Modal title={isEdit ? 'Editar projeto' : 'Novo projeto'} onClose={onClose} closable>
       <form onSubmit={handleSubmit} className="flex flex-col gap-1">
         <FormInput
           id="project-name"
@@ -67,10 +66,12 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
         )}
 
         <div className="mt-2 flex justify-end gap-3">
-          <SecondaryButton onClick={onClose}>Cancelar</SecondaryButton>
-          <PrimaryButton className="px-6" disabled={submitting}>
+          <Button variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={submitting}>
             {isEdit ? 'Salvar' : 'Criar'}
-          </PrimaryButton>
+          </Button>
         </div>
       </form>
     </Modal>

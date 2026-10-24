@@ -68,7 +68,7 @@ describe('Dashboard', () => {
 
       expect(await screen.findByText('Você ainda não tem projetos criados.')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Crie um agora' }));
-      expect(screen.getByRole('dialog', { name: 'Novo Projeto' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
     });
 
     it('deve exibir erro de carregamento e permitir tentar novamente', async () => {
@@ -93,7 +93,7 @@ describe('Dashboard', () => {
       renderDashboard();
       await screen.findByText('Blog');
 
-      await user.click(screen.getByRole('button', { name: 'Novo Projeto' }));
+      await user.click(screen.getByRole('button', { name: 'Novo projeto' }));
       await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja Online');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
@@ -109,7 +109,7 @@ describe('Dashboard', () => {
     renderDashboard();
     await screen.findByText('Blog');
 
-    await user.click(screen.getByRole('button', { name: 'Novo Projeto' }));
+    await user.click(screen.getByRole('button', { name: 'Novo projeto' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
