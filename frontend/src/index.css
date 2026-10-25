@@ -133,7 +133,7 @@
 }
 
 .react-flow__edge-textbg {
-  rx: 6;
+  rx: 6px;
 }
 
 /* Pontos de conexão: aparecem ao passar o mouse sobre o elemento, maiores e com área de clique além do desenho */
