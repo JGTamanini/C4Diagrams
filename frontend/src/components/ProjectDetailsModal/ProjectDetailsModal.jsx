@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Save, Trash2 } from 'lucide-react';
 import Modal from '../Modal/Modal';
@@ -6,9 +6,54 @@ import FormInput from '../FormInput/FormInput';
 import Button from '../Button/Button';
 import ProjectPreview from '../ProjectPreview/ProjectPreview';
 import { buttonClasses } from '../Button/buttonStyles';
+import { listDiagrams } from '../../services/diagrams';
 
 const NAME_MAX_LENGTH = 255;
 const dateFormatter = new Intl.DateTimeFormat('pt-BR');
+const PREVIEW_CLASSES = 'h-64 overflow-hidden rounded-[var(--radius-control)] border border-line md:h-80';
+
+// Nota: a prévia é buscada só quando o modal abre (a listagem do dashboard não traz os diagramas)
+function useContextPreview(projectId) {
+  const [preview, setPreview] = useState({ status: 'loading', data: null });
+
+  useEffect(() => {
+    let active = true;
+
+    listDiagrams(projectId)
+      .then((diagrams) => {
+        if (!active) return;
+        const context = diagrams.find((diagram) => diagram.level === 'context');
+        setPreview({ status: 'ready', data: context?.data ?? null });
+      })
+      .catch(() => active && setPreview({ status: 'error', data: null }));
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
+
+  return preview;
+}
+
+function PreviewArea({ preview }) {
+  if (preview.status === 'loading') {
+    return (
+      <div className={`animate-pulse bg-canvas-deep ${PREVIEW_CLASSES}`}>
+        <output className="sr-only">Carregando prévia...</output>
+      </div>
+    );
+  }
+
+  if (preview.status === 'error') {
+    return (
+      <div className={`flex items-center justify-center bg-canvas-deep text-xs text-text-muted ${PREVIEW_CLASSES}`}>
+        Não foi possível carregar a prévia.
+      </div>
+    );
+  }
+
+  return <ProjectPreview data={preview.data} showLabels className={PREVIEW_CLASSES} />;
+}
 
 // Nota: aberto ao clicar no card do dashboard — prévia grande do Contexto (nível 1), edição do nome e da
 // descrição (RF05) e os atalhos para abrir o editor ou excluir o projeto (RF06)
@@ -18,6 +63,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const changed = name !== project.name || description !== (project.description ?? '');
+  const preview = useContextPreview(project.id);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -41,11 +87,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
     <Modal title={project.name} onClose={onClose} closable size="lg">
       <div className="grid gap-6 md:grid-cols-[1.35fr_1fr]">
         <div className="flex flex-col gap-2">
-          <ProjectPreview
-            data={project.preview}
-            showLabels
-            className="h-64 overflow-hidden rounded-[var(--radius-control)] border border-line md:h-80"
-          />
+          <PreviewArea preview={preview} />
           <p className="text-xs text-text-muted">Prévia do diagrama de Contexto</p>
         </div>
 

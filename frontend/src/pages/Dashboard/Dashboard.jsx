@@ -26,11 +26,9 @@ const bannerConnections = [
 const SKELETON_CARDS = 4;
 const GRID = 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
-// Nota: projeto criado/editado vai para o topo — mantém a ordem por updated_at DESC sem nova requisição.
-// A resposta do PATCH não traz a prévia, então a que já estava na tela é preservada.
+// Nota: projeto criado/editado vai para o topo — mantém a ordem por updated_at DESC sem nova requisição
 function moveToTop(projects, project) {
-  const previous = projects.find((p) => p.id === project.id);
-  return [{ preview: previous?.preview ?? null, ...project }, ...projects.filter((p) => p.id !== project.id)];
+  return [project, ...projects.filter((p) => p.id !== project.id)];
 }
 
 function LoadingCards() {

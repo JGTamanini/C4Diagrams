@@ -4,8 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import Dashboard from './Dashboard';
 import { listProjects, createProject, updateProject, deleteProject } from '../../services/projects';
+import { listDiagrams } from '../../services/diagrams';
 
 vi.mock('../../services/projects');
+vi.mock('../../services/diagrams');
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -48,6 +50,7 @@ describe('Dashboard', () => {
     vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem('user', JSON.stringify({ name: 'João Tamanini', email: 'joao@example.com' }));
+    listDiagrams.mockResolvedValue([]);
   });
 
   describe('listagem (RF07)', () => {

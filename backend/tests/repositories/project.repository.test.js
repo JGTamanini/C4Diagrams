@@ -75,19 +75,6 @@ describe('ProjectRepository', () => {
       expect(projects[0]).not.toHaveProperty('user_id');
     });
 
-    it('deve trazer como prévia o diagrama de Contexto, e null quando ele ainda não existe', async () => {
-      const withContext = await projectRepository.create(ownerId, { name: 'Com contexto' });
-      const onlyContainer = await projectRepository.create(ownerId, { name: 'Só container' });
-      const contextData = { nodes: [{ id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } }], edges: [] };
-      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [withContext.id, contextData]);
-      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'container', $2)`, [onlyContainer.id, contextData]);
-
-      const projects = await projectRepository.findAllByUser(ownerId);
-
-      expect(projects.find((p) => p.id === withContext.id).preview).toEqual(contextData);
-      expect(projects.find((p) => p.id === onlyContainer.id).preview).toBeNull();
-    });
-
     it('deve retornar array vazio quando o usuário não tem projetos', async () => {
       const projects = await projectRepository.findAllByUser(ownerId);
 
