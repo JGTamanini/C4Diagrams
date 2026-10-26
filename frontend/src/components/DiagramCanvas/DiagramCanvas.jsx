@@ -49,7 +49,19 @@ function handleDragOver(event) {
   event.dataTransfer.dropEffect = 'move';
 }
 
-function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, onConnect, onAddNode, onEditNode, onEditEdge }) {
+// keyboardEnabled: desligado com um modal aberto — senão o Delete apagaria os selecionados por trás dele
+function DiagramWorkspace({
+  level,
+  nodes,
+  edges,
+  keyboardEnabled = true,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+  onAddNode,
+  onEditNode,
+  onEditEdge,
+}) {
   const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
   const dropAreaRef = useRef(null);
   const fittedLevelRef = useRef(null);
@@ -128,7 +140,7 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
           isValidConnection={(connection) => isValidRelationship(connection, edges)}
           onNodeDoubleClick={(_, node) => onEditNode(node.id)}
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
-          deleteKeyCode={DELETE_KEYS}
+          deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
           connectionLineComponent={FloatingConnectionLine}
           connectionRadius={36}
           zoomOnDoubleClick={false}

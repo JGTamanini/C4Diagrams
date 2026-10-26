@@ -109,6 +109,28 @@ describe('DiagramCanvas', () => {
     });
   });
 
+  describe('teclado', () => {
+    const selectedNodes = nodes.map((node) => ({ ...node, selected: node.id === 'n1' }));
+
+    it('deve excluir o elemento selecionado com Delete', async () => {
+      const { onNodesChange } = renderCanvas({ nodes: selectedNodes });
+      await screen.findByText('Cliente');
+
+      await userEvent.keyboard('{Delete}');
+
+      expect(onNodesChange).toHaveBeenCalledWith(expect.arrayContaining([{ id: 'n1', type: 'remove' }]));
+    });
+
+    it('não deve excluir nada com Delete quando o teclado do canvas estiver desligado (modal aberto)', async () => {
+      const { onNodesChange } = renderCanvas({ nodes: selectedNodes, keyboardEnabled: false });
+      await screen.findByText('Cliente');
+
+      await userEvent.keyboard('{Delete}');
+
+      expect(onNodesChange).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ type: 'remove' })]));
+    });
+  });
+
   describe('edição (RF22)', () => {
     it('deve abrir a edição do elemento com duplo clique', async () => {
       const { onEditNode } = renderCanvas();

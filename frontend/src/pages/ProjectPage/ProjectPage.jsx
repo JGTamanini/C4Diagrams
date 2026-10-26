@@ -20,7 +20,7 @@ const SAVE_STATUS_TEXT = {
   error: 'Falha ao salvar. Suas alterações continuam aqui — clique em Salvar para tentar de novo.',
 };
 
-function EditorBody({ editor, onEdit }) {
+function EditorBody({ editor, onEdit, keyboardEnabled }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -38,6 +38,7 @@ function EditorBody({ editor, onEdit }) {
       level={editor.activeLevel}
       nodes={editor.nodes}
       edges={editor.edges}
+      keyboardEnabled={keyboardEnabled}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}
@@ -100,6 +101,8 @@ function ProjectPage() {
   const editor = useDiagramEditor(id);
   const [editing, setEditing] = useState(null);
   const closeEditor = useCallback(() => setEditing(null), []);
+  // Com o modal de edição aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
+  const modalOpen = Boolean(findEditTarget(editor, editing));
 
   useEffect(() => {
     let active = true;
@@ -163,7 +166,7 @@ function ProjectPage() {
           <h1 className="truncate text-base font-semibold text-text-primary">
             {activeLevel.title} — {project.name}
           </h1>
-          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} />}
+          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
         </div>
         <div className="flex shrink-0 items-center gap-4">
           <output
@@ -179,7 +182,7 @@ function ProjectPage() {
       </div>
 
       <main className="relative min-h-0 flex-1">
-        <EditorBody editor={editor} onEdit={setEditing} />
+        <EditorBody editor={editor} onEdit={setEditing} keyboardEnabled={!modalOpen} />
       </main>
 
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />

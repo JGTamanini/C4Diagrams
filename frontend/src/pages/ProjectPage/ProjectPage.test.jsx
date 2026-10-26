@@ -9,8 +9,8 @@ import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({ level, nodes, onAddNode, onConnect, onEditNode, onEditEdge }) => (
-    <div data-testid="canvas" data-count={nodes.length} data-level={level}>
+  default: ({ level, nodes, keyboardEnabled, onAddNode, onConnect, onEditNode, onEditEdge }) => (
+    <div data-testid="canvas" data-count={nodes.length} data-level={level} data-keyboard={String(keyboardEnabled)}>
       <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
       <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
       <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
@@ -187,6 +187,7 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
     });
   });
 
@@ -235,6 +236,30 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.keyboard('{Control>}z{/Control}');
 
       expect(editor.undo).not.toHaveBeenCalled();
+    });
+
+    it('não deve mexer no diagrama por trás do modal aberto, mesmo com o foco num botão dele', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true });
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      screen.getByRole('button', { name: 'Cancelar' }).focus();
+      await user.keyboard('{Control>}z{/Control}');
+      await user.keyboard('{Control>}y{/Control}');
+
+      expect(editor.undo).not.toHaveBeenCalled();
+      expect(editor.redo).not.toHaveBeenCalled();
+    });
+
+    it('deve desligar o teclado do canvas (Delete) enquanto o modal estiver aberto', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
+      await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
     });
   });
 
