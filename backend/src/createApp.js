@@ -21,13 +21,14 @@ function setStaticCacheHeaders(res, filePath) {
 }
 
 // Nota: em produção a API também serve o frontend compilado — mesmo endereço, sem CORS entre eles, e qualquer
-// rota do React (recarregar /projetos/:id, links dos e-mails) recebe o index.html
+// rota do React (recarregar /projetos/:id, links dos e-mails) recebe o index.html. Caminho com extensão é pedido
+// de arquivo: se não existir (ex.: /favicon.ico, arquivo de um deploy antigo), segue para o 404, não vira página.
 function serveFrontend(app, staticDir) {
   const indexFile = path.join(staticDir, 'index.html');
 
   app.use(express.static(staticDir, { index: false, setHeaders: setStaticCacheHeaders }));
   app.use((req, res, next) => {
-    if (!PAGE_METHODS.has(req.method)) return next();
+    if (!PAGE_METHODS.has(req.method) || path.extname(req.path)) return next();
     res.setHeader('Cache-Control', NO_CACHE);
     return res.sendFile(indexFile);
   });

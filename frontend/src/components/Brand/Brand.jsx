@@ -1,5 +1,5 @@
 // Nota: ícone com os quatro níveis do C4 (Contexto, Container, Componente, Código) nas cores oficiais da notação;
-// o mesmo desenho é o favicon (public/favicon.svg)
+// o mesmo desenho é o favicon (public/icone.svg — nome diferente do favicon padrão do Vite, que os navegadores guardavam em cache)
 function BrandMark() {
   return (
     <svg aria-hidden="true" viewBox="0 0 32 32" className="h-5 w-5 shrink-0">
