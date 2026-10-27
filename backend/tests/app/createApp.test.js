@@ -88,6 +88,16 @@ describe('createApp', () => {
       expect(response.status).toBe(200);
     });
 
+    it.each([
+      ['/favicon.ico', 'ícone pedido automaticamente pelo navegador'],
+      ['/assets/index-deploy-antigo.js', 'arquivo de um deploy anterior'],
+    ])('deve responder 404 para arquivo inexistente %s (%s), não a página do app', async (url) => {
+      const response = await request(app).get(url);
+
+      expect(response.status).toBe(404);
+      expect(response.text).not.toContain('id="root"');
+    });
+
     it('não deve devolver a página do app para métodos de escrita', async () => {
       const response = await request(app).post('/projetos');
 
