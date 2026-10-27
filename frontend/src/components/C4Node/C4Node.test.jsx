@@ -1,16 +1,29 @@
 import { render, screen } from '@testing-library/react';
-import { ReactFlowProvider } from '@xyflow/react';
+import { vi } from 'vitest';
+import { ReactFlowProvider, useConnection } from '@xyflow/react';
 import C4Node from './C4Node';
 
-function renderNode(type, data) {
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react');
+  return { ...actual, useConnection: vi.fn() };
+});
+
+// Simula o estado de conexão do React Flow (o arrasto real não roda no jsdom)
+function connecting(fromNodeId) {
+  useConnection.mockImplementation((select) => select({ inProgress: fromNodeId !== null, fromNode: fromNodeId && { id: fromNodeId } }));
+}
+
+function renderNode(type, data, selected = false) {
   return render(
     <ReactFlowProvider>
-      <C4Node id="n1" type={type} data={data} />
+      <C4Node id="n1" type={type} data={data} selected={selected} />
     </ReactFlowProvider>
   );
 }
 
 describe('C4Node', () => {
+  beforeEach(() => connecting(null));
+
   it('deve exibir título, tipo com tecnologia e descrição, como pede a notação oficial', () => {
     renderNode('c4-container', { label: 'API', technology: 'Node.js', description: 'Regras de negócio' });
 
@@ -35,9 +48,37 @@ describe('C4Node', () => {
     expect(screen.getByTestId('c4-node')).toHaveAttribute('data-shape', shape);
   });
 
-  it('deve oferecer pontos de entrada e saída de conexão', () => {
+  it('deve oferecer pontos de conexão nos quatro lados', () => {
+    connecting(null);
     const { container } = renderNode('c4-system', { label: 'Loja' });
 
-    expect(container.querySelectorAll('.react-flow__handle')).toHaveLength(2);
+    expect(container.querySelectorAll('.react-flow__handle')).toHaveLength(4);
+    expect(screen.queryByTestId('c4-node-drop-target')).not.toBeInTheDocument();
+  });
+
+  it('deve virar alvo de corpo inteiro enquanto outro elemento está sendo conectado (basta passar o mouse)', () => {
+    connecting('outro');
+    renderNode('c4-system', { label: 'Loja' });
+
+    expect(screen.getByTestId('c4-node-drop-target')).toHaveClass('react-flow__handle');
+  });
+
+  it('não deve virar alvo de si mesmo', () => {
+    connecting('n1');
+    renderNode('c4-system', { label: 'Loja' });
+
+    expect(screen.queryByTestId('c4-node-drop-target')).not.toBeInTheDocument();
+  });
+
+  it('deve destacar o elemento selecionado', () => {
+    const { rerender } = renderNode('c4-system', { label: 'Loja' });
+    expect(screen.getByTestId('c4-node')).toHaveAttribute('data-selected', 'false');
+
+    rerender(
+      <ReactFlowProvider>
+        <C4Node id="n1" type="c4-system" data={{ label: 'Loja' }} selected />
+      </ReactFlowProvider>
+    );
+    expect(screen.getByTestId('c4-node')).toHaveAttribute('data-selected', 'true');
   });
 });

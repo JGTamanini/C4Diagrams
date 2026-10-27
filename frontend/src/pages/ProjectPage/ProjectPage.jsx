@@ -8,6 +8,7 @@ import Button from '../../components/Button/Button';
 import { buttonClasses } from '../../components/Button/buttonStyles';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
+import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { LEVELS } from '../../constants/c4Notation';
@@ -19,7 +20,7 @@ const SAVE_STATUS_TEXT = {
   error: 'Falha ao salvar. Suas alterações continuam aqui — clique em Salvar para tentar de novo.',
 };
 
-function EditorBody({ editor, onEdit }) {
+function EditorBody({ editor, onEdit, keyboardEnabled }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -37,6 +38,7 @@ function EditorBody({ editor, onEdit }) {
       level={editor.activeLevel}
       nodes={editor.nodes}
       edges={editor.edges}
+      keyboardEnabled={keyboardEnabled}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}
@@ -99,6 +101,8 @@ function ProjectPage() {
   const editor = useDiagramEditor(id);
   const [editing, setEditing] = useState(null);
   const closeEditor = useCallback(() => setEditing(null), []);
+  // Com o modal de edição aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
+  const modalOpen = Boolean(findEditTarget(editor, editing));
 
   useEffect(() => {
     let active = true;
@@ -146,7 +150,8 @@ function ProjectPage() {
 
   return (
     <div className="flex h-screen flex-col bg-canvas font-sans">
-      <header className="flex items-center justify-between border-b border-line px-6 py-3">
+      {/* Moldura (barras, paleta, abas) num tom acima do canvas, que é a área mais escura: seções bem separadas */}
+      <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-3">
         <div className="flex items-center gap-6">
           <Brand className="" />
           <Link to="/projetos" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
@@ -154,15 +159,15 @@ function ProjectPage() {
             Meus projetos
           </Link>
         </div>
-        <span data-testid="project-name" className="truncate text-sm font-medium text-text-primary">
-          {project.name}
-        </span>
       </header>
 
-      <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-2">
-        <h1 className="truncate text-base font-medium text-text-primary">
-          {activeLevel.title} — {project.name}
-        </h1>
+      <div className="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-2 shadow-[0_6px_16px_-10px_rgb(0_0_0/0.8)]">
+        <div className="flex min-w-0 items-center gap-4">
+          <h1 className="truncate text-base font-semibold text-text-primary">
+            {activeLevel.title} — {project.name}
+          </h1>
+          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
+        </div>
         <div className="flex shrink-0 items-center gap-4">
           <output
             data-testid="save-status"
@@ -177,12 +182,12 @@ function ProjectPage() {
       </div>
 
       <main className="relative min-h-0 flex-1">
-        <EditorBody editor={editor} onEdit={setEditing} />
+        <EditorBody editor={editor} onEdit={setEditing} keyboardEnabled={!modalOpen} />
       </main>
 
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
-      <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line">
+      <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line bg-surface">
         {LEVELS.map((level) => (
           <button
             key={level.id}

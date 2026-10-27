@@ -9,8 +9,8 @@ import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({ level, nodes, onAddNode, onConnect, onEditNode, onEditEdge }) => (
-    <div data-testid="canvas" data-count={nodes.length} data-level={level}>
+  default: ({ level, nodes, keyboardEnabled, onAddNode, onConnect, onEditNode, onEditEdge }) => (
+    <div data-testid="canvas" data-count={nodes.length} data-level={level} data-keyboard={String(keyboardEnabled)}>
       <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
       <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
       <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
@@ -36,6 +36,12 @@ const editor = {
   updateEdge: vi.fn(),
   removeNode: vi.fn(),
   removeEdge: vi.fn(),
+  removeSelected: vi.fn(),
+  hasSelection: false,
+  undo: vi.fn(),
+  redo: vi.fn(),
+  canUndo: false,
+  canRedo: false,
   save: vi.fn(),
   saveStatus: 'saved',
 };
@@ -77,7 +83,8 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(await screen.findByRole('heading', { level: 1, name: 'Diagrama de Contexto — Loja Online' })).toBeInTheDocument();
       expect(getProject).toHaveBeenCalledWith('p1');
       expect(useDiagramEditor).toHaveBeenCalledWith('p1');
-      expect(screen.getByTestId('project-name')).toHaveTextContent('Loja Online');
+      // O nome do projeto aparece só no título (não repetido na barra superior)
+      expect(screen.getAllByText(/Loja Online/)).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Meus projetos' })).toHaveAttribute('href', '/projetos');
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-count', '2');
     });
@@ -180,6 +187,79 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
+    });
+  });
+
+  describe('barra de ações', () => {
+    it('deve oferecer desfazer, refazer e excluir selecionados, desabilitados quando não há o que fazer', async () => {
+      await renderLoaded();
+
+      expect(screen.getByRole('button', { name: 'Desfazer (Ctrl+Z)' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Refazer (Ctrl+Y)' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Excluir selecionados (Delete)' })).toBeDisabled();
+    });
+
+    it('deve acionar o editor pelos botões', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true, hasSelection: true });
+
+      await user.click(screen.getByRole('button', { name: 'Desfazer (Ctrl+Z)' }));
+      await user.click(screen.getByRole('button', { name: 'Refazer (Ctrl+Y)' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir selecionados (Delete)' }));
+
+      expect(editor.undo).toHaveBeenCalledTimes(1);
+      expect(editor.redo).toHaveBeenCalledTimes(1);
+      expect(editor.removeSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['{Control>}z{/Control}', 'undo'],
+      ['{Meta>}z{/Meta}', 'undo'],
+      ['{Control>}y{/Control}', 'redo'],
+      ['{Control>}{Shift>}z{/Shift}{/Control}', 'redo'],
+    ])('deve aceitar o atalho %s', async (keys, action) => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true });
+
+      await user.keyboard(keys);
+
+      expect(editor[action]).toHaveBeenCalledTimes(1);
+    });
+
+    it('não deve desfazer o diagrama enquanto o usuário digita num campo (o Ctrl+Z é do texto)', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true });
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      await user.click(screen.getByLabelText('Título'));
+      await user.keyboard('{Control>}z{/Control}');
+
+      expect(editor.undo).not.toHaveBeenCalled();
+    });
+
+    it('não deve mexer no diagrama por trás do modal aberto, mesmo com o foco num botão dele', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true, canRedo: true });
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      screen.getByRole('button', { name: 'Cancelar' }).focus();
+      await user.keyboard('{Control>}z{/Control}');
+      await user.keyboard('{Control>}y{/Control}');
+
+      expect(editor.undo).not.toHaveBeenCalled();
+      expect(editor.redo).not.toHaveBeenCalled();
+    });
+
+    it('deve desligar o teclado do canvas (Delete) enquanto o modal estiver aberto', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
+      await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
     });
   });
 

@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import ElementPalette, { ELEMENT_DRAG_TYPE } from './ElementPalette';
 
+// Nome acessível (completo); o texto visível na grade é o nome curto
 function itemNames() {
-  return within(screen.getByRole('list')).getAllByRole('button').map((button) => button.textContent);
+  return within(screen.getByRole('list')).getAllByRole('button').map((button) => button.getAttribute('aria-label'));
 }
 
 describe('ElementPalette', () => {
@@ -39,5 +40,14 @@ describe('ElementPalette', () => {
 
     expect(dataTransfer.setData).toHaveBeenCalledWith(ELEMENT_DRAG_TYPE, 'c4-person');
     expect(dataTransfer.effectAllowed).toBe('move');
+  });
+
+  it('deve mostrar a miniatura do elemento com o nome curto e o nome completo como dica', () => {
+    render(<ElementPalette level="container" onAdd={vi.fn()} />);
+
+    const database = screen.getByRole('button', { name: 'Banco de Dados' });
+    expect(database).toHaveTextContent('Banco de dados');
+    expect(database).toHaveAttribute('title', 'Banco de Dados — arraste para o canvas ou clique para adicionar');
+    expect(within(database).getByTestId('element-glyph')).toHaveAttribute('data-shape', 'database');
   });
 });

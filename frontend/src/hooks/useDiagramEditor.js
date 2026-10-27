@@ -6,6 +6,9 @@ import { fromApi, pickNodeData, toApi } from '../services/diagramMapper';
 
 export const AUTOSAVE_DELAY_MS = 2000;
 
+// Passos guardados por nível para desfazer (RF23)
+const HISTORY_LIMIT = 50;
+
 const STRUCTURAL_CHANGES = new Set(['add', 'remove', 'replace']);
 
 // Nota: seleção e medição de tamanho não alteram o diagrama; mover só conta ao soltar o elemento
@@ -18,17 +21,27 @@ function emptyDiagrams() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: [], edges: [] }]));
 }
 
+function emptyHistory() {
+  return Object.fromEntries(LEVEL_IDS.map((level) => [level, { past: [], future: [] }]));
+}
+
+function isDragStart(change) {
+  return change.type === 'position' && change.dragging === true;
+}
+
 export function useDiagramEditor(projectId) {
   const [loadStatus, setLoadStatus] = useState('loading');
   const [diagrams, setDiagrams] = useState(emptyDiagrams);
   const [activeLevel, setActiveLevel] = useState('context');
   const [saveStatus, setSaveStatus] = useState('saved');
+  const [history, setHistory] = useState(emptyHistory);
 
   const diagramsRef = useRef(diagrams);
   const dirtyLevelsRef = useRef(new Set());
   const autosaveTimerRef = useRef(null);
   const inFlightSaveRef = useRef(null);
   const saveRequestedRef = useRef(false);
+  const dragSnapshotRef = useRef(null);
 
   useEffect(() => {
     diagramsRef.current = diagrams;
@@ -118,15 +131,35 @@ export function useDiagramEditor(projectId) {
     };
   }, [save]);
 
+  // Nota: cada passo guarda o diagrama de antes da alteração. Uma alteração nova descarta o que podia ser refeito.
+  // Um passo igual ao anterior é ignorado: ao excluir pelo teclado, o React Flow avisa a remoção do elemento e a
+  // das conexões em chamadas seguidas, antes de a tela atualizar.
+  const record = useCallback((level, snapshot) => {
+    setHistory((current) => {
+      const { past } = current[level];
+      if (past.at(-1) === snapshot) return current;
+      return { ...current, [level]: { past: [...past, snapshot].slice(-HISTORY_LIMIT), future: [] } };
+    });
+  }, []);
+
   const updateActive = useCallback(
     (key, apply, changes) => {
+      const before = diagramsRef.current[activeLevel];
+      // Mover é um passo só: guarda a posição de antes de começar a arrastar
+      if (!dragSnapshotRef.current && changes.some(isDragStart)) dragSnapshotRef.current = before;
+
       setDiagrams((current) => ({
         ...current,
         [activeLevel]: { ...current[activeLevel], [key]: apply(changes, current[activeLevel][key]) },
       }));
-      if (changes.some(changesDiagram)) markDirty(activeLevel);
+
+      if (changes.some(changesDiagram)) {
+        record(activeLevel, dragSnapshotRef.current ?? before);
+        dragSnapshotRef.current = null;
+        markDirty(activeLevel);
+      }
     },
-    [activeLevel, markDirty]
+    [activeLevel, markDirty, record]
   );
 
   const onNodesChange = useCallback((changes) => updateActive('nodes', applyNodeChanges, changes), [updateActive]);
@@ -135,10 +168,11 @@ export function useDiagramEditor(projectId) {
   // Edições feitas pelo editor (paleta, conexões e modal): sempre alteram o diagrama do nível ativo
   const editActive = useCallback(
     (edit) => {
+      record(activeLevel, diagramsRef.current[activeLevel]);
       setDiagrams((current) => ({ ...current, [activeLevel]: edit(current[activeLevel]) }));
       markDirty(activeLevel);
     },
-    [activeLevel, markDirty]
+    [activeLevel, markDirty, record]
   );
 
   const addNode = useCallback(
@@ -152,11 +186,11 @@ export function useDiagramEditor(projectId) {
 
   const connect = useCallback(
     ({ source, target }) => {
-      if (!isValidRelationship({ source, target })) return;
+      if (!isValidRelationship({ source, target }, diagramsRef.current[activeLevel].edges)) return;
       const edge = { id: crypto.randomUUID(), source, target, label: DEFAULT_RELATIONSHIP_LABEL, data: {} };
       editActive((diagram) => ({ ...diagram, edges: [...diagram.edges, edge] }));
     },
-    [editActive]
+    [activeLevel, editActive]
   );
 
   const updateNode = useCallback(
@@ -196,6 +230,47 @@ export function useDiagramEditor(projectId) {
     [editActive]
   );
 
+  // Exclui de uma vez os elementos e conexões selecionados (e as conexões dos elementos excluídos)
+  const removeSelected = useCallback(() => {
+    const { nodes, edges } = diagramsRef.current[activeLevel];
+    if (!nodes.some((node) => node.selected) && !edges.some((edge) => edge.selected)) return;
+
+    editActive((diagram) => {
+      const removedIds = new Set(diagram.nodes.filter((node) => node.selected).map((node) => node.id));
+      return {
+        nodes: diagram.nodes.filter((node) => !node.selected),
+        edges: diagram.edges.filter((edge) => !edge.selected && !removedIds.has(edge.source) && !removedIds.has(edge.target)),
+      };
+    });
+  }, [activeLevel, editActive]);
+
+  // Desfazer e refazer (RF23): trocam o diagrama do nível ativo pelo passo guardado e marcam para salvar
+  const travel = useCallback(
+    (from) => {
+      const steps = history[activeLevel][from];
+      if (steps.length === 0) return;
+
+      const target = from === 'past' ? steps.at(-1) : steps[0];
+      const current = diagramsRef.current[activeLevel];
+      setHistory((state) => {
+        const level = state[activeLevel];
+        return {
+          ...state,
+          [activeLevel]:
+            from === 'past'
+              ? { past: level.past.slice(0, -1), future: [current, ...level.future] }
+              : { past: [...level.past, current], future: level.future.slice(1) },
+        };
+      });
+      setDiagrams((state) => ({ ...state, [activeLevel]: target }));
+      markDirty(activeLevel);
+    },
+    [activeLevel, history, markDirty]
+  );
+
+  const undo = useCallback(() => travel('past'), [travel]);
+  const redo = useCallback(() => travel('future'), [travel]);
+
   const selectLevel = useCallback(
     (level) => {
       if (dirtyLevelsRef.current.size > 0) void save();
@@ -218,6 +293,13 @@ export function useDiagramEditor(projectId) {
     updateEdge,
     removeNode,
     removeEdge,
+    removeSelected,
+    hasSelection:
+      diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected),
+    undo,
+    redo,
+    canUndo: history[activeLevel].past.length > 0,
+    canRedo: history[activeLevel].future.length > 0,
     save,
     saveStatus,
   };

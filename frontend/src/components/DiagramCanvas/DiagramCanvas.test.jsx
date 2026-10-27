@@ -52,8 +52,17 @@ describe('DiagramCanvas', () => {
   it('deve indicar quando o nível ainda não tem elementos, sem legenda', () => {
     renderCanvas({ nodes: [] });
 
-    expect(screen.getByText('Este nível ainda não tem elementos. Arraste um elemento da paleta para começar.')).toBeInTheDocument();
+    expect(screen.getByText('Este nível ainda não tem elementos')).toBeInTheDocument();
+    expect(screen.getByText('Arraste um elemento da paleta (ou clique nele) para começar.')).toBeInTheDocument();
+    expect(screen.queryByTestId('canvas-hints')).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Legenda' })).not.toBeInTheDocument();
+  });
+
+  it('deve ensinar a editar, conectar e excluir quando houver elementos', () => {
+    renderCanvas();
+
+    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Duplo clique para editar');
+    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Delete exclui');
   });
 
   it('deve exibir a paleta do nível e a legenda do diagrama', () => {
@@ -97,6 +106,28 @@ describe('DiagramCanvas', () => {
       await user.click(screen.getByRole('button', { name: 'Sistema de Software' }));
 
       expect(onAddNode).toHaveBeenCalledWith('c4-system', { x: expect.any(Number), y: expect.any(Number) });
+    });
+  });
+
+  describe('teclado', () => {
+    const selectedNodes = nodes.map((node) => ({ ...node, selected: node.id === 'n1' }));
+
+    it('deve excluir o elemento selecionado com Delete', async () => {
+      const { onNodesChange } = renderCanvas({ nodes: selectedNodes });
+      await screen.findByText('Cliente');
+
+      await userEvent.keyboard('{Delete}');
+
+      expect(onNodesChange).toHaveBeenCalledWith(expect.arrayContaining([{ id: 'n1', type: 'remove' }]));
+    });
+
+    it('não deve excluir nada com Delete quando o teclado do canvas estiver desligado (modal aberto)', async () => {
+      const { onNodesChange } = renderCanvas({ nodes: selectedNodes, keyboardEnabled: false });
+      await screen.findByText('Cliente');
+
+      await userEvent.keyboard('{Delete}');
+
+      expect(onNodesChange).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ type: 'remove' })]));
     });
   });
 

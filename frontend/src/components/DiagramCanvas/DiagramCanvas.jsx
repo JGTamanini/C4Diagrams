@@ -1,10 +1,20 @@
-import { useMemo, useRef } from 'react';
-import { ReactFlow, ReactFlowProvider, Background, Controls, ConnectionMode, MarkerType, useReactFlow } from '@xyflow/react';
+import { useEffect, useMemo, useRef } from 'react';
+import { MousePointerClick } from 'lucide-react';
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Controls,
+  ConnectionMode,
+  MarkerType,
+  useReactFlow,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPalette';
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
+import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
 import { parallelOffsets } from '../FloatingEdge/edgeGeometry';
 import {
   C4_ELEMENTS,
@@ -29,14 +39,55 @@ const NODE_CENTER_OFFSET = { x: 100, y: 50 };
 
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
+// Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
+const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
+// Quadros a esperar pela medição dos elementos antes de enquadrar mesmo assim (~0,5 s)
+const MAX_FIT_ATTEMPTS = 30;
+
 function handleDragOver(event) {
   event.preventDefault();
   event.dataTransfer.dropEffect = 'move';
 }
 
-function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, onConnect, onAddNode, onEditNode, onEditEdge }) {
-  const { screenToFlowPosition } = useReactFlow();
+// keyboardEnabled: desligado com um modal aberto — senão o Delete apagaria os selecionados por trás dele
+function DiagramWorkspace({
+  level,
+  nodes,
+  edges,
+  keyboardEnabled = true,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
+  onAddNode,
+  onEditNode,
+  onEditEdge,
+}) {
+  const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
   const dropAreaRef = useRef(null);
+  const fittedLevelRef = useRef(null);
+
+  // Nota: enquadra cada nível ao abri-lo, esperando (quadro a quadro, com limite) o React Flow medir os elementos
+  // desse nível. O provider sobrevive à troca de nível, e o fitView automático enquadrava com as medidas antigas.
+  useEffect(() => {
+    if (fittedLevelRef.current === level || nodes.length === 0) return undefined;
+
+    let frame;
+    let attempts = 0;
+    const fitWhenMeasured = () => {
+      const current = getNodes();
+      const measured = current.length > 0 && current.every((node) => getInternalNode(node.id)?.measured?.width);
+      if (measured || attempts >= MAX_FIT_ATTEMPTS) {
+        fittedLevelRef.current = level;
+        void fitView(FIT_VIEW_OPTIONS);
+        return;
+      }
+      attempts += 1;
+      frame = requestAnimationFrame(fitWhenMeasured);
+    };
+
+    frame = requestAnimationFrame(fitWhenMeasured);
+    return () => cancelAnimationFrame(frame);
+  }, [level, nodes.length, fitView, getNodes, getInternalNode]);
   // Nota: só para exibição — tipo flutuante e deslocamento das relações paralelas não vão para a API
   const displayedEdges = useMemo(() => {
     const offsets = parallelOffsets(edges);
@@ -86,21 +137,35 @@ function DiagramWorkspace({ level, nodes, edges, onNodesChange, onEdgesChange, o
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          isValidConnection={isValidRelationship}
+          isValidConnection={(connection) => isValidRelationship(connection, edges)}
           onNodeDoubleClick={(_, node) => onEditNode(node.id)}
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
-          deleteKeyCode={DELETE_KEYS}
+          deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
+          connectionLineComponent={FloatingConnectionLine}
+          connectionRadius={36}
           zoomOnDoubleClick={false}
           colorMode="dark"
-          fitView
         >
-          <Background />
-          <Controls />
+          <Background gap={22} size={1.4} />
+          <Controls showInteractive={false} fitViewOptions={FIT_VIEW_OPTIONS} />
         </ReactFlow>
 
-        {nodes.length === 0 && (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-text-muted">
-            Este nível ainda não tem elementos. Arraste um elemento da paleta para começar.
+        {nodes.length === 0 ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
+            <div className="flex max-w-sm flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-surface/70 px-8 py-10 text-center backdrop-blur-sm">
+              <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/12 text-accent-text">
+                <MousePointerClick aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-semibold text-text-primary">Este nível ainda não tem elementos</p>
+              <p className="mt-1 text-sm text-text-secondary">Arraste um elemento da paleta (ou clique nele) para começar.</p>
+            </div>
+          </div>
+        ) : (
+          <p
+            data-testid="canvas-hints"
+            className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line-subtle bg-surface/85 px-4 py-1.5 text-[11px] text-text-muted backdrop-blur-sm"
+          >
+            Duplo clique para editar · Arraste de um ponto de conexão até outro elemento · Delete exclui
           </p>
         )}
 
