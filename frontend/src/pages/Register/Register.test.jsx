@@ -17,7 +17,7 @@ describe('Register', () => {
 
     expect(screen.getByLabelText(/nome/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cadastrar/i })).toBeInTheDocument();
   });
 
@@ -31,7 +31,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     await waitFor(() => {
@@ -53,7 +53,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(/verifique seu e-mail/i);
@@ -67,7 +67,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     api.post.mockResolvedValue({ data: { message: 'Link reenviado.' } });
@@ -86,7 +86,7 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByText(/e-mail já cadastrado/i)).toBeInTheDocument();
@@ -100,9 +100,27 @@ describe('Register', () => {
 
     await user.type(screen.getByLabelText(/nome/i), 'João');
     await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
-    await user.type(screen.getByLabelText(/senha/i), 'Senha@12345');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@12345');
     await user.click(screen.getByRole('button', { name: /cadastrar/i }));
 
     expect(await screen.findByText(/erro ao cadastrar/i)).toBeInTheDocument();
+  });
+
+  it('deve indicar o carregamento enquanto cadastra, sem permitir envio duplo', async () => {
+    const user = userEvent.setup();
+    let finish;
+    api.post.mockReturnValue(new Promise((resolve, reject) => { finish = reject; }));
+    renderWithRouter(<Register />);
+
+    await user.type(screen.getByLabelText(/nome/i), 'João');
+    await user.type(screen.getByLabelText(/e-mail/i), 'joao@example.com');
+    await user.type(screen.getByLabelText('Senha'), 'Senha@123');
+    await user.click(screen.getByRole('button', { name: 'Cadastrar' }));
+
+    expect(screen.getByRole('button', { name: 'Cadastrar' })).toHaveAttribute('aria-busy', 'true');
+
+    finish({ response: { data: { message: 'E-mail já cadastrado.' } } });
+    expect(await screen.findByText('E-mail já cadastrado.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cadastrar' })).toBeEnabled();
   });
 });

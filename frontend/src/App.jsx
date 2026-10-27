@@ -9,37 +9,29 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import ProjectPage from './pages/ProjectPage/ProjectPage';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import PublicOnlyRoute from './components/PublicOnlyRoute/PublicOnlyRoute';
+import AuthLayout from './components/AuthLayout/AuthLayout';
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      {/* Telas de entrada: mesmo card entre elas (AuthLayout); só sem sessão ativa */}
       <Route
-        path="/cadastro"
         element={
           <PublicOnlyRoute>
-            <Register />
+            <AuthLayout />
           </PublicOnlyRoute>
         }
-      />
-      <Route
-        path="/login"
-        element={
-          <PublicOnlyRoute>
-            <Login />
-          </PublicOnlyRoute>
-        }
-      />
+      >
+        <Route path="/cadastro" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+      </Route>
+      {/* Aberta por link de e-mail: precisa funcionar mesmo com sessão ativa */}
+      <Route element={<AuthLayout />}>
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Route>
       <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route
-        path="/forgot-password"
-        element={
-          <PublicOnlyRoute>
-            <ForgotPassword />
-          </PublicOnlyRoute>
-        }
-      />
-      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/projetos"
         element={

@@ -1,82 +1,79 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
-import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
-import AuthCard from '../../components/AuthCard/AuthCard';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
 import Button from '../../components/Button/Button';
 import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailConfirmationCard';
-import { NODE_TYPES } from '../../constants/diagramNodeTypes';
-
-const formNodes = [
-  { x: 75, y: 0, label: 'Person', sublabel: 'Usuário', ...NODE_TYPES.person },
-  { x: 75, y: 75, label: 'Serviço e-mail', sublabel: '[Externo]', ...NODE_TYPES.emailService },
-];
-
-const formConnections = [{ x1: 128, y1: 45, x2: 128, y2: 80, color: 'var(--color-success)' }];
+import AuthItem from '../../components/AuthLayout/AuthItem';
+import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
 
 function ForgotPassword() {
+  useAuthIllustration('recovery');
   const [email, setEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+    setSubmitting(true);
 
     try {
       const response = await api.post('/auth/forgot-password', { email });
       setSuccessMessage(response.data.message);
     } catch {
       setErrorMessage('Ocorreu um erro. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
   if (successMessage) {
     return (
-      <div className="grid min-h-screen grid-cols-1 bg-canvas font-sans md:grid-cols-2">
-        <AuthCard>
-          <EmailConfirmationCard message={successMessage} />
-        </AuthCard>
-        <DiagramIllustration nodes={formNodes} connections={formConnections} />
-      </div>
+      <AuthItem>
+        <EmailConfirmationCard message={successMessage} />
+      </AuthItem>
     );
   }
 
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-canvas font-sans md:grid-cols-2">
-      <AuthCard>
+    <>
+      <AuthItem>
         <Brand />
-
-        <h1 className="mb-2 text-2xl font-medium text-text-primary">Esqueci minha senha</h1>
+        <h1 className="mb-2 text-2xl font-semibold text-text-primary">Esqueci minha senha</h1>
         <p className="mb-7 max-w-sm text-sm leading-relaxed text-text-secondary">
           Digite seu e-mail e enviaremos um link para redefinir sua senha.
         </p>
+      </AuthItem>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-1">
+      <form onSubmit={handleSubmit} className="flex flex-col">
+        <AuthItem className="flex flex-col">
           <FormInput id="email" label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mb-6" />
-          <Button type="submit" className="w-full mb-6">
+        </AuthItem>
+        <AuthItem>
+          <Button type="submit" loading={submitting} className="mb-6 w-full">
             Enviar link de recuperação
           </Button>
-        </form>
+        </AuthItem>
+      </form>
 
-        {errorMessage && (
-          <p role="alert" className="mb-4 text-center text-sm text-danger">
-            {errorMessage}
-          </p>
-        )}
+      {errorMessage && (
+        <p role="alert" className="mb-4 text-center text-sm text-danger">
+          {errorMessage}
+        </p>
+      )}
 
+      <AuthItem>
         <p className="text-center text-sm">
           <Link to="/login" className="text-link">
             Voltar ao login
           </Link>
         </p>
-      </AuthCard>
-
-      <DiagramIllustration nodes={formNodes} connections={formConnections} />
-    </div>
+      </AuthItem>
+    </>
   );
 }
 
