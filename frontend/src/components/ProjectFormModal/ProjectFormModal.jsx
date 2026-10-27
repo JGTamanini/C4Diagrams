@@ -42,7 +42,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
       <form onSubmit={handleSubmit} className="flex flex-col gap-1">
         <FormInput
           id="project-name"
-          label="Nome do Projeto"
+          label="Nome do projeto"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={NAME_MAX_LENGTH}

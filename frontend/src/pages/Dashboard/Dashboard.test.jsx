@@ -4,8 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import Dashboard from './Dashboard';
 import { listProjects, createProject, updateProject, deleteProject } from '../../services/projects';
+import { listDiagrams } from '../../services/diagrams';
 
 vi.mock('../../services/projects');
+vi.mock('../../services/diagrams');
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -36,8 +38,11 @@ function renderDashboard() {
   );
 }
 
-function cardNames() {
-  return screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+// Nomes na ordem dos cards (cada nome é o link para o editor)
+function projectNames() {
+  return within(screen.getByRole('list', { name: 'Meus projetos' }))
+    .getAllByRole('link')
+    .map((link) => link.textContent);
 }
 
 describe('Dashboard', () => {
@@ -45,6 +50,7 @@ describe('Dashboard', () => {
     vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem('user', JSON.stringify({ name: 'João Tamanini', email: 'joao@example.com' }));
+    listDiagrams.mockResolvedValue([]);
   });
 
   describe('listagem (RF07)', () => {
@@ -55,9 +61,32 @@ describe('Dashboard', () => {
 
       expect(screen.getByRole('status')).toHaveTextContent('Carregando projetos...');
       expect(await screen.findByText('Loja Online')).toBeInTheDocument();
-      expect(cardNames()).toEqual(['Loja Online', 'Blog']);
+      expect(projectNames()).toEqual(['Loja Online', 'Blog']);
       expect(screen.getByText('Editado em 28/09/2026')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Loja Online' })).toHaveAttribute('href', '/projetos/p1');
+    });
+
+    it('deve abrir o modal do projeto pelo botão Editar, com a prévia e o atalho para o editor', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja, blog]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Loja Online' });
+      expect(within(dialog).getByRole('link', { name: 'Abrir editor' })).toHaveAttribute('href', '/projetos/p1');
+    });
+
+    it('deve fechar o modal do projeto sem alterar nada', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
+      await user.click(within(screen.getByRole('dialog', { name: 'Loja Online' })).getByRole('button', { name: 'Fechar' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(updateProject).not.toHaveBeenCalled();
     });
 
     it('deve exibir o estado vazio com chamada para criar o primeiro projeto', async () => {
@@ -67,7 +96,7 @@ describe('Dashboard', () => {
       renderDashboard();
 
       expect(await screen.findByText('Você ainda não tem projetos criados.')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Crie um agora' }));
+      await user.click(screen.getByRole('button', { name: 'Criar meu primeiro projeto' }));
       expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
     });
 
@@ -94,7 +123,7 @@ describe('Dashboard', () => {
       await screen.findByText('Blog');
 
       await user.click(screen.getByRole('button', { name: 'Novo projeto' }));
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja Online');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja Online');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(createProject).toHaveBeenCalledWith({ name: 'Loja Online', description: '' });
@@ -137,15 +166,15 @@ describe('Dashboard', () => {
       await screen.findByText('Blog');
 
       await user.click(screen.getByRole('button', { name: 'Editar projeto Blog' }));
-      const nameInput = screen.getByLabelText('Nome do Projeto');
+      const nameInput = screen.getByLabelText('Nome do projeto');
       expect(nameInput).toHaveValue('Blog');
       await user.clear(nameInput);
       await user.type(nameInput, 'Blog Técnico');
-      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+      await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
 
       expect(updateProject).toHaveBeenCalledWith('p2', { name: 'Blog Técnico', description: '' });
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-      expect(cardNames()).toEqual(['Blog Técnico', 'Loja Online']);
+      expect(projectNames()).toEqual(['Blog Técnico', 'Loja Online']);
     });
   });
 
@@ -165,7 +194,19 @@ describe('Dashboard', () => {
 
       expect(deleteProject).toHaveBeenCalledWith('p1');
       await waitFor(() => expect(screen.queryByText('Loja Online')).not.toBeInTheDocument());
-      expect(cardNames()).toEqual(['Blog']);
+      expect(projectNames()).toEqual(['Blog']);
+    });
+
+    it('deve pedir a confirmação também pelo "Excluir projeto" do modal, fechando o modal', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+
+      renderDashboard();
+      await user.click(await screen.findByRole('button', { name: 'Editar projeto Loja Online' }));
+      await user.click(screen.getByRole('button', { name: 'Excluir projeto' }));
+
+      expect(screen.getByRole('alertdialog', { name: 'Excluir projeto' })).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Loja Online' })).not.toBeInTheDocument());
     });
 
     it('não deve excluir quando o usuário cancelar', async () => {

@@ -16,8 +16,8 @@ describe('ProjectFormModal', () => {
       renderModal();
 
       expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
-      expect(screen.getByLabelText('Nome do Projeto')).toHaveFocus();
-      expect(screen.getByLabelText('Nome do Projeto')).toHaveAttribute('maxLength', '255');
+      expect(screen.getByLabelText('Nome do projeto')).toHaveFocus();
+      expect(screen.getByLabelText('Nome do projeto')).toHaveAttribute('maxLength', '255');
       expect(screen.getByLabelText('Descrição')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Criar' })).toBeInTheDocument();
     });
@@ -26,7 +26,7 @@ describe('ProjectFormModal', () => {
       const user = userEvent.setup();
       const { onSubmit } = renderModal();
 
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja Online');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja Online');
       await user.type(screen.getByLabelText('Descrição'), 'Arquitetura do e-commerce');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
@@ -37,7 +37,7 @@ describe('ProjectFormModal', () => {
       const user = userEvent.setup();
       const { onSubmit } = renderModal();
 
-      await user.type(screen.getByLabelText('Nome do Projeto'), '   ');
+      await user.type(screen.getByLabelText('Nome do projeto'), '   ');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(onSubmit).not.toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('ProjectFormModal', () => {
       const onSubmit = vi.fn().mockRejectedValue({ response: { data: { message: 'O campo "name" deve ter no máximo 255 caracteres.' } } });
       const { onClose } = renderModal({ onSubmit });
 
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('O campo "name" deve ter no máximo 255 caracteres.');
@@ -62,7 +62,7 @@ describe('ProjectFormModal', () => {
       const onSubmit = vi.fn().mockRejectedValue(new Error('Network Error'));
       renderModal({ onSubmit });
 
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar o projeto. Tente novamente.');
@@ -74,7 +74,7 @@ describe('ProjectFormModal', () => {
       const onSubmit = vi.fn(() => new Promise((resolve) => { resolveSubmit = resolve; }));
       renderModal({ onSubmit });
 
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja');
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja');
       await user.click(screen.getByRole('button', { name: 'Criar' }));
 
       expect(screen.getByRole('button', { name: 'Criar' })).toBeDisabled();
@@ -89,11 +89,11 @@ describe('ProjectFormModal', () => {
       const { onSubmit } = renderModal({ mode: 'edit', initialValues: { name: 'Loja', description: null } });
 
       expect(screen.getByRole('dialog', { name: 'Editar projeto' })).toBeInTheDocument();
-      expect(screen.getByLabelText('Nome do Projeto')).toHaveValue('Loja');
+      expect(screen.getByLabelText('Nome do projeto')).toHaveValue('Loja');
       expect(screen.getByLabelText('Descrição')).toHaveValue('');
 
-      await user.clear(screen.getByLabelText('Nome do Projeto'));
-      await user.type(screen.getByLabelText('Nome do Projeto'), 'Loja v2');
+      await user.clear(screen.getByLabelText('Nome do projeto'));
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja v2');
       await user.click(screen.getByRole('button', { name: 'Salvar' }));
 
       expect(onSubmit).toHaveBeenCalledWith({ name: 'Loja v2', description: '' });

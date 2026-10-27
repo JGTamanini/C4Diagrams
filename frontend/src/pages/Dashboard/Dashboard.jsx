@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { Plus, RotateCw } from 'lucide-react';
+import { FolderPlus, Plus, RotateCw } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 import ProjectCard from '../../components/ProjectCard/ProjectCard';
 import ProjectFormModal from '../../components/ProjectFormModal/ProjectFormModal';
+import ProjectDetailsModal from '../../components/ProjectDetailsModal/ProjectDetailsModal';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
 import Button from '../../components/Button/Button';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
@@ -22,16 +23,56 @@ const bannerConnections = [
   { x1: 108, y1: 66, x2: 150, y2: 106 },
 ];
 
+const SKELETON_CARDS = 4;
+const GRID = 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
 // Nota: projeto criado/editado vai para o topo — mantém a ordem por updated_at DESC sem nova requisição
 function moveToTop(projects, project) {
   return [project, ...projects.filter((p) => p.id !== project.id)];
+}
+
+function LoadingCards() {
+  return (
+    <>
+      <output className="sr-only">Carregando projetos...</output>
+      <div aria-hidden="true" className={GRID}>
+        {Array.from({ length: SKELETON_CARDS }, (_, index) => (
+          <div key={index} className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface-raised">
+            <div className="h-32 animate-pulse bg-canvas-deep" />
+            <div className="flex flex-col gap-2.5 p-4">
+              <div className="h-3.5 w-2/3 animate-pulse rounded bg-line" />
+              <div className="h-3 w-1/3 animate-pulse rounded bg-line-subtle" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function EmptyState({ onCreate }) {
+  return (
+    <div className="group mx-auto mt-4 flex max-w-xl flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-canvas/40 px-8 py-14 text-center transition-[border-color,background-color] duration-300 hover:border-accent-text/40 hover:bg-surface-raised">
+      <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent/12 text-accent-text transition-transform duration-300 group-hover:scale-105">
+        <FolderPlus aria-hidden="true" className="h-6 w-6" />
+      </span>
+      <p className="mb-1 text-base font-medium text-text-primary">Você ainda não tem projetos criados.</p>
+      <p className="mb-6 max-w-sm text-sm text-text-secondary">
+        Crie um projeto para começar pelo diagrama de Contexto e detalhar o sistema nível a nível.
+      </p>
+      <Button icon={Plus} onClick={onCreate}>
+        Criar meu primeiro projeto
+      </Button>
+    </div>
+  );
 }
 
 function Dashboard() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [status, setStatus] = useState('loading');
-  const [formModal, setFormModal] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [openProject, setOpenProject] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [actionError, setActionError] = useState('');
 
@@ -58,22 +99,27 @@ function Dashboard() {
     setReloadKey((key) => key + 1);
   }
 
-  const openCreate = () => setFormModal({ mode: 'create' });
-  const closeForm = useCallback(() => setFormModal(null), []);
+  const openCreate = () => setCreating(true);
+  const closeCreate = useCallback(() => setCreating(false), []);
+  const closeDetails = useCallback(() => setOpenProject(null), []);
   const cancelDelete = useCallback(() => setProjectToDelete(null), []);
 
-  async function handleFormSubmit(values) {
-    if (formModal.mode === 'edit') {
-      const updated = await updateProject(formModal.project.id, values);
-      setProjects((current) => moveToTop(current, updated));
-      setFormModal(null);
-      return;
-    }
-
-    // Nota: RFC 3.1.2 — projeto criado leva o usuário direto ao editor (página do projeto)
+  // Nota: RFC 3.1.2 — projeto criado leva o usuário direto ao editor (página do projeto)
+  async function handleCreate(values) {
     const created = await createProject(values);
-    setFormModal(null);
+    setCreating(false);
     void navigate(`/projetos/${created.id}`);
+  }
+
+  async function handleSaveDetails(values) {
+    const updated = await updateProject(openProject.id, values);
+    setProjects((current) => moveToTop(current, updated));
+    setOpenProject(null);
+  }
+
+  function requestDelete(project) {
+    setOpenProject(null);
+    setProjectToDelete(project);
   }
 
   async function handleConfirmDelete() {
@@ -89,76 +135,70 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas font-sans">
+    <div className="flex min-h-screen flex-col bg-canvas font-sans">
       <AppHeader />
 
-      <div className="h-40 border-b border-line">
+      {/* Faixa ilustrada que se dissolve no fundo (sem borda) */}
+      <div className="h-48 shrink-0 [mask-image:linear-gradient(to_bottom,black_65%,transparent)]">
         <DiagramIllustration nodes={bannerNodes} connections={bannerConnections} />
       </div>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
-          <Button icon={Plus} onClick={openCreate}>
-            Novo projeto
-          </Button>
-        </div>
-
-        {actionError && (
-          <p role="alert" className="mb-4 text-sm text-danger">
-            {actionError}
-          </p>
-        )}
-
-        {status === 'loading' && (
-          <output className="block text-sm text-text-secondary">
-            Carregando projetos...
-          </output>
-        )}
-
-        {status === 'error' && (
-          <div className="text-center">
-            <p role="alert" className="mb-4 text-sm text-danger">
-              Não foi possível carregar seus projetos.
-            </p>
-            <Button variant="secondary" size="sm" icon={RotateCw} onClick={retryLoad}>
-              Tentar novamente
+      {/* Painel de conteúdo em faixa própria: toda a largura e o resto da altura da página */}
+      <main className="flex-1 border-t border-line bg-surface">
+        <div className="mx-auto max-w-7xl px-6 pt-8 pb-14">
+          <div className="mb-8 flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
+            <Button icon={Plus} onClick={openCreate}>
+              Novo projeto
             </Button>
           </div>
-        )}
 
-        {status === 'ready' && projects.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="mb-2 text-text-secondary">Você ainda não tem projetos criados.</p>
-            <button type="button" onClick={openCreate} className="text-link text-sm font-medium">
-              Crie um agora
-            </button>
-          </div>
-        )}
+          {actionError && (
+            <p role="alert" className="mb-4 text-sm text-danger">
+              {actionError}
+            </p>
+          )}
 
-        {status === 'ready' && projects.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onEdit={(p) => setFormModal({ mode: 'edit', project: p })}
-                onDelete={setProjectToDelete}
-              />
-            ))}
-          </div>
-        )}
+          {status === 'loading' && <LoadingCards />}
+
+          {status === 'error' && (
+            <div className="text-center">
+              <p role="alert" className="mb-4 text-sm text-danger">
+                Não foi possível carregar seus projetos.
+              </p>
+              <Button variant="secondary" size="sm" icon={RotateCw} onClick={retryLoad}>
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
+          {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} />}
+
+          {status === 'ready' && projects.length > 0 && (
+            <ul aria-label="Meus projetos" className={GRID}>
+              {projects.map((project) => (
+                <li key={project.id}>
+                  <ProjectCard project={project} onEdit={setOpenProject} onDelete={setProjectToDelete} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </main>
 
-      {/* AnimatePresence: mantém o modal na tela durante a animação de saída */}
+      {/* AnimatePresence: mantém cada modal na tela durante a animação de saída */}
       <AnimatePresence>
-        {formModal && (
-          <ProjectFormModal
-            key="project-form"
-            mode={formModal.mode}
-            initialValues={formModal.project}
-            onSubmit={handleFormSubmit}
-            onClose={closeForm}
+        {creating && <ProjectFormModal key="project-form" onSubmit={handleCreate} onClose={closeCreate} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {openProject && (
+          <ProjectDetailsModal
+            key={`project-details-${openProject.id}`}
+            project={openProject}
+            onSave={handleSaveDetails}
+            onDelete={requestDelete}
+            onClose={closeDetails}
           />
         )}
       </AnimatePresence>
