@@ -23,10 +23,11 @@ function renderCanvas(props = {}) {
     onAddNode: vi.fn(),
     onEditNode: vi.fn(),
     onEditEdge: vi.fn(),
+    onTogglePalette: vi.fn(),
   };
   render(
     <div style={{ width: 800, height: 600 }}>
-      <DiagramCanvas level="context" nodes={nodes} edges={[]} {...handlers} {...props} />
+      <DiagramCanvas level="context" nodes={nodes} edges={[]} paletteOpen {...handlers} {...props} />
     </div>
   );
   return handlers;
@@ -72,6 +73,28 @@ describe('DiagramCanvas', () => {
     expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
   });
 
+  describe('paleta sobre o canvas', () => {
+    it('deve mostrar a paleta aberta com o botão para ocultá-la', async () => {
+      const user = userEvent.setup();
+      const { onTogglePalette } = renderCanvas();
+
+      expect(screen.getByRole('complementary', { name: 'Elementos' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Ocultar elementos' }));
+
+      expect(onTogglePalette).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve trocar a paleta oculta por um botão discreto para mostrá-la de novo', async () => {
+      const user = userEvent.setup();
+      const { onTogglePalette } = renderCanvas({ paletteOpen: false });
+
+      expect(screen.queryByRole('complementary', { name: 'Elementos' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Mostrar elementos' }));
+
+      expect(onTogglePalette).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('adição de elementos', () => {
     it('deve adicionar o elemento solto no canvas, na posição do diagrama', () => {
       const { onAddNode } = renderCanvas();
@@ -79,6 +102,18 @@ describe('DiagramCanvas', () => {
       dropElement('c4-system-external');
 
       expect(onAddNode).toHaveBeenCalledWith('c4-system-external', { x: expect.any(Number), y: expect.any(Number) });
+    });
+
+    it('não deve criar elemento escondido quando o arraste for solto de volta em cima da paleta', () => {
+      const { onAddNode } = renderCanvas();
+      const palette = screen.getByRole('complementary', { name: 'Elementos' });
+      const dataTransfer = { getData: () => 'c4-person', dropEffect: 'move' };
+
+      fireEvent.dragOver(palette, { dataTransfer });
+      fireEvent.drop(palette, { clientX: 60, clientY: 80, dataTransfer });
+
+      expect(dataTransfer.dropEffect).toBe('none');
+      expect(onAddNode).not.toHaveBeenCalled();
     });
 
     it('deve ignorar o que for solto e não for um elemento do nível (RN08)', () => {

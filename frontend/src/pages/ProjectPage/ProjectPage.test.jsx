@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -9,8 +9,15 @@ import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({ level, nodes, keyboardEnabled, onAddNode, onConnect, onEditNode, onEditEdge }) => (
-    <div data-testid="canvas" data-count={nodes.length} data-level={level} data-keyboard={String(keyboardEnabled)}>
+  default: ({ level, nodes, keyboardEnabled, paletteOpen, onTogglePalette, onAddNode, onConnect, onEditNode, onEditEdge }) => (
+    <div
+      data-testid="canvas"
+      data-count={nodes.length}
+      data-level={level}
+      data-keyboard={String(keyboardEnabled)}
+      data-palette={String(paletteOpen)}
+    >
+      <button type="button" onClick={onTogglePalette}>mock-toggle-palette</button>
       <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
       <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
       <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
@@ -118,6 +125,19 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('tab', { name: 'Container' }));
 
       expect(editor.selectLevel).toHaveBeenCalledWith('container');
+    });
+
+    it('deve centralizar as abas na área de trabalho, acompanhando a paleta aberta ou oculta', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const tablist = screen.getByRole('tablist', { name: 'Níveis do modelo C4' });
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-palette', 'true');
+      expect(tablist.parentElement).toHaveAttribute('data-palette-open', 'true');
+
+      await user.click(screen.getByRole('button', { name: 'mock-toggle-palette' }));
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-palette', 'false');
+      expect(tablist.parentElement).toHaveAttribute('data-palette-open', 'false');
     });
   });
 
@@ -275,20 +295,82 @@ describe('ProjectPage (editor de diagramas)', () => {
       ['saved', 'Todas as alterações salvas'],
       ['pending', 'Alterações não salvas'],
       ['saving', 'Salvando…'],
-      ['error', 'Falha ao salvar. Suas alterações continuam aqui — clique em Salvar para tentar de novo.'],
+      ['error', 'Falha ao salvar. Suas alterações continuam aqui — use "Tentar de novo" ou Ctrl+S.'],
     ])('deve exibir o estado %s', async (saveStatus, text) => {
       await renderLoaded({ saveStatus });
 
       expect(screen.getByTestId('save-status')).toHaveTextContent(text);
     });
 
-    it('deve salvar na hora pelo botão Salvar', async () => {
+    it('deve mostrar "Não salvo" em texto (não só o ícone) enquanto houver alteração pendente', async () => {
+      await renderLoaded({ saveStatus: 'pending' });
+
+      expect(within(screen.getByTestId('save-status')).getByText('Não salvo')).toBeInTheDocument();
+    });
+
+    it('deve oferecer "Tentar de novo" ao lado do aviso quando o salvamento falhar', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ saveStatus: 'error' });
+
+      await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+      expect(editor.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('não deve mostrar "Tentar de novo" fora da falha', async () => {
+      await renderLoaded({ saveStatus: 'saved' });
+
+      expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument();
+    });
+
+    it('deve salvar na hora pelo menu de configurações', async () => {
       const user = userEvent.setup();
       await renderLoaded({ saveStatus: 'pending' });
 
-      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Salvar/ }));
 
       expect(editor.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve oferecer no menu de configurações Salvar, Exportar (em breve) e Atalhos', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
+
+      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'ExportarEm breve', 'Atalhos']);
+      expect(items[1]).toBeDisabled();
+    });
+
+    it('deve mostrar os atalhos do editor num modal, incluindo a seleção múltipla', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Atalhos' }));
+      const dialog = screen.getByRole('dialog', { name: 'Atalhos do editor' });
+
+      for (const text of ['Desfazer', 'Refazer', 'Salvar', 'Excluir selecionados', 'Selecionar vários (caixa)', 'Somar à seleção']) {
+        expect(within(dialog).getByText(text)).toBeInTheDocument();
+      }
+      expect(within(dialog).getByText('Shift + arrastar')).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Fechar' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    it('deve desligar os atalhos do diagrama enquanto o modal de atalhos estiver aberto', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ canUndo: true });
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Atalhos' }));
+      await user.keyboard('{Control>}z{/Control}');
+
+      expect(editor.undo).not.toHaveBeenCalled();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
     });
   });
 
