@@ -9,5 +9,6 @@ router.use(authenticate);
 
 router.get('/', diagramController.list);
 router.put('/:level', diagramController.save);
+router.post('/:level/validate', diagramController.validate);
 
 module.exports = router;

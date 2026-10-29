@@ -7,8 +7,8 @@ import Button from '../Button/Button';
 import ProjectPreview from '../ProjectPreview/ProjectPreview';
 import { buttonClasses } from '../Button/buttonStyles';
 import { listDiagrams } from '../../services/diagrams';
+import { PROJECT_NAME_MAX_LENGTH, PROJECT_DESCRIPTION_MAX_LENGTH } from '../../constants/projectLimits';
 
-const NAME_MAX_LENGTH = 255;
 const dateFormatter = new Intl.DateTimeFormat('pt-BR');
 const PREVIEW_CLASSES = 'h-64 overflow-hidden rounded-[var(--radius-control)] border border-line md:h-80';
 
@@ -97,7 +97,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
             label="Nome do projeto"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            maxLength={NAME_MAX_LENGTH}
+            maxLength={PROJECT_NAME_MAX_LENGTH}
             className="mb-4"
           />
           <FormInput
@@ -106,6 +106,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             multiline
+            maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
             required={false}
             className="mb-3"
           />

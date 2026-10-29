@@ -17,8 +17,8 @@ describe('ProjectFormModal', () => {
 
       expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
       expect(screen.getByLabelText('Nome do projeto')).toHaveFocus();
-      expect(screen.getByLabelText('Nome do projeto')).toHaveAttribute('maxLength', '255');
-      expect(screen.getByLabelText('Descrição')).toBeInTheDocument();
+      expect(screen.getByLabelText('Nome do projeto')).toHaveAttribute('maxLength', '80');
+      expect(screen.getByLabelText('Descrição')).toHaveAttribute('maxLength', '150');
       expect(screen.getByRole('button', { name: 'Criar' })).toBeInTheDocument();
     });
 

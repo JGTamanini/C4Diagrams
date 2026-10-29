@@ -52,6 +52,8 @@ describe('ProjectDetailsModal', () => {
     expect(screen.getByRole('dialog', { name: 'Loja Online' })).toBeInTheDocument();
     expect(screen.getByLabelText('Nome do projeto')).toHaveValue('Loja Online');
     expect(screen.getByLabelText('Descrição')).toHaveValue('E-commerce');
+    expect(screen.getByLabelText('Nome do projeto')).toHaveAttribute('maxLength', '80');
+    expect(screen.getByLabelText('Descrição')).toHaveAttribute('maxLength', '150');
     expect(screen.getByText('Editado em 28/09/2026')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Abrir editor' })).toHaveAttribute('href', `/projetos/${project.id}`);
   });
