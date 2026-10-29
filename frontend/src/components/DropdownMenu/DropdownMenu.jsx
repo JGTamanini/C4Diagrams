@@ -12,6 +12,27 @@ const ITEM_TONES = {
   danger: 'text-danger hover:bg-danger/10',
 };
 
+// Itens de menu ("menuitem"), compartilhados com o menu de clique direito do canvas (ContextMenu)
+export function MenuItems({ items, onChoose }) {
+  return items.map((item) => {
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.label}
+        type="button"
+        role="menuitem"
+        disabled={item.disabled}
+        onClick={() => onChoose(item)}
+        className={`${ITEM_BASE} ${ITEM_TONES[item.tone ?? 'neutral']}`}
+      >
+        {Icon && <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />}
+        <span className="flex-1">{item.label}</span>
+        {item.hint && <span className="text-xs text-text-muted">{item.hint}</span>}
+      </button>
+    );
+  });
+}
+
 // Nota: menu suspenso acessível (botão com aria-haspopup/aria-expanded, itens "menuitem"). Fecha ao escolher um item,
 // com Esc (devolvendo o foco ao botão) ou com clique fora. Usado no menu da conta e nas configurações do editor.
 // items: { label, onSelect (dispensável em item desabilitado), icon?, hint? (ex.: atalho ou "Em breve"), disabled?, tone? }
@@ -73,23 +94,7 @@ function DropdownMenu({ label, trigger, items, triggerClassName = '', align = 'r
               align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
             }`}
           >
-            {items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  role="menuitem"
-                  disabled={item.disabled}
-                  onClick={() => choose(item)}
-                  className={`${ITEM_BASE} ${ITEM_TONES[item.tone ?? 'neutral']}`}
-                >
-                  {Icon && <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />}
-                  <span className="flex-1">{item.label}</span>
-                  {item.hint && <span className="text-xs text-text-muted">{item.hint}</span>}
-                </button>
-              );
-            })}
+            <MenuItems items={items} onChoose={choose} />
           </motion.div>
         )}
       </AnimatePresence>
