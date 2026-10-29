@@ -64,19 +64,17 @@ describe('Motor de validação C4', () => {
       expect(findViolations('component', data)).toEqual([]);
     });
 
-    it('deve apontar a segunda relação no mesmo sentido, mas aceitar o sentido oposto', () => {
+    it('deve apontar uma segunda relação entre o mesmo par, no mesmo sentido ou no oposto (sem "via dupla")', () => {
       const data = {
         nodes: [node('p1', 'c4-person', 'Cliente'), node('s1', 'c4-system', 'Loja Online')],
         edges: [edge('e1', 'p1', 's1'), edge('e2', 's1', 'p1'), edge('e3', 'p1', 's1', { label: 'Paga em' })],
       };
 
+      // A mensagem cita os elementos no sentido da relação apontada
+      const message = (from, to) => `Já existe uma relação entre "${from}" e "${to}". Use uma só relação entre o mesmo par.`;
       expect(findViolations('context', data)).toEqual([
-        {
-          code: 'DUPLICATE_RELATIONSHIP',
-          severity: 'error',
-          edgeId: 'e3',
-          message: 'Já existe uma relação de "Cliente" para "Loja Online". Use uma só relação por sentido.',
-        },
+        { code: 'DUPLICATE_RELATIONSHIP', severity: 'error', edgeId: 'e2', message: message('Loja Online', 'Cliente') },
+        { code: 'DUPLICATE_RELATIONSHIP', severity: 'error', edgeId: 'e3', message: message('Cliente', 'Loja Online') },
       ]);
     });
   });

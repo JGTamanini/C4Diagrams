@@ -2,7 +2,8 @@ const { LEVEL_ELEMENTS, LEVEL_NAMES, NODE_TYPE_NAMES, TYPES_WITH_TECHNOLOGY } = 
 
 // Nota: motor de validação C4 (RFC 5.3, RF17). Recebe diagramas já normalizados (diagram.validation.js) e devolve
 // a lista de problemas encontrados, sem lançar nada:
-// - erros ("error"): o que não pode ser salvo — elemento fora do nível (RN08) e relação repetida no mesmo sentido;
+// - erros ("error"): o que não pode ser salvo — elemento fora do nível (RN08) e mais de uma relação entre o mesmo
+//   par, em qualquer sentido (sem "via dupla");
 // - avisos ("warning"): inconsistências a sinalizar sem bloquear a edição (RN11), dentro do nível e entre níveis.
 // Cada item traz um "code" estável (o frontend destaca o elemento por ele) e a mensagem em português.
 
@@ -79,16 +80,17 @@ function findViolations(level, data) {
     }
   }
 
+  // O par é o mesmo nos dois sentidos: A → B e B → A contam como uma relação só
   const labels = labelsById(data);
   const seen = new Set();
   for (const edge of data.edges) {
-    const key = `${edge.source}->${edge.target}`;
+    const key = [edge.source, edge.target].sort().join('<->');
     if (seen.has(key)) {
       issues.push(
         issue(
           'error',
           'DUPLICATE_RELATIONSHIP',
-          `Já existe uma relação de "${labels.get(edge.source)}" para "${labels.get(edge.target)}". Use uma só relação por sentido.`,
+          `Já existe uma relação entre "${labels.get(edge.source)}" e "${labels.get(edge.target)}". Use uma só relação entre o mesmo par.`,
           { edgeId: edge.id }
         )
       );
