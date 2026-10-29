@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { MousePointerClick } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { MousePointerClick, PanelLeftOpen } from 'lucide-react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -11,7 +12,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
-import ElementPalette, { ELEMENT_DRAG_TYPE } from '../ElementPalette/ElementPalette';
+import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPalette/ElementPalette';
+import IconButton from '../Button/IconButton';
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
@@ -39,6 +41,8 @@ const NODE_CENTER_OFFSET = { x: 100, y: 50 };
 
 const DELETE_KEYS = ['Backspace', 'Delete'];
 
+const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
+
 // Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
 const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
 // Quadros a esperar pela medição dos elementos antes de enquadrar mesmo assim (~0,5 s)
@@ -55,6 +59,8 @@ function DiagramWorkspace({
   nodes,
   edges,
   keyboardEnabled = true,
+  paletteOpen = true,
+  onTogglePalette,
   onNodesChange,
   onEdgesChange,
   onConnect,
@@ -111,19 +117,20 @@ function DiagramWorkspace({
     addAt(type, { x: event.clientX, y: event.clientY });
   }
 
+  // Clique na paleta: adiciona no centro da parte visível do canvas (descontando a paleta aberta por cima)
   function handlePaletteAdd(type) {
     const area = dropAreaRef.current.getBoundingClientRect();
-    addAt(type, { x: area.left + area.width / 2, y: area.top + area.height / 2 });
+    const covered = paletteOpen ? PALETTE_OFFSET : 0;
+    addAt(type, { x: area.left + covered + (area.width - covered) / 2, y: area.top + area.height / 2 });
   }
 
   return (
-    <div className="flex h-full w-full">
-      <ElementPalette level={level} onAdd={handlePaletteAdd} />
-
+    <div className="h-full w-full">
+      {/* O canvas ocupa a área toda; paleta, abas, dicas e legenda flutuam por cima dele */}
       <div
         ref={dropAreaRef}
         data-testid="diagram-drop-area"
-        className="relative h-full min-w-0 flex-1"
+        className="relative h-full w-full"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -170,6 +177,38 @@ function DiagramWorkspace({
         )}
 
         <DiagramLegend nodes={nodes} edges={edges} />
+
+        {/* Paleta recolhível: desliza para a esquerda ao ocultar e dá lugar a um botão discreto para reabri-la */}
+        <AnimatePresence initial={false} mode="wait">
+          {paletteOpen ? (
+            <motion.div
+              key="palette"
+              initial={{ x: -24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -24, opacity: 0 }}
+              transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+              className="absolute top-3 bottom-3 left-3 z-20 flex flex-col"
+            >
+              <ElementPalette level={level} onAdd={handlePaletteAdd} onCollapse={onTogglePalette} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="palette-toggle"
+              initial={{ x: -12, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -12, opacity: 0 }}
+              transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+              className="absolute top-3 left-3 z-20"
+            >
+              <IconButton
+                icon={PanelLeftOpen}
+                label="Mostrar elementos"
+                onClick={onTogglePalette}
+                className="border border-line bg-surface/90 shadow-[var(--shadow-raised)] backdrop-blur-sm"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

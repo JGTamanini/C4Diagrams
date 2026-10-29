@@ -23,10 +23,11 @@ function renderCanvas(props = {}) {
     onAddNode: vi.fn(),
     onEditNode: vi.fn(),
     onEditEdge: vi.fn(),
+    onTogglePalette: vi.fn(),
   };
   render(
     <div style={{ width: 800, height: 600 }}>
-      <DiagramCanvas level="context" nodes={nodes} edges={[]} {...handlers} {...props} />
+      <DiagramCanvas level="context" nodes={nodes} edges={[]} paletteOpen {...handlers} {...props} />
     </div>
   );
   return handlers;
@@ -70,6 +71,28 @@ describe('DiagramCanvas', () => {
 
     expect(screen.getByRole('button', { name: 'Banco de Dados' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
+  });
+
+  describe('paleta sobre o canvas', () => {
+    it('deve mostrar a paleta aberta com o botão para ocultá-la', async () => {
+      const user = userEvent.setup();
+      const { onTogglePalette } = renderCanvas();
+
+      expect(screen.getByRole('complementary', { name: 'Elementos' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Ocultar elementos' }));
+
+      expect(onTogglePalette).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve trocar a paleta oculta por um botão discreto para mostrá-la de novo', async () => {
+      const user = userEvent.setup();
+      const { onTogglePalette } = renderCanvas({ paletteOpen: false });
+
+      expect(screen.queryByRole('complementary', { name: 'Elementos' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Mostrar elementos' }));
+
+      expect(onTogglePalette).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('adição de elementos', () => {

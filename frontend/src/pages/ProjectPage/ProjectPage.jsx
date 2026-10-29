@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { AlertCircle, ArrowLeft, Check, CircleDot, Download, Keyboard, LoaderCircle, Save, Settings } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Brand from '../../components/Brand/Brand';
-import Button from '../../components/Button/Button';
-import { buttonClasses } from '../../components/Button/buttonStyles';
+import { buttonClasses, iconButtonClasses } from '../../components/Button/buttonStyles';
+import DropdownMenu from '../../components/DropdownMenu/DropdownMenu';
+import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
+import { PALETTE_OFFSET } from '../../components/ElementPalette/ElementPalette';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { LEVELS } from '../../constants/c4Notation';
@@ -17,10 +19,78 @@ const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
   pending: 'Alterações não salvas',
   saving: 'Salvando…',
-  error: 'Falha ao salvar. Suas alterações continuam aqui — clique em Salvar para tentar de novo.',
+  error: 'Falha ao salvar. Suas alterações continuam aqui — use Salvar (Ctrl+S) para tentar de novo.',
 };
 
-function EditorBody({ editor, onEdit, keyboardEnabled }) {
+const SAVE_STATUS_ICON = { saved: Check, pending: CircleDot, saving: LoaderCircle, error: AlertCircle };
+
+const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
+
+// Nota: estado do salvamento como ícone discreto na barra; o texto completo fica na dica e para leitores de tela.
+// A falha também aparece em texto, para não passar despercebida.
+function SaveStatus({ status }) {
+  const Icon = SAVE_STATUS_ICON[status];
+  const text = SAVE_STATUS_TEXT[status];
+  return (
+    <output
+      data-testid="save-status"
+      title={text}
+      className={`flex items-center gap-1.5 text-xs ${status === 'error' ? 'text-danger' : 'text-text-muted'}`}
+    >
+      <Icon aria-hidden="true" className={`h-4 w-4 ${status === 'saving' ? 'animate-spin' : ''}`} />
+      {status === 'error' && <span aria-hidden="true">Falha ao salvar</span>}
+      <span className="sr-only">{text}</span>
+    </output>
+  );
+}
+
+// Nota: abas de nível flutuando no topo do canvas, centralizadas na área de trabalho (deslizam junto com a paleta);
+// o destaque do nível ativo também desliza entre as abas (layoutId)
+function LevelTabs({ activeLevel, onSelect, paletteOpen }) {
+  return (
+    <motion.div
+      data-palette-open={String(paletteOpen)}
+      initial={false}
+      animate={{ left: paletteOpen ? PALETTE_OFFSET : 0 }}
+      transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
+      className="pointer-events-none absolute top-3 right-0 z-20 flex justify-center"
+    >
+      <div
+        role="tablist"
+        aria-label="Níveis do modelo C4"
+        className="pointer-events-auto flex gap-1 rounded-full border border-line bg-surface/90 p-1 shadow-[var(--shadow-raised)] backdrop-blur-sm"
+      >
+        {LEVELS.map((level) => {
+          const selected = level.id === activeLevel;
+          return (
+            <button
+              key={level.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => onSelect(level.id)}
+              className={`relative rounded-full px-4 py-1.5 text-sm transition-colors duration-200 ${
+                selected ? 'text-accent-fg' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {selected && (
+                <motion.span
+                  layoutId="active-level"
+                  aria-hidden="true"
+                  transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
+                  className="absolute inset-0 rounded-full bg-accent"
+                />
+              )}
+              <span className="relative">{level.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePalette }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -39,6 +109,8 @@ function EditorBody({ editor, onEdit, keyboardEnabled }) {
       nodes={editor.nodes}
       edges={editor.edges}
       keyboardEnabled={keyboardEnabled}
+      paletteOpen={paletteOpen}
+      onTogglePalette={onTogglePalette}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}
@@ -101,8 +173,12 @@ function ProjectPage() {
   const editor = useDiagramEditor(id);
   const [editing, setEditing] = useState(null);
   const closeEditor = useCallback(() => setEditing(null), []);
-  // Com o modal de edição aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
-  const modalOpen = Boolean(findEditTarget(editor, editing));
+  const [showingShortcuts, setShowingShortcuts] = useState(false);
+  const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
+  const [paletteOpen, setPaletteOpen] = useState(true);
+  const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
+  // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
+  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts;
 
   useEffect(() => {
     let active = true;
@@ -148,62 +224,50 @@ function ProjectPage() {
 
   return (
     <div className="flex h-screen flex-col bg-canvas font-sans">
-      {/* Moldura (barras, paleta, abas) num tom acima do canvas, que é a área mais escura: seções bem separadas */}
-      <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-3">
-        <div className="flex items-center gap-6">
-          <Brand className="" />
-          <Link to="/projetos" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            Meus projetos
-          </Link>
+      {/* Barra única: voltar | nome do projeto (centralizado) | ações, configurações e marca */}
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-line bg-surface px-4 py-2.5">
+        <Link to="/projetos" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'justify-self-start' })}>
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Meus projetos
+        </Link>
+
+        {/* Nome longo é cortado (o completo fica no title); o nível ativo aparece nas abas */}
+        <h1 title={project.name} className="max-w-[32rem] truncate text-base font-semibold text-text-primary">
+          {project.name}
+        </h1>
+
+        <div className="flex items-center justify-end gap-3">
+          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
+          <span aria-hidden="true" className="h-6 w-px bg-line" />
+          <SaveStatus status={editor.saveStatus} />
+          <DropdownMenu
+            label="Configurações"
+            trigger={<Settings aria-hidden="true" className="h-4 w-4" />}
+            triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
+            items={[
+              { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
+              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true, onSelect: () => {} },
+              { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
+            ]}
+          />
+          <Brand className="ml-1" />
         </div>
       </header>
 
-      <div className="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-2 shadow-[0_6px_16px_-10px_rgb(0_0_0/0.8)]">
-        <div className="flex min-w-0 items-center gap-4">
-          {/* Só o nome do projeto: o nível ativo já aparece nas abas. Nome longo é cortado (o completo fica no title) */}
-          <h1 title={project.name} className="max-w-[28rem] truncate text-base font-semibold text-text-primary">
-            {project.name}
-          </h1>
-          {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
-        </div>
-        <div className="flex shrink-0 items-center gap-4">
-          <output
-            data-testid="save-status"
-            className={`text-xs ${editor.saveStatus === 'error' ? 'text-danger' : 'text-text-muted'}`}
-          >
-            {SAVE_STATUS_TEXT[editor.saveStatus]}
-          </output>
-          <Button size="sm" icon={Save} onClick={editor.save}>
-            Salvar
-          </Button>
-        </div>
-      </div>
-
       <main className="relative min-h-0 flex-1">
-        <EditorBody editor={editor} onEdit={setEditing} keyboardEnabled={!modalOpen} />
+        <EditorBody
+          editor={editor}
+          onEdit={setEditing}
+          keyboardEnabled={!modalOpen}
+          paletteOpen={paletteOpen}
+          onTogglePalette={togglePalette}
+        />
+        <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} paletteOpen={paletteOpen} />
       </main>
 
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
-      <nav role="tablist" aria-label="Níveis do modelo C4" className="flex border-t border-line bg-surface">
-        {LEVELS.map((level) => (
-          <button
-            key={level.id}
-            type="button"
-            role="tab"
-            aria-selected={level.id === editor.activeLevel}
-            onClick={() => editor.selectLevel(level.id)}
-            className={`border-r border-line px-5 py-2.5 text-xs transition-colors duration-150 ${
-              level.id === editor.activeLevel
-                ? 'bg-surface-raised text-text-primary shadow-[inset_0_2px_0_0_var(--color-accent)]'
-                : 'text-text-secondary hover:bg-surface hover:text-text-primary'
-            }`}
-          >
-            {level.label}
-          </button>
-        ))}
-      </nav>
+      <AnimatePresence>{showingShortcuts && <ShortcutsModal key="shortcuts" onClose={closeShortcuts} />}</AnimatePresence>
     </div>
   );
 }
