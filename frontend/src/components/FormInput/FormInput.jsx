@@ -78,7 +78,7 @@ function FormInput({
 }) {
   function renderField() {
     if (multiline) {
-      return (
+      const textarea = (
         <textarea
           id={id}
           value={value}
@@ -86,8 +86,20 @@ function FormInput({
           required={required}
           maxLength={maxLength}
           rows={4}
-          className={`resize-none py-2 ${FIELD_CLASSES} ${className}`}
+          aria-describedby={maxLength ? `${id}-count` : undefined}
+          className={`resize-none py-2 ${FIELD_CLASSES} ${maxLength ? '' : className}`}
         />
+      );
+      if (!maxLength) return textarea;
+
+      // Com limite, o contador mostra quanto do espaço já foi usado (e fica associado ao campo para leitores de tela)
+      return (
+        <div className={`flex flex-col ${className}`}>
+          {textarea}
+          <p id={`${id}-count`} className="mt-1 self-end text-xs text-text-muted">
+            {value.length}/{maxLength}
+          </p>
+        </div>
       );
     }
 

@@ -8,7 +8,23 @@ function PasswordField() {
   return <FormInput id="password" label="Senha" type="password" value={value} onChange={(e) => setValue(e.target.value)} />;
 }
 
+function DescriptionField() {
+  const [value, setValue] = useState('');
+  return <FormInput id="desc" label="Descrição" multiline maxLength={240} value={value} onChange={(e) => setValue(e.target.value)} />;
+}
+
 describe('FormInput', () => {
+  it('deve mostrar quantos caracteres faltam no campo de texto longo com limite', async () => {
+    const user = userEvent.setup();
+    render(<DescriptionField />);
+    expect(screen.getByText('0/240')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Descrição'), 'Loja');
+
+    expect(screen.getByText('4/240')).toBeInTheDocument();
+    expect(screen.getByLabelText('Descrição')).toHaveAccessibleDescription('4/240');
+  });
+
   it('deve associar o rótulo ao campo', () => {
     render(<FormInput id="name" label="Nome" value="" onChange={() => {}} />);
 

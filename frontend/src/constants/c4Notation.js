@@ -48,9 +48,11 @@ export function isValidRelationship({ source, target }, edges = []) {
   return !edges.some((edge) => edge.source === source && edge.target === target);
 }
 
-// Mesmos limites validados pelo backend
-export const TITLE_MAX_LENGTH = 100;
-export const DESCRIPTION_MAX_LENGTH = 1000;
+// Limites dos campos do elemento: o título cabe no elemento do canvas e a descrição, nas 4 linhas do campo (sem
+// rolagem). São menores que os do backend (100 e 1000) de propósito: o backend continua aceitando textos já
+// salvos antes destes limites — o salvamento envia o diagrama inteiro e não pode falhar por um texto antigo
+export const TITLE_MAX_LENGTH = 60;
+export const DESCRIPTION_MAX_LENGTH = 200;
 export const TECHNOLOGY_MAX_LENGTH = 100;
 
 // Notação oficial: todo elemento explicita o tipo; containers e componentes, também a tecnologia
