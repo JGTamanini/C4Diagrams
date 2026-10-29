@@ -226,6 +226,40 @@ describe('Rotas de diagramas /api/projects/:projectId/diagrams', () => {
   });
 
   describe('PUT com erro do motor de validação', () => {
+    const legacyData = {
+      nodes: [
+        { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+        { id: 's1', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+        { id: 'x1', type: 'c4-system-external', position: { x: 600, y: 0 }, data: { label: 'Gateway' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'p1', target: 's1', label: 'Usa' },
+        { id: 'e2', source: 'p1', target: 's1', label: 'Compra em' },
+      ],
+    };
+
+    it('deve continuar salvando um diagrama antigo que já tinha relação repetida, ao mexer em outra coisa', async () => {
+      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [projectId, legacyData]);
+      const moved = { ...legacyData, nodes: legacyData.nodes.map((n) => (n.id === 'x1' ? { ...n, position: { x: 650, y: 40 } } : n)) };
+
+      const response = await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(moved);
+
+      expect(response.status).toBe(200);
+    });
+
+    it('deve recusar uma relação repetida nova mesmo num diagrama antigo', async () => {
+      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [projectId, legacyData]);
+      const withNewDuplicate = {
+        ...legacyData,
+        edges: [...legacyData.edges, { id: 'e3', source: 's1', target: 'x1', label: 'Paga' }, { id: 'e4', source: 'x1', target: 's1', label: 'Confirma' }],
+      };
+
+      const response = await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(withNewDuplicate);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('Já existe uma relação entre "Gateway" e "Loja". Use uma só relação entre o mesmo par.');
+    });
+
     it('deve responder 400 explicando o elemento fora do nível (RN08), sem gravar', async () => {
       const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
 

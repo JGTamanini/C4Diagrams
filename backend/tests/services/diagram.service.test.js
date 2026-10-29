@@ -81,6 +81,7 @@ describe('DiagramService', () => {
     });
 
     it('deve recusar elemento fora do nível (RN08), sem gravar, explicando o motivo', async () => {
+      diagramRepository.findAllByProject.mockResolvedValue([]);
       const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
 
       await expect(diagramService.saveDiagram(projectId, userId, 'context', data)).rejects.toThrow(
@@ -89,7 +90,34 @@ describe('DiagramService', () => {
       expect(diagramRepository.upsert).not.toHaveBeenCalled();
     });
 
+    it('deve gravar diagrama salvo antes da regra que já tinha a relação repetida (o erro não é novo)', async () => {
+      const legacy = {
+        nodes: [
+          { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+          { id: 's1', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+        ],
+        edges: [
+          { id: 'e1', source: 'p1', target: 's1', label: 'Usa' },
+          { id: 'e2', source: 's1', target: 'p1', label: 'Notifica' },
+        ],
+      };
+      diagramRepository.findAllByProject.mockResolvedValue([{ level: 'context', data: legacy }]);
+      diagramRepository.upsert.mockResolvedValue({ level: 'context', data: legacy });
+      const moved = { ...legacy, nodes: [{ ...legacy.nodes[0], position: { x: 50, y: 20 } }, legacy.nodes[1]] };
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', moved)).resolves.toBeTruthy();
+      expect(diagramRepository.upsert).toHaveBeenCalled();
+    });
+
+    it('deve tratar id fora do formato como projeto não encontrado antes de comparar com o salvo', async () => {
+      const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
+
+      await expect(diagramService.saveDiagram('abc', userId, 'context', data)).rejects.toThrow(ProjectNotFoundError);
+      expect(diagramRepository.findAllByProject).not.toHaveBeenCalled();
+    });
+
     it('deve recusar uma segunda relação no mesmo sentido, sem gravar', async () => {
+      diagramRepository.findAllByProject.mockResolvedValue([]);
       const data = {
         nodes: [
           { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },

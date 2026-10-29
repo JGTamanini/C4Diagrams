@@ -4,7 +4,9 @@ const { LEVEL_ELEMENTS, LEVEL_NAMES, NODE_TYPE_NAMES, TYPES_WITH_TECHNOLOGY } = 
 // a lista de problemas encontrados, sem lançar nada:
 // - erros ("error"): o que não pode ser salvo — elemento fora do nível (RN08) e mais de uma relação entre o mesmo
 //   par, em qualquer sentido (sem "via dupla");
-// - avisos ("warning"): inconsistências a sinalizar sem bloquear a edição (RN11), dentro do nível e entre níveis.
+// - avisos ("warning"): inconsistências do modelo, a sinalizar sem bloquear a edição (RN11), no nível e entre níveis;
+// - sugestões ("info"): o que é opcional ao modelar, mas pedido pela notação (descrição e tecnologia) — ficam por
+//   último, para não esconderem os avisos que mudam o modelo.
 // Cada item traz um "code" estável (o frontend destaca o elemento por ele) e a mensagem em português.
 
 // O que cada nível detalha (o elemento em foco) e o aviso quando ele falta no próprio nível
@@ -48,6 +50,9 @@ const PARENT_LEVEL = {
 
 const LEVELS_WITH_TECHNOLOGY_ON_RELATIONSHIPS = new Set(['container', 'component']);
 
+// Ordem de importância na lista devolvida
+const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
+
 function issue(severity, code, message, target = {}) {
   return { code, severity, ...target, message };
 }
@@ -84,7 +89,7 @@ function findViolations(level, data) {
   const labels = labelsById(data);
   const seen = new Set();
   for (const edge of data.edges) {
-    const key = [edge.source, edge.target].sort().join('<->');
+    const key = edge.source < edge.target ? `${edge.source}<->${edge.target}` : `${edge.target}<->${edge.source}`;
     if (seen.has(key)) {
       issues.push(
         issue(
@@ -158,10 +163,10 @@ function nodeWarnings(level, data, parentKeys) {
     }
     if (TYPES_WITH_TECHNOLOGY.includes(node.type) && !node.data.technology) {
       const message = `${name} não informa a tecnologia (a notação C4 pede a tecnologia de containers e componentes).`;
-      warnings.push(issue('warning', 'MISSING_TECHNOLOGY', message, target));
+      warnings.push(issue('info', 'MISSING_TECHNOLOGY', message, target));
     }
     if (!node.data.description) {
-      warnings.push(issue('warning', 'MISSING_DESCRIPTION', `${name} não tem descrição.`, target));
+      warnings.push(issue('info', 'MISSING_DESCRIPTION', `${name} não tem descrição.`, target));
     }
   }
 
@@ -176,7 +181,7 @@ function edgeWarnings(level, data) {
     .filter((edge) => !edge.technology)
     .map((edge) =>
       issue(
-        'warning',
+        'info',
         'RELATIONSHIP_WITHOUT_TECHNOLOGY',
         `A relação "${edge.label}" de "${labels.get(edge.source)}" para "${labels.get(edge.target)}" não informa a tecnologia ou o protocolo.`,
         { edgeId: edge.id }
@@ -192,13 +197,15 @@ function validateDiagram(level, diagramsByLevel) {
 
   const { warnings: parentWarnings, parentKeys } = parentLevelCheck(level, diagramsByLevel);
 
-  return [
+  const issues = [
     ...findViolations(level, data),
     ...levelWarnings(level, data),
     ...parentWarnings,
     ...nodeWarnings(level, data, parentKeys),
     ...edgeWarnings(level, data),
   ];
+  // sort é estável: dentro da mesma severidade, mantém a ordem do diagrama
+  return issues.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
 
 module.exports = { findViolations, validateDiagram };

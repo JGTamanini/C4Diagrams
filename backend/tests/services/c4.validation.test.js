@@ -88,13 +88,19 @@ describe('Motor de validação C4', () => {
       expect(validateDiagram('context', { context: completeContext })).toEqual([]);
     });
 
-    it('deve trazer os erros antes dos avisos', () => {
+    it('deve ordenar por importância: erros, depois avisos do modelo, depois sugestões', () => {
       const data = { nodes: [node('c1', 'c4-component', 'Controlador')], edges: [] };
 
       const issues = validateDiagram('context', { context: data });
 
-      expect(issues[0]).toMatchObject({ code: 'ELEMENT_NOT_ALLOWED_IN_LEVEL', severity: 'error' });
-      expect(issues.slice(1).every((issue) => issue.severity === 'warning')).toBe(true);
+      expect(issues.map((issue) => issue.severity)).toEqual(['error', 'warning', 'warning', 'info', 'info']);
+      expect(issues.map((issue) => issue.code)).toEqual([
+        'ELEMENT_NOT_ALLOWED_IN_LEVEL',
+        'CONTEXT_WITHOUT_SYSTEM',
+        'CONTEXT_WITHOUT_PERSON',
+        'MISSING_TECHNOLOGY',
+        'MISSING_DESCRIPTION',
+      ]);
     });
 
     describe('avisos do nível', () => {
@@ -134,7 +140,7 @@ describe('Motor de validação C4', () => {
         ]);
       });
 
-      it('deve avisar container ou componente sem tecnologia (notação oficial)', () => {
+      it('deve sugerir (info, não aviso) a tecnologia que falta em container ou componente', () => {
         const data = {
           ...completeContainer,
           nodes: completeContainer.nodes.map((n) =>
@@ -145,14 +151,14 @@ describe('Motor de validação C4', () => {
         expect(validateDiagram('container', { context: completeContext, container: data })).toEqual([
           {
             code: 'MISSING_TECHNOLOGY',
-            severity: 'warning',
+            severity: 'info',
             nodeId: 'c1',
             message: '"API" não informa a tecnologia (a notação C4 pede a tecnologia de containers e componentes).',
           },
         ]);
       });
 
-      it('deve avisar relação sem tecnologia nos níveis de Container e Componente, mas não no Contexto', () => {
+      it('deve sugerir a tecnologia da relação nos níveis de Container e Componente, mas não no Contexto', () => {
         const data = {
           ...completeContainer,
           edges: completeContainer.edges.map((e) =>
@@ -163,7 +169,7 @@ describe('Motor de validação C4', () => {
         expect(validateDiagram('container', { context: completeContext, container: data })).toEqual([
           {
             code: 'RELATIONSHIP_WITHOUT_TECHNOLOGY',
-            severity: 'warning',
+            severity: 'info',
             edgeId: 'e2',
             message: 'A relação "Lê e grava" de "API" para "Banco de Dados" não informa a tecnologia ou o protocolo.',
           },
@@ -173,14 +179,14 @@ describe('Motor de validação C4', () => {
         );
       });
 
-      it('deve avisar elemento sem descrição', () => {
+      it('deve sugerir a descrição que falta (info)', () => {
         const data = {
           ...completeContext,
           nodes: completeContext.nodes.map((n) => (n.id === 'p1' ? node('p1', 'c4-person', 'Cliente') : n)),
         };
 
         expect(validateDiagram('context', { context: data })).toEqual([
-          { code: 'MISSING_DESCRIPTION', severity: 'warning', nodeId: 'p1', message: '"Cliente" não tem descrição.' },
+          { code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'p1', message: '"Cliente" não tem descrição.' },
         ]);
       });
     });

@@ -18,13 +18,34 @@ async function listDiagrams(projectId, userId) {
   return diagramRepository.findAllByProject(projectId, userId);
 }
 
+function violationKey(violation) {
+  return `${violation.code}:${violation.nodeId ?? violation.edgeId}`;
+}
+
+// Nota: um diagrama salvo antes de uma regra existir (ex.: duas relações entre o mesmo par) não pode ficar sem
+// salvar para sempre — o salvamento automático de qualquer mudança falharia. Só o erro NOVO bloqueia; o que já
+// estava salvo (mesmo id de elemento ou relação) passa, e continua aparecendo na validação até ser corrigido.
+async function withoutPreexisting(projectId, userId, level, violations) {
+  if (!isUuid(projectId)) throw new ProjectNotFoundError();
+
+  const saved = await diagramRepository.findAllByProject(projectId, userId);
+  const savedData = saved.find((diagram) => diagram.level === level)?.data;
+  if (!savedData) return violations;
+
+  const preexisting = new Set(c4Validation.findViolations(level, savedData).map(violationKey));
+  return violations.filter((violation) => !preexisting.has(violationKey(violation)));
+}
+
 async function saveDiagram(projectId, userId, level, rawData) {
   const data = normalizeLevelData(level, rawData);
 
   // Nota: só os erros do motor de validação impedem salvar (RN08 e relação repetida); os avisos não (RN11).
   // O editor já evita os dois casos — aqui é a garantia do lado do servidor.
-  const [violation] = c4Validation.findViolations(level, data);
-  if (violation) throw new InvalidDiagramDataError(violation.message);
+  const violations = c4Validation.findViolations(level, data);
+  if (violations.length > 0) {
+    const [newViolation] = await withoutPreexisting(projectId, userId, level, violations);
+    if (newViolation) throw new InvalidDiagramDataError(newViolation.message);
+  }
 
   // Nota: RN10 — só o nível com conteúdo existe no banco; esvaziar o canvas remove o registro do nível
   if (data.nodes.length === 0) {
