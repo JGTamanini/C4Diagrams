@@ -67,6 +67,7 @@ describe('Rotas de diagramas /api/projects/:projectId/diagrams', () => {
     it.each([
       ['get', ''],
       ['put', '/context'],
+      ['post', '/container/validate'],
     ])('deve retornar 401 em %s sem token', async (method, suffix) => {
       const response = await request(app)[method](`${diagramsUrl(projectId)}${suffix}`);
 
@@ -173,6 +174,101 @@ describe('Rotas de diagramas /api/projects/:projectId/diagrams', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.data.nodes).toHaveLength(200);
+    });
+  });
+
+  describe('POST /:level/validate (motor de validação C4 — RF17)', () => {
+    const containerData = {
+      nodes: [
+        { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Administrador', description: 'Gerencia' } },
+        { id: 'c1', type: 'c4-container', position: { x: 300, y: 0 }, data: { label: 'API', description: 'Regras', technology: 'Node.js' } },
+      ],
+      edges: [{ id: 'e1', source: 'p1', target: 'c1', label: 'Usa', technology: 'HTTPS' }],
+    };
+
+    it('deve devolver erros e avisos do estado enviado, comparando com o nível acima salvo, sem gravar nada', async () => {
+      await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(contextData);
+
+      const response = await request(app)
+        .post(`${diagramsUrl(projectId)}/container/validate`)
+        .set('Authorization', auth)
+        .send(containerData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.issues).toContainEqual({
+        code: 'MISSING_IN_PARENT_LEVEL',
+        severity: 'warning',
+        nodeId: 'p1',
+        message: '"Administrador" (Pessoa) não aparece no diagrama de Contexto.',
+      });
+      const saved = await pool.query('SELECT level FROM diagrams WHERE project_id = $1', [projectId]);
+      expect(saved.rows.map((row) => row.level)).toEqual(['context']);
+    });
+
+    it('deve responder 404 para projeto de outro usuário (RN02)', async () => {
+      const response = await request(app)
+        .post(`${diagramsUrl(otherProjectId)}/container/validate`)
+        .set('Authorization', auth)
+        .send(containerData);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ message: NOT_FOUND_MESSAGE });
+    });
+
+    it('deve responder 400 para nível inválido', async () => {
+      const response = await request(app)
+        .post(`${diagramsUrl(projectId)}/code/validate`)
+        .set('Authorization', auth)
+        .send(containerData);
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('PUT com erro do motor de validação', () => {
+    const legacyData = {
+      nodes: [
+        { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+        { id: 's1', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+        { id: 'x1', type: 'c4-system-external', position: { x: 600, y: 0 }, data: { label: 'Gateway' } },
+      ],
+      edges: [
+        { id: 'e1', source: 'p1', target: 's1', label: 'Usa' },
+        { id: 'e2', source: 'p1', target: 's1', label: 'Compra em' },
+      ],
+    };
+
+    it('deve continuar salvando um diagrama antigo que já tinha relação repetida, ao mexer em outra coisa', async () => {
+      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [projectId, legacyData]);
+      const moved = { ...legacyData, nodes: legacyData.nodes.map((n) => (n.id === 'x1' ? { ...n, position: { x: 650, y: 40 } } : n)) };
+
+      const response = await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(moved);
+
+      expect(response.status).toBe(200);
+    });
+
+    it('deve recusar uma relação repetida nova mesmo num diagrama antigo', async () => {
+      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [projectId, legacyData]);
+      const withNewDuplicate = {
+        ...legacyData,
+        edges: [...legacyData.edges, { id: 'e3', source: 's1', target: 'x1', label: 'Paga' }, { id: 'e4', source: 'x1', target: 's1', label: 'Confirma' }],
+      };
+
+      const response = await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(withNewDuplicate);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('Já existe uma relação entre "Gateway" e "Loja". Use uma só relação entre o mesmo par.');
+    });
+
+    it('deve responder 400 explicando o elemento fora do nível (RN08), sem gravar', async () => {
+      const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
+
+      const response = await request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth).send(data);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ message: '"Controlador" (Componente) não pertence ao diagrama de Contexto.' });
+      const saved = await pool.query('SELECT 1 FROM diagrams WHERE project_id = $1', [projectId]);
+      expect(saved.rowCount).toBe(0);
     });
   });
 });

@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, ArrowLeft, Check, CircleDot, Download, Keyboard, LoaderCircle, Save, Settings } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  CircleDot,
+  Download,
+  Keyboard,
+  LoaderCircle,
+  RotateCw,
+  Save,
+  Settings,
+} from 'lucide-react';
+import Button from '../../components/Button/Button';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Brand from '../../components/Brand/Brand';
 import { buttonClasses, iconButtonClasses } from '../../components/Button/buttonStyles';
@@ -19,28 +31,37 @@ const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
   pending: 'Alterações não salvas',
   saving: 'Salvando…',
-  error: 'Falha ao salvar. Suas alterações continuam aqui — use Salvar (Ctrl+S) para tentar de novo.',
+  error: 'Falha ao salvar. Suas alterações continuam aqui — use "Tentar de novo" ou Ctrl+S.',
 };
+
+// Texto curto visível ao lado do ícone, nos estados que pedem atenção
+const SAVE_STATUS_SHORT = { pending: 'Não salvo', error: 'Falha ao salvar' };
+const SAVE_STATUS_COLOR = { saved: 'text-text-muted', saving: 'text-text-muted', pending: 'text-highlight-text', error: 'text-danger' };
 
 const SAVE_STATUS_ICON = { saved: Check, pending: CircleDot, saving: LoaderCircle, error: AlertCircle };
 
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 // Nota: estado do salvamento como ícone discreto na barra; o texto completo fica na dica e para leitores de tela.
-// A falha também aparece em texto, para não passar despercebida.
-function SaveStatus({ status }) {
+// "Não salvo" e "Falha ao salvar" também aparecem em texto curto e cor própria, e a falha traz o "Tentar de novo" ao
+// lado — sem precisar lembrar do atalho nem abrir o menu de configurações.
+function SaveStatus({ status, onRetry }) {
   const Icon = SAVE_STATUS_ICON[status];
   const text = SAVE_STATUS_TEXT[status];
+  const short = SAVE_STATUS_SHORT[status];
   return (
-    <output
-      data-testid="save-status"
-      title={text}
-      className={`flex items-center gap-1.5 text-xs ${status === 'error' ? 'text-danger' : 'text-text-muted'}`}
-    >
-      <Icon aria-hidden="true" className={`h-4 w-4 ${status === 'saving' ? 'animate-spin' : ''}`} />
-      {status === 'error' && <span aria-hidden="true">Falha ao salvar</span>}
-      <span className="sr-only">{text}</span>
-    </output>
+    <div className="flex items-center gap-2">
+      <output data-testid="save-status" title={text} className={`flex items-center gap-1.5 text-xs ${SAVE_STATUS_COLOR[status]}`}>
+        <Icon aria-hidden="true" className={`h-4 w-4 ${status === 'saving' ? 'animate-spin' : ''}`} />
+        {short && <span aria-hidden="true">{short}</span>}
+        <span className="sr-only">{text}</span>
+      </output>
+      {status === 'error' && (
+        <Button variant="secondary" size="sm" icon={RotateCw} onClick={onRetry}>
+          Tentar de novo
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -244,14 +265,14 @@ function ProjectPage() {
         <div className="flex items-center justify-end gap-3">
           {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
           <span aria-hidden="true" className="h-6 w-px bg-line" />
-          <SaveStatus status={editor.saveStatus} />
+          <SaveStatus status={editor.saveStatus} onRetry={editor.save} />
           <DropdownMenu
             label="Configurações"
             trigger={<Settings aria-hidden="true" className="h-4 w-4" />}
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true, onSelect: () => {} },
+              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}
           />

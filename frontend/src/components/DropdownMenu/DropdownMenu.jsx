@@ -35,7 +35,7 @@ export function MenuItems({ items, onChoose }) {
 
 // Nota: menu suspenso acessível (botão com aria-haspopup/aria-expanded, itens "menuitem"). Fecha ao escolher um item,
 // com Esc (devolvendo o foco ao botão) ou com clique fora. Usado no menu da conta e nas configurações do editor.
-// items: { label, onSelect, icon?, hint? (ex.: atalho ou "Em breve"), disabled?, tone? }
+// items: { label, onSelect (dispensável em item desabilitado), icon?, hint? (ex.: atalho ou "Em breve"), disabled?, tone? }
 function DropdownMenu({ label, trigger, items, triggerClassName = '', align = 'right' }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);

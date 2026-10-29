@@ -49,11 +49,6 @@ const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
 // Quadros a esperar pela medição dos elementos antes de enquadrar mesmo assim (~0,5 s)
 const MAX_FIT_ATTEMPTS = 30;
 
-function handleDragOver(event) {
-  event.preventDefault();
-  event.dataTransfer.dropEffect = 'move';
-}
-
 // keyboardEnabled: desligado com um modal aberto — senão o Delete apagaria os selecionados por trás dele
 function DiagramWorkspace({
   level,
@@ -76,6 +71,7 @@ function DiagramWorkspace({
 }) {
   const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
   const dropAreaRef = useRef(null);
+  const paletteRef = useRef(null);
   const fittedLevelRef = useRef(null);
 
   // Nota: enquadra cada nível ao abri-lo, esperando (quadro a quadro, com limite) o React Flow medir os elementos
@@ -116,8 +112,20 @@ function DiagramWorkspace({
     onAddNode(type, { x: position.x - NODE_CENTER_OFFSET.x, y: position.y - NODE_CENTER_OFFSET.y });
   }
 
+  // A paleta flutua dentro da área de soltar: soltar de volta em cima dela é desistir do arraste, e não pode criar
+  // um elemento escondido debaixo dela
+  function isOverPalette(event) {
+    return Boolean(paletteRef.current?.contains(event.target));
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = isOverPalette(event) ? 'none' : 'move';
+  }
+
   function handleDrop(event) {
     event.preventDefault();
+    if (isOverPalette(event)) return;
     const type = event.dataTransfer.getData(ELEMENT_DRAG_TYPE);
     if (!isAllowedInLevel(level, type)) return;
     addAt(type, { x: event.clientX, y: event.clientY });
@@ -238,6 +246,7 @@ function DiagramWorkspace({
         <AnimatePresence initial={false} mode="wait">
           {paletteOpen ? (
             <motion.div
+              ref={paletteRef}
               key="palette"
               initial={{ x: -24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}

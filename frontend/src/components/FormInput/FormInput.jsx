@@ -76,9 +76,35 @@ function FormInput({
   maxLength,
   inputRef,
 }) {
+  // Contador: sempre no texto longo com limite; no campo de uma linha, só quando o texto já passa do limite (texto
+  // salvo antes dele). Nesse caso o maxLength impede digitar, então o aviso diz quanto apagar para voltar a editar.
+  const overLimit = Boolean(maxLength) && value.length > maxLength;
+  const showCount = Boolean(maxLength) && (multiline || overLimit);
+  const countId = `${id}-count`;
+
+  function withCount(field) {
+    if (!showCount) return field;
+
+    const excess = value.length - maxLength;
+    return (
+      <div className={`flex flex-col ${className}`}>
+        {field}
+        <p id={countId} className={`mt-1 self-end text-right text-xs ${overLimit ? 'text-danger' : 'text-text-muted'}`}>
+          {value.length}/{maxLength}
+          {overLimit &&
+            ` · Acima do limite: apague ${excess} ${excess === 1 ? 'caractere' : 'caracteres'} para continuar editando.`}
+        </p>
+      </div>
+    );
+  }
+
+  // Com o contador, a margem (className) vai para o bloco campo + contador, e não só para o campo
+  const fieldClassName = showCount ? '' : className;
+  const describedBy = showCount ? countId : undefined;
+
   function renderField() {
     if (multiline) {
-      return (
+      return withCount(
         <textarea
           id={id}
           value={value}
@@ -86,7 +112,8 @@ function FormInput({
           required={required}
           maxLength={maxLength}
           rows={4}
-          className={`resize-none py-2 ${FIELD_CLASSES} ${className}`}
+          aria-describedby={describedBy}
+          className={`resize-none py-2 ${FIELD_CLASSES} ${fieldClassName}`}
         />
       );
     }
@@ -105,7 +132,7 @@ function FormInput({
       );
     }
 
-    return (
+    return withCount(
       <input
         id={id}
         type={type}
@@ -114,7 +141,8 @@ function FormInput({
         required={required}
         maxLength={maxLength}
         ref={inputRef}
-        className={`h-11 ${FIELD_CLASSES} ${className}`}
+        aria-describedby={describedBy}
+        className={`h-11 ${FIELD_CLASSES} ${fieldClassName}`}
       />
     );
   }

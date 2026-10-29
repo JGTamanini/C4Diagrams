@@ -80,6 +80,69 @@ describe('DiagramService', () => {
       expect(diagramRepository.upsert).not.toHaveBeenCalled();
     });
 
+    it('deve recusar elemento fora do nível (RN08), sem gravar, explicando o motivo', async () => {
+      diagramRepository.findAllByProject.mockResolvedValue([]);
+      const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', data)).rejects.toThrow(
+        new InvalidDiagramDataError('"Controlador" (Componente) não pertence ao diagrama de Contexto.')
+      );
+      expect(diagramRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    it('deve gravar diagrama salvo antes da regra que já tinha a relação repetida (o erro não é novo)', async () => {
+      const legacy = {
+        nodes: [
+          { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+          { id: 's1', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+        ],
+        edges: [
+          { id: 'e1', source: 'p1', target: 's1', label: 'Usa' },
+          { id: 'e2', source: 's1', target: 'p1', label: 'Notifica' },
+        ],
+      };
+      diagramRepository.findAllByProject.mockResolvedValue([{ level: 'context', data: legacy }]);
+      diagramRepository.upsert.mockResolvedValue({ level: 'context', data: legacy });
+      const moved = { ...legacy, nodes: [{ ...legacy.nodes[0], position: { x: 50, y: 20 } }, legacy.nodes[1]] };
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', moved)).resolves.toBeTruthy();
+      expect(diagramRepository.upsert).toHaveBeenCalled();
+    });
+
+    it('deve tratar id fora do formato como projeto não encontrado antes de comparar com o salvo', async () => {
+      const data = { nodes: [{ id: 'k1', type: 'c4-component', position: { x: 0, y: 0 }, data: { label: 'Controlador' } }], edges: [] };
+
+      await expect(diagramService.saveDiagram('abc', userId, 'context', data)).rejects.toThrow(ProjectNotFoundError);
+      expect(diagramRepository.findAllByProject).not.toHaveBeenCalled();
+    });
+
+    it('deve recusar uma segunda relação no mesmo sentido, sem gravar', async () => {
+      diagramRepository.findAllByProject.mockResolvedValue([]);
+      const data = {
+        nodes: [
+          { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+          { id: 's1', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+        ],
+        edges: [
+          { id: 'e1', source: 'p1', target: 's1', label: 'Usa' },
+          { id: 'e2', source: 'p1', target: 's1', label: 'Compra em' },
+        ],
+      };
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', data)).rejects.toThrow(InvalidDiagramDataError);
+      expect(diagramRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    it('deve gravar mesmo com avisos (RN11: avisos não bloqueiam)', async () => {
+      const onlyExternal = {
+        nodes: [{ id: 'x1', type: 'c4-system-external', position: { x: 0, y: 0 }, data: { label: 'Gateway' } }],
+        edges: [],
+      };
+      diagramRepository.upsert.mockResolvedValue({ level: 'context', data: onlyExternal });
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', onlyExternal)).resolves.toBeTruthy();
+    });
+
     describe('canvas vazio (RN10)', () => {
       it('deve confirmar o acesso ao projeto, remover o nível e retornar null', async () => {
         projectService.getProject.mockResolvedValue({ id: projectId });
@@ -101,6 +164,56 @@ describe('DiagramService', () => {
         ).rejects.toThrow(ProjectNotFoundError);
         expect(diagramRepository.remove).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('validateDiagram (motor de validação C4 — RF17)', () => {
+    const containerData = {
+      nodes: [
+        { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Administrador', description: 'Gerencia' } },
+        { id: 'c1', type: 'c4-container', position: { x: 300, y: 0 }, data: { label: 'API', description: 'Regras', technology: 'Node.js' } },
+      ],
+      edges: [{ id: 'e1', source: 'p1', target: 'c1', label: 'Usa', technology: 'HTTPS' }],
+    };
+
+    it('deve validar o estado enviado comparando com os outros níveis salvos (e não com a versão salva do próprio nível)', async () => {
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findAllByProject.mockResolvedValue([
+        { level: 'context', data: { nodes: [{ id: 's1', type: 'c4-system', position: { x: 0, y: 0 }, data: { label: 'Loja', description: 'Vende' } }], edges: [] } },
+        { level: 'container', data: { nodes: [], edges: [] } },
+      ]);
+
+      const issues = await diagramService.validateDiagram(projectId, userId, 'container', containerData);
+
+      expect(projectService.getProject).toHaveBeenCalledWith(projectId, userId);
+      expect(issues).toEqual([
+        {
+          code: 'MISSING_IN_PARENT_LEVEL',
+          severity: 'warning',
+          nodeId: 'p1',
+          message: '"Administrador" (Pessoa) não aparece no diagrama de Contexto.',
+        },
+      ]);
+      expect(diagramRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    it('deve propagar o 404 do projeto sem ler os diagramas', async () => {
+      projectService.getProject.mockRejectedValue(new ProjectNotFoundError());
+
+      await expect(diagramService.validateDiagram(projectId, userId, 'container', containerData)).rejects.toThrow(
+        ProjectNotFoundError
+      );
+      expect(diagramRepository.findAllByProject).not.toHaveBeenCalled();
+    });
+
+    it('deve recusar nível inválido e documento malformado antes de consultar o projeto', async () => {
+      await expect(diagramService.validateDiagram(projectId, userId, 'code', containerData)).rejects.toThrow(
+        InvalidDiagramLevelError
+      );
+      await expect(diagramService.validateDiagram(projectId, userId, 'context', { nodes: 'x' })).rejects.toThrow(
+        InvalidDiagramDataError
+      );
+      expect(projectService.getProject).not.toHaveBeenCalled();
     });
   });
 });

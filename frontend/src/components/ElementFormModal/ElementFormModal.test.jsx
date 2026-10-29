@@ -69,11 +69,11 @@ describe('ElementFormModal (RF22 - versão mínima)', () => {
       expect(onSave).not.toHaveBeenCalled();
     });
 
-    it('deve respeitar os limites de tamanho aceitos pelo backend', () => {
+    it('deve limitar título e descrição ao que cabe no elemento e no modal (descrição em até 4 linhas)', () => {
       renderModal(containerTarget);
 
-      expect(screen.getByLabelText('Título')).toHaveAttribute('maxLength', '100');
-      expect(screen.getByLabelText('Descrição')).toHaveAttribute('maxLength', '1000');
+      expect(screen.getByLabelText('Título')).toHaveAttribute('maxLength', '60');
+      expect(screen.getByLabelText('Descrição')).toHaveAttribute('maxLength', '200');
       expect(screen.getByLabelText('Tecnologia')).toHaveAttribute('maxLength', '100');
     });
   });

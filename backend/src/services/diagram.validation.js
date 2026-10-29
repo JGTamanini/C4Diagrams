@@ -90,6 +90,7 @@ function normalizeEdge(rawEdge, nodeIds, seenIds) {
 }
 
 // Nota: valida só a estrutura do documento; a compatibilidade tipo × nível (RN08) é do motor de validação C4
+// (c4.validation.js), aplicado em seguida pelo diagram.service
 function normalizeDiagramData(data) {
   if (!Array.isArray(data?.nodes) || !Array.isArray(data?.edges)) {
     fail('O diagrama deve conter as listas "nodes" e "edges".');
