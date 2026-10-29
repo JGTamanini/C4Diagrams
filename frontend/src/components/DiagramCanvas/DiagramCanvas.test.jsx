@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import DiagramCanvas from './DiagramCanvas';
@@ -24,6 +24,10 @@ function renderCanvas(props = {}) {
     onEditNode: vi.fn(),
     onEditEdge: vi.fn(),
     onTogglePalette: vi.fn(),
+    onCopyNodes: vi.fn(),
+    onPaste: vi.fn(),
+    onRemoveNode: vi.fn(),
+    onRemoveSelected: vi.fn(),
   };
   render(
     <div style={{ width: 800, height: 600 }}>
@@ -71,6 +75,66 @@ describe('DiagramCanvas', () => {
 
     expect(screen.getByRole('button', { name: 'Banco de Dados' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
+  });
+
+  describe('menu de clique direito', () => {
+    async function openNodeMenu(label) {
+      fireEvent.contextMenu((await screen.findByText(label)).closest('.react-flow__node'), { clientX: 120, clientY: 80 });
+      return screen.getByRole('menu', { name: 'Ações do elemento' });
+    }
+
+    it('deve oferecer Copiar, Colar, Editar e Excluir no elemento, com Colar desabilitado sem nada copiado', async () => {
+      renderCanvas();
+
+      const menu = await openNodeMenu('Cliente');
+
+      const items = within(menu).getAllByRole('menuitem');
+      expect(items.map((item) => item.textContent)).toEqual(['CopiarCtrl+C', 'ColarCtrl+V', 'Editar', 'ExcluirDelete']);
+      expect(items[1]).toBeDisabled();
+    });
+
+    it('deve agir só sobre o elemento clicado quando ele não faz parte da seleção', async () => {
+      const user = userEvent.setup();
+      const handlers = renderCanvas();
+
+      await user.click(within(await openNodeMenu('Cliente')).getByRole('menuitem', { name: /Copiar/ }));
+      expect(handlers.onCopyNodes).toHaveBeenCalledWith(['n1']);
+
+      await user.click(within(await openNodeMenu('Cliente')).getByRole('menuitem', { name: 'Editar' }));
+      expect(handlers.onEditNode).toHaveBeenCalledWith('n1');
+
+      await user.click(within(await openNodeMenu('Cliente')).getByRole('menuitem', { name: /Excluir/ }));
+      expect(handlers.onRemoveNode).toHaveBeenCalledWith('n1');
+      expect(handlers.onRemoveSelected).not.toHaveBeenCalled();
+    });
+
+    it('deve agir sobre toda a seleção quando o elemento clicado está selecionado', async () => {
+      const user = userEvent.setup();
+      const selected = nodes.map((node) => ({ ...node, selected: true }));
+      const handlers = renderCanvas({ nodes: selected });
+
+      await user.click(within(await openNodeMenu('Cliente')).getByRole('menuitem', { name: /Copiar/ }));
+      expect(handlers.onCopyNodes).toHaveBeenCalledWith(['n1', 'n2']);
+
+      await user.click(within(await openNodeMenu('Cliente')).getByRole('menuitem', { name: /Excluir/ }));
+      expect(handlers.onRemoveSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve colar no ponto clicado do canvas, e fechar o menu com Esc', async () => {
+      const user = userEvent.setup();
+      const handlers = renderCanvas({ canPaste: true });
+      await screen.findByText('Cliente');
+
+      fireEvent.contextMenu(document.querySelector('.react-flow__pane'), { clientX: 300, clientY: 200 });
+      const menu = screen.getByRole('menu', { name: 'Ações do canvas' });
+      await user.click(within(menu).getByRole('menuitem', { name: /Colar/ }));
+
+      expect(handlers.onPaste).toHaveBeenCalledWith(expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+
+      fireEvent.contextMenu(document.querySelector('.react-flow__pane'), { clientX: 300, clientY: 200 });
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    });
   });
 
   describe('paleta sobre o canvas', () => {

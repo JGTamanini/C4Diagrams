@@ -9,14 +9,34 @@ import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({ level, nodes, keyboardEnabled, paletteOpen, onTogglePalette, onAddNode, onConnect, onEditNode, onEditEdge }) => (
+  default: ({
+    level,
+    nodes,
+    keyboardEnabled,
+    paletteOpen,
+    canPaste,
+    onTogglePalette,
+    onAddNode,
+    onConnect,
+    onEditNode,
+    onEditEdge,
+    onCopyNodes,
+    onPaste,
+    onRemoveNode,
+    onRemoveSelected,
+  }) => (
     <div
       data-testid="canvas"
       data-count={nodes.length}
       data-level={level}
       data-keyboard={String(keyboardEnabled)}
       data-palette={String(paletteOpen)}
+      data-can-paste={String(canPaste)}
     >
+      <button type="button" onClick={() => onCopyNodes(['n1'])}>mock-copy</button>
+      <button type="button" onClick={() => onPaste({ x: 1, y: 2 })}>mock-paste</button>
+      <button type="button" onClick={() => onRemoveNode('n1')}>mock-remove-node</button>
+      <button type="button" onClick={onRemoveSelected}>mock-remove-selected</button>
       <button type="button" onClick={onTogglePalette}>mock-toggle-palette</button>
       <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
       <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
@@ -44,6 +64,9 @@ const editor = {
   removeNode: vi.fn(),
   removeEdge: vi.fn(),
   removeSelected: vi.fn(),
+  copy: vi.fn(() => true),
+  paste: vi.fn(),
+  hasClipboard: false,
   hasSelection: false,
   undo: vi.fn(),
   redo: vi.fn(),
@@ -244,6 +267,7 @@ describe('ProjectPage (editor de diagramas)', () => {
       ['{Control>}y{/Control}', 'redo'],
       ['{Control>}{Shift>}z{/Shift}{/Control}', 'redo'],
       ['{Control>}s{/Control}', 'save'],
+      ['{Control>}c{/Control}', 'copy'],
       ['{Meta>}s{/Meta}', 'save'],
     ])('deve aceitar o atalho %s', async (keys, action) => {
       const user = userEvent.setup();
@@ -252,6 +276,38 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.keyboard(keys);
 
       expect(editor[action]).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve ligar o menu de clique direito do canvas a copiar, colar e excluir do editor', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ hasClipboard: true });
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-can-paste', 'true');
+
+      await user.click(screen.getByRole('button', { name: 'mock-copy' }));
+      await user.click(screen.getByRole('button', { name: 'mock-paste' }));
+      await user.click(screen.getByRole('button', { name: 'mock-remove-node' }));
+      await user.click(screen.getByRole('button', { name: 'mock-remove-selected' }));
+
+      expect(editor.copy).toHaveBeenCalledWith(['n1']);
+      expect(editor.paste).toHaveBeenCalledWith({ x: 1, y: 2 });
+      expect(editor.removeNode).toHaveBeenCalledWith('n1');
+      expect(editor.removeSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve colar com Ctrl+V só quando houver algo copiado', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ hasClipboard: false });
+      await user.keyboard('{Control>}v{/Control}');
+      expect(editor.paste).not.toHaveBeenCalled();
+    });
+
+    it('deve colar com Ctrl+V quando houver algo copiado', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ hasClipboard: true });
+
+      await user.keyboard('{Control>}v{/Control}');
+
+      expect(editor.paste).toHaveBeenCalledTimes(1);
     });
 
     it('não deve desfazer o diagrama enquanto o usuário digita num campo (o Ctrl+Z é do texto)', async () => {
@@ -331,7 +387,17 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('menuitem', { name: 'Atalhos' }));
       const dialog = screen.getByRole('dialog', { name: 'Atalhos do editor' });
 
-      for (const text of ['Desfazer', 'Refazer', 'Salvar', 'Excluir selecionados', 'Selecionar vários (caixa)', 'Somar à seleção']) {
+      for (const text of [
+        'Desfazer',
+        'Refazer',
+        'Salvar',
+        'Copiar selecionados',
+        'Colar',
+        'Excluir selecionados',
+        'Menu de ações',
+        'Selecionar vários (caixa)',
+        'Somar à seleção',
+      ]) {
         expect(within(dialog).getByText(text)).toBeInTheDocument();
       }
       expect(within(dialog).getByText('Shift + arrastar')).toBeInTheDocument();

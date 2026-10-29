@@ -10,10 +10,10 @@ function isTyping(target) {
 }
 
 // Nota: barra de ações do editor (wireframe 7, "Controle de Diagrama") — desfazer/refazer (RF23) e excluir
-// selecionados, com os atalhos de teclado usuais (Ctrl ou ⌘), incluindo Ctrl+S para salvar na hora. Com um modal aberto, os atalhos ficam desligados:
+// selecionados, com os atalhos de teclado usuais (Ctrl ou ⌘), incluindo Ctrl+S para salvar na hora e Ctrl+C/Ctrl+V. Com um modal aberto, os atalhos ficam desligados:
 // o diagrama por trás não pode mudar sem o usuário ver.
 function EditorToolbar({ editor, shortcutsEnabled = true }) {
-  const { undo, redo, save, removeSelected, canUndo, canRedo, hasSelection } = editor;
+  const { undo, redo, save, copy, paste, hasClipboard, removeSelected, canUndo, canRedo, hasSelection } = editor;
 
   useEffect(() => {
     if (!shortcutsEnabled) return undefined;
@@ -32,12 +32,18 @@ function EditorToolbar({ editor, shortcutsEnabled = true }) {
         // Sem o preventDefault, o navegador abriria "Salvar página como"
         event.preventDefault();
         save();
+      } else if (key === 'c') {
+        // Só toma o atalho quando há elementos para copiar: sem seleção, o Ctrl+C do navegador segue normal
+        if (copy()) event.preventDefault();
+      } else if (key === 'v' && hasClipboard) {
+        event.preventDefault();
+        paste();
       }
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, save, shortcutsEnabled]);
+  }, [undo, redo, save, copy, paste, hasClipboard, shortcutsEnabled]);
 
   // Histórico e exclusão em grupos separados: ações de natureza diferente, sem parecer uma coisa só
   return (

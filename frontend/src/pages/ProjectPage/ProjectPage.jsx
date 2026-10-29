@@ -111,6 +111,11 @@ function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePale
       keyboardEnabled={keyboardEnabled}
       paletteOpen={paletteOpen}
       onTogglePalette={onTogglePalette}
+      canPaste={editor.hasClipboard}
+      onCopyNodes={editor.copy}
+      onPaste={editor.paste}
+      onRemoveNode={editor.removeNode}
+      onRemoveSelected={editor.removeSelected}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}

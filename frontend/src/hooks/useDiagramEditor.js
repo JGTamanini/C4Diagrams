@@ -8,6 +8,8 @@ export const AUTOSAVE_DELAY_MS = 2000;
 
 // Passos guardados por nível para desfazer (RF23)
 const HISTORY_LIMIT = 50;
+// Deslocamento de cada colagem sem posição, para as cópias não ficarem por cima dos originais
+const PASTE_OFFSET = 40;
 
 const STRUCTURAL_CHANGES = new Set(['add', 'remove', 'replace']);
 
@@ -42,6 +44,9 @@ export function useDiagramEditor(projectId) {
   const inFlightSaveRef = useRef(null);
   const saveRequestedRef = useRef(false);
   const dragSnapshotRef = useRef(null);
+  const clipboardRef = useRef(null);
+  const pasteCountRef = useRef(0);
+  const [hasClipboard, setHasClipboard] = useState(false);
 
   useEffect(() => {
     diagramsRef.current = diagrams;
@@ -244,6 +249,71 @@ export function useDiagramEditor(projectId) {
     });
   }, [activeLevel, editActive]);
 
+  // Copiar e colar: a área de transferência fica na memória do editor (vale entre os níveis do projeto) e guarda
+  // os elementos e só as relações entre eles. ids: os indicados (menu de clique direito) ou, sem eles, a seleção.
+  const copy = useCallback(
+    (ids) => {
+      const { nodes, edges } = diagramsRef.current[activeLevel];
+      const chosen = new Set(ids ?? nodes.filter((node) => node.selected).map((node) => node.id));
+      if (chosen.size === 0) return false;
+
+      clipboardRef.current = {
+        nodes: nodes.filter((node) => chosen.has(node.id)).map(({ id, type, position, data }) => ({ id, type, position, data })),
+        edges: edges
+          .filter((edge) => chosen.has(edge.source) && chosen.has(edge.target))
+          .map(({ id, source, target, label, data }) => ({ id, source, target, label, data })),
+      };
+      pasteCountRef.current = 0;
+      setHasClipboard(true);
+      return true;
+    },
+    [activeLevel]
+  );
+
+  // Cola cópias com ids novos, selecionando só elas (um passo do histórico). Sem posição, desloca um pouco mais a
+  // cada colagem; com posição (clique direito no canvas), o canto do grupo vai para o ponto clicado. Em outro
+  // nível, só entram os tipos permitidos nele (RN08).
+  const paste = useCallback(
+    (position) => {
+      const clipboard = clipboardRef.current;
+      const nodes = clipboard?.nodes.filter((node) => isAllowedInLevel(activeLevel, node.type)) ?? [];
+      if (nodes.length === 0) return;
+
+      pasteCountRef.current += 1;
+      const offset = PASTE_OFFSET * pasteCountRef.current;
+      const shift = position
+        ? {
+            x: position.x - Math.min(...nodes.map((node) => node.position.x)),
+            y: position.y - Math.min(...nodes.map((node) => node.position.y)),
+          }
+        : { x: offset, y: offset };
+
+      const newIds = new Map(nodes.map((node) => [node.id, crypto.randomUUID()]));
+      const pastedNodes = nodes.map((node) => ({
+        ...node,
+        id: newIds.get(node.id),
+        position: { x: node.position.x + shift.x, y: node.position.y + shift.y },
+        data: { ...node.data },
+        selected: true,
+      }));
+      const pastedEdges = clipboard.edges
+        .filter((edge) => newIds.has(edge.source) && newIds.has(edge.target))
+        .map((edge) => ({
+          ...edge,
+          id: crypto.randomUUID(),
+          source: newIds.get(edge.source),
+          target: newIds.get(edge.target),
+          data: { ...edge.data },
+        }));
+
+      editActive((diagram) => ({
+        nodes: [...diagram.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), ...pastedNodes],
+        edges: [...diagram.edges.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)), ...pastedEdges],
+      }));
+    },
+    [activeLevel, editActive]
+  );
+
   // Desfazer e refazer (RF23): trocam o diagrama do nível ativo pelo passo guardado e marcam para salvar
   const travel = useCallback(
     (from) => {
@@ -294,6 +364,9 @@ export function useDiagramEditor(projectId) {
     removeNode,
     removeEdge,
     removeSelected,
+    copy,
+    paste,
+    hasClipboard,
     hasSelection:
       diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected),
     undo,

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { MousePointerClick, PanelLeftOpen } from 'lucide-react';
+import { ClipboardPaste, Copy, MousePointerClick, PanelLeftOpen, Pencil, Trash2 } from 'lucide-react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -14,6 +14,7 @@ import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPalette/ElementPalette';
 import IconButton from '../Button/IconButton';
+import ContextMenu from '../ContextMenu/ContextMenu';
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
@@ -60,7 +61,12 @@ function DiagramWorkspace({
   edges,
   keyboardEnabled = true,
   paletteOpen = true,
+  canPaste = false,
   onTogglePalette,
+  onCopyNodes,
+  onPaste,
+  onRemoveNode,
+  onRemoveSelected,
   onNodesChange,
   onEdgesChange,
   onConnect,
@@ -117,6 +123,44 @@ function DiagramWorkspace({
     addAt(type, { x: event.clientX, y: event.clientY });
   }
 
+  // Menu de clique direito: num elemento (age nele ou, se ele estiver selecionado, em toda a seleção) ou no fundo
+  // do canvas (colar no ponto clicado)
+  const [contextMenu, setContextMenu] = useState(null);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  function openContextMenu(event, node) {
+    event.preventDefault();
+    const point = { x: event.clientX, y: event.clientY };
+    setContextMenu({ ...point, flowPosition: screenToFlowPosition(point), node });
+  }
+
+  function contextMenuItems() {
+    const paste = {
+      label: 'Colar',
+      icon: ClipboardPaste,
+      hint: 'Ctrl+V',
+      disabled: !canPaste,
+      onSelect: () => onPaste(contextMenu.flowPosition),
+    };
+    const { node } = contextMenu;
+    if (!node) return [paste];
+
+    const selectedIds = nodes.filter((candidate) => candidate.selected).map((candidate) => candidate.id);
+    const actsOnSelection = selectedIds.includes(node.id);
+    return [
+      { label: 'Copiar', icon: Copy, hint: 'Ctrl+C', onSelect: () => onCopyNodes(actsOnSelection ? selectedIds : [node.id]) },
+      paste,
+      { label: 'Editar', icon: Pencil, onSelect: () => onEditNode(node.id) },
+      {
+        label: 'Excluir',
+        icon: Trash2,
+        hint: 'Delete',
+        tone: 'danger',
+        onSelect: () => (actsOnSelection ? onRemoveSelected() : onRemoveNode(node.id)),
+      },
+    ];
+  }
+
   // Clique na paleta: adiciona no centro da parte visível do canvas (descontando a paleta aberta por cima)
   function handlePaletteAdd(type) {
     const area = dropAreaRef.current.getBoundingClientRect();
@@ -147,6 +191,9 @@ function DiagramWorkspace({
           isValidConnection={(connection) => isValidRelationship(connection, edges)}
           onNodeDoubleClick={(_, node) => onEditNode(node.id)}
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
+          onNodeContextMenu={openContextMenu}
+          onPaneContextMenu={(event) => openContextMenu(event, null)}
+          onMoveStart={closeContextMenu}
           deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
           connectionLineComponent={FloatingConnectionLine}
           connectionRadius={36}
@@ -177,6 +224,15 @@ function DiagramWorkspace({
         )}
 
         <DiagramLegend nodes={nodes} edges={edges} />
+
+        {contextMenu && (
+          <ContextMenu
+            label={contextMenu.node ? 'Ações do elemento' : 'Ações do canvas'}
+            position={contextMenu}
+            items={contextMenuItems()}
+            onClose={closeContextMenu}
+          />
+        )}
 
         {/* Paleta recolhível: desliza para a esquerda ao ocultar e dá lugar a um botão discreto para reabri-la */}
         <AnimatePresence initial={false} mode="wait">
