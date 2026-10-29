@@ -14,6 +14,7 @@ const {
   MissingFieldError,
 } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
+const { IncorrectPasswordError, UnauthorizedError } = require('../../src/errors/auth.errors');
 
 describe('UserService', () => {
   const inputData = {
@@ -282,4 +283,40 @@ describe('resetPassword', () => {
     expect(userRepository.updatePassword).not.toHaveBeenCalled();
   });
 });
+
+  describe('deleteAccount (excluir a própria conta)', () => {
+    const userId = '8f14e45f-ceea-467a-9575-6f1c8e3b2a10';
+    const storedUser = { id: userId, email: 'joao@example.com', password_hash: 'hash-salvo' };
+
+    it('deve confirmar a senha atual e excluir a conta', async () => {
+      userRepository.findById.mockResolvedValue(storedUser);
+      bcrypt.compare.mockResolvedValue(true);
+      userRepository.remove.mockResolvedValue(true);
+
+      await userService.deleteAccount(userId, 'Senha@12345');
+
+      expect(bcrypt.compare).toHaveBeenCalledWith('Senha@12345', 'hash-salvo');
+      expect(userRepository.remove).toHaveBeenCalledWith(userId);
+    });
+
+    it('deve recusar senha incorreta sem excluir nada', async () => {
+      userRepository.findById.mockResolvedValue(storedUser);
+      bcrypt.compare.mockResolvedValue(false);
+
+      await expect(userService.deleteAccount(userId, 'errada')).rejects.toThrow(IncorrectPasswordError);
+      expect(userRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('deve exigir a senha', async () => {
+      await expect(userService.deleteAccount(userId, '')).rejects.toThrow(MissingFieldError);
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('deve tratar como não autenticado um token de conta que já não existe', async () => {
+      userRepository.findById.mockResolvedValue(undefined);
+
+      await expect(userService.deleteAccount(userId, 'Senha@12345')).rejects.toThrow(UnauthorizedError);
+      expect(userRepository.remove).not.toHaveBeenCalled();
+    });
+  });
 });

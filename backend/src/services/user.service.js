@@ -4,6 +4,7 @@ const userRepository = require('../repositories/user.repository');
 const emailService = require('./email.service');
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
+const { IncorrectPasswordError, UnauthorizedError } = require('../errors/auth.errors');
 
 const SALT_ROUNDS = 10;
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
@@ -117,4 +118,18 @@ async function resetPassword(token, newPassword) {
   await userRepository.updatePassword(user.id, passwordHash);
 }
 
-module.exports = { register, verifyEmail, resendVerificationEmail, requestPasswordReset, resetPassword };
+// Nota: excluir a conta é irreversível, então exige a senha atual mesmo com a sessão ativa (um token esquecido
+// num computador compartilhado não basta). Projetos e diagramas saem em cascata no banco.
+async function deleteAccount(userId, password) {
+  if (!password) throw new MissingFieldError('password');
+
+  const user = await userRepository.findById(userId);
+  if (!user) throw new UnauthorizedError('Sessão inválida ou expirada. Faça login novamente.');
+
+  const passwordMatches = await bcrypt.compare(password, user.password_hash);
+  if (!passwordMatches) throw new IncorrectPasswordError();
+
+  await userRepository.remove(userId);
+}
+
+module.exports = { register, verifyEmail, resendVerificationEmail, requestPasswordReset, resetPassword, deleteAccount };

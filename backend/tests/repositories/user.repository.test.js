@@ -312,4 +312,41 @@ describe('updatePassword', () => {
     expect(user.locked_until).toBeNull();
   });
 });
+
+  describe('findById', () => {
+    it('deve retornar o usuário com o hash da senha (para confirmar ações sensíveis)', async () => {
+      const created = await userRepository.create(testUser);
+
+      const user = await userRepository.findById(created.id);
+
+      expect(user).toMatchObject({ id: created.id, email: testUser.email, password_hash: testUser.passwordHash });
+    });
+
+    it('deve retornar undefined para id inexistente', async () => {
+      expect(await userRepository.findById('00000000-0000-4000-8000-000000000000')).toBeUndefined();
+    });
+  });
+
+  describe('remove (excluir conta)', () => {
+    it('deve excluir o usuário e, em cascata, os projetos e diagramas dele (RN05)', async () => {
+      const created = await userRepository.create(testUser);
+      const project = await pool.query(`INSERT INTO projects (user_id, name) VALUES ($1, 'Loja') RETURNING id`, [created.id]);
+      const projectId = project.rows[0].id;
+      await pool.query(`INSERT INTO diagrams (project_id, level, data) VALUES ($1, 'context', $2)`, [
+        projectId,
+        { nodes: [], edges: [] },
+      ]);
+
+      const removed = await userRepository.remove(created.id);
+
+      expect(removed).toBe(true);
+      expect((await pool.query('SELECT 1 FROM users WHERE id = $1', [created.id])).rowCount).toBe(0);
+      expect((await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId])).rowCount).toBe(0);
+      expect((await pool.query('SELECT 1 FROM diagrams WHERE project_id = $1', [projectId])).rowCount).toBe(0);
+    });
+
+    it('deve retornar false quando o usuário não existir', async () => {
+      expect(await userRepository.remove('00000000-0000-4000-8000-000000000000')).toBe(false);
+    });
+  });
 });

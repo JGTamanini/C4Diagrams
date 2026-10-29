@@ -1,5 +1,10 @@
 const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = require('../errors/user.errors');
-const { InvalidCredentialsError, AccountLockedError, UnauthorizedError } = require('../errors/auth.errors');
+const {
+  InvalidCredentialsError,
+  AccountLockedError,
+  UnauthorizedError,
+  IncorrectPasswordError,
+} = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
@@ -24,6 +29,10 @@ function errorHandler(err, req, res, next) {
 
   if (err instanceof InvalidCredentialsError) {
     return res.status(401).json({ message: err.message });
+  }
+
+  if (err instanceof IncorrectPasswordError) {
+    return res.status(403).json({ message: err.message });
   }
 
   if (err instanceof UnauthorizedError) {

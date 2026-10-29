@@ -155,9 +155,32 @@ async function updatePassword(userId, passwordHash) {
   await pool.query(query, [userId, passwordHash]);
 }
 
+// Nota: usado para confirmar ações sensíveis com a senha atual (ex.: excluir a conta)
+async function findById(userId) {
+  const query = `
+    SELECT id, name, email, password_hash
+    FROM users
+    WHERE id = $1
+  `;
+
+  const result = await pool.query(query, [userId]);
+
+  return result.rows[0];
+}
+
+// Nota: projetos e diagramas saem junto, pelo ON DELETE CASCADE das chaves estrangeiras (RN05) — a conta é apagada
+// de verdade, sem exclusão lógica (direito de eliminação dos dados, LGPD — RFC 6.4)
+async function remove(userId) {
+  const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+  return result.rowCount > 0;
+}
+
 module.exports = {
   create,
   findByEmail,
+  findById,
+  remove,
   incrementFailedAttempts,
   resetFailedAttempts,
   lockAccount,
