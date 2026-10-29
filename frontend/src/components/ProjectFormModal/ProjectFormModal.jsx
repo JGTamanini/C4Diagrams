@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import Modal from '../Modal/Modal';
 import FormInput from '../FormInput/FormInput';
 import Button from '../Button/Button';
+import { PROJECT_NAME_MAX_LENGTH, PROJECT_DESCRIPTION_MAX_LENGTH } from '../../constants/projectLimits';
 
-const NAME_MAX_LENGTH = 255;
 
 // Nota: o mesmo modal atende criação (wireframe 6) e edição (RF05), conforme nota do RFC §4.2.4
 function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose }) {
@@ -45,7 +45,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
           label="Nome do projeto"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          maxLength={NAME_MAX_LENGTH}
+          maxLength={PROJECT_NAME_MAX_LENGTH}
           inputRef={nameInputRef}
           className="mb-4"
         />
@@ -55,6 +55,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           multiline
+          maxLength={PROJECT_DESCRIPTION_MAX_LENGTH}
           required={false}
           className="mb-4"
         />
