@@ -96,6 +96,8 @@ describe('Dashboard', () => {
       renderDashboard();
 
       expect(await screen.findByText('Você ainda não tem projetos criados.')).toBeInTheDocument();
+      // Ocupa a largura toda do conteúdo e o resto da altura (preenche em vez de somar: sem rolagem na página vazia)
+      expect(screen.getByTestId('empty-state')).toHaveClass('w-full', 'flex-1');
       await user.click(screen.getByRole('button', { name: 'Criar meu primeiro projeto' }));
       expect(screen.getByRole('dialog', { name: 'Novo projeto' })).toBeInTheDocument();
     });

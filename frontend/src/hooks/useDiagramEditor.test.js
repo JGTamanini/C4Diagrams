@@ -313,11 +313,22 @@ describe('useDiagramEditor', () => {
     it('deve criar a conexão com o rótulo padrão "Usa"', async () => {
       const { result } = await renderLoadedEditor();
 
+      act(() => result.current.removeEdge('e1'));
       act(() => result.current.connect({ source: 'n2', target: 'n1', sourceHandle: null, targetHandle: null }));
 
-      expect(result.current.edges[1]).toMatchObject({ source: 'n2', target: 'n1', label: 'Usa', data: {} });
-      expect(result.current.edges[1].id).not.toBe('e1');
+      expect(result.current.edges).toHaveLength(1);
+      expect(result.current.edges[0]).toMatchObject({ source: 'n2', target: 'n1', label: 'Usa', data: {} });
+      expect(result.current.edges[0].id).not.toBe('e1');
       expect(result.current.saveStatus).toBe('pending');
+    });
+
+    it('não deve criar a relação de volta entre o mesmo par (sem "via dupla")', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.connect({ source: 'n2', target: 'n1' }));
+
+      expect(result.current.edges).toHaveLength(1);
+      expect(result.current.saveStatus).toBe('saved');
     });
 
     it('não deve criar uma segunda relação no mesmo sentido entre o mesmo par', async () => {

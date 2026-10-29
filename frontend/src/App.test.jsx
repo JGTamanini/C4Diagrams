@@ -46,7 +46,7 @@ describe('App - rotas de projetos', () => {
 
     renderAt('/projetos/p1');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Diagrama de Contexto — Loja Online' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Loja Online' })).toBeInTheDocument();
   });
 });
 

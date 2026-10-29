@@ -50,11 +50,11 @@ describe('notação C4', () => {
     expect(isValidRelationship({ source: 'n1', target: 'n1' })).toBe(false);
   });
 
-  it('deve aceitar uma relação por sentido entre o mesmo par (o propósito vai no rótulo)', () => {
+  it('deve aceitar uma só relação entre o mesmo par, em qualquer sentido (sem "via dupla")', () => {
     const edges = [{ id: 'e1', source: 'n1', target: 'n2' }];
 
     expect(isValidRelationship({ source: 'n1', target: 'n2' }, edges)).toBe(false);
-    expect(isValidRelationship({ source: 'n2', target: 'n1' }, edges)).toBe(true);
+    expect(isValidRelationship({ source: 'n2', target: 'n1' }, edges)).toBe(false);
     expect(isValidRelationship({ source: 'n1', target: 'n3' }, edges)).toBe(true);
   });
 

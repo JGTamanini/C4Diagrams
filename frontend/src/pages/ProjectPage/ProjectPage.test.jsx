@@ -74,13 +74,13 @@ describe('ProjectPage (editor de diagramas)', () => {
   });
 
   describe('estrutura (wireframe 7)', () => {
-    it('deve exibir o nome do projeto, o título do diagrama do nível e o canvas com os elementos', async () => {
+    it('deve exibir o nome do projeto como título e o canvas com os elementos', async () => {
       getProject.mockResolvedValue({ id: 'p1', name: 'Loja Online', description: null });
 
       renderAt('/projetos/p1');
 
       expect(screen.getByRole('status')).toHaveTextContent('Carregando projeto...');
-      expect(await screen.findByRole('heading', { level: 1, name: 'Diagrama de Contexto — Loja Online' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { level: 1, name: 'Loja Online' })).toBeInTheDocument();
       expect(getProject).toHaveBeenCalledWith('p1');
       expect(useDiagramEditor).toHaveBeenCalledWith('p1');
       // O nome do projeto aparece só no título (não repetido na barra superior)
@@ -89,10 +89,15 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-count', '2');
     });
 
-    it('deve atualizar o título conforme o nível ativo', async () => {
-      await renderLoaded({ activeLevel: 'component' });
+    it('deve mostrar o nome inteiro do projeto ao passar o mouse, já que nomes longos são cortados com reticências', async () => {
+      const longName = 'Plataforma de Gestão de Pedidos e Logística Integrada da Rede de Lojas';
+      mockEditor();
+      getProject.mockResolvedValue({ id: 'p1', name: longName, description: null });
+      renderAt('/projetos/p1');
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Diagrama de Componentes — Loja Online' })).toBeInTheDocument();
+      const heading = await screen.findByRole('heading', { level: 1, name: longName });
+      expect(heading).toHaveAttribute('title', longName);
+      expect(heading).toHaveClass('truncate');
     });
   });
 
@@ -218,6 +223,8 @@ describe('ProjectPage (editor de diagramas)', () => {
       ['{Meta>}z{/Meta}', 'undo'],
       ['{Control>}y{/Control}', 'redo'],
       ['{Control>}{Shift>}z{/Shift}{/Control}', 'redo'],
+      ['{Control>}s{/Control}', 'save'],
+      ['{Meta>}s{/Meta}', 'save'],
     ])('deve aceitar o atalho %s', async (keys, action) => {
       const user = userEvent.setup();
       await renderLoaded({ canUndo: true, canRedo: true });

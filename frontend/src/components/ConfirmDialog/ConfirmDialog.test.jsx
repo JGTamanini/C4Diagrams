@@ -19,7 +19,18 @@ function renderDialog(props = {}) {
   return { onConfirm, onCancel };
 }
 
+const LONG_NAME = 'asdasaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
 describe('ConfirmDialog', () => {
+  it('deve quebrar nomes longos sem espaço na mensagem e cortar o título longo, sem rolagem lateral', () => {
+    renderDialog({ title: `Excluir ${LONG_NAME}`, message: `O projeto "${LONG_NAME}" será excluído.` });
+
+    expect(screen.getByText(`O projeto "${LONG_NAME}" será excluído.`)).toHaveClass('[overflow-wrap:anywhere]');
+    const title = screen.getByRole('heading', { name: `Excluir ${LONG_NAME}` });
+    expect(title).toHaveClass('truncate');
+    expect(title).toHaveAttribute('title', `Excluir ${LONG_NAME}`);
+  });
+
   it('deve exibir título e mensagem como alertdialog, com foco em Cancelar', () => {
     renderDialog();
 

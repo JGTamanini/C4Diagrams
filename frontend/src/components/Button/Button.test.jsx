@@ -84,4 +84,9 @@ describe('buttonClasses', () => {
     expect(buttonClasses({ variant: 'danger-ghost' })).toContain('text-danger');
     expect(buttonClasses({ variant: 'danger-ghost' })).not.toContain('text-text-secondary');
   });
+
+  it('deve ter variante destrutiva com borda, para alinhar com botões secundários ao lado', () => {
+    expect(buttonClasses({ variant: 'danger-outline' })).toContain('text-danger');
+    expect(buttonClasses({ variant: 'danger-outline' })).toContain('border-danger');
+  });
 });

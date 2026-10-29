@@ -47,7 +47,7 @@ describe('AppHeader', () => {
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
   });
 
-  it('deve encerrar a sessão e ir para o login ao clicar em Sair', async () => {
+  it('deve encerrar a sessão e voltar para a página inicial ao clicar em Sair', async () => {
     const user = userEvent.setup();
     localStorage.setItem('token', 'header.payload.signature');
     localStorage.setItem('user', JSON.stringify({ name: 'João', email: 'joao@example.com' }));
@@ -57,6 +57,6 @@ describe('AppHeader', () => {
 
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('user')).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 });

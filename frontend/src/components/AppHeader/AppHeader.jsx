@@ -17,7 +17,7 @@ function AppHeader() {
 
   function handleLogout() {
     clearSession();
-    void navigate('/login', { replace: true });
+    void navigate('/', { replace: true });
   }
 
   return (

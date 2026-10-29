@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DiagramLegend from './DiagramLegend';
 
@@ -30,15 +30,27 @@ describe('DiagramLegend', () => {
     expect(screen.getByText('Relacionamento (rótulo [tecnologia])')).toBeInTheDocument();
   });
 
-  it('deve começar aberta e poder ser recolhida, para não cobrir elementos do diagrama', async () => {
+  it('deve começar aberta e poder ser recolhida e reaberta pelo botão, para não cobrir elementos do diagrama', async () => {
     const user = userEvent.setup();
     render(<DiagramLegend nodes={[node('a', 'c4-person')]} edges={[]} />);
-    const details = screen.getByRole('region', { name: 'Legenda' }).querySelector('details');
-    expect(details).toHaveAttribute('open');
+    const toggle = screen.getByRole('button', { name: 'Legenda' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('list')).toBeInTheDocument();
 
-    await user.click(screen.getByText('Legenda'));
+    await user.click(toggle);
 
-    expect(details).not.toHaveAttribute('open');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => expect(screen.queryByRole('list')).not.toBeInTheDocument());
+
+    await user.click(toggle);
+    expect(screen.getByRole('list')).toBeInTheDocument();
+  });
+
+  it('deve ter largura fixa e itens em uma linha só, para o botão não mudar de tamanho ao recolher', () => {
+    render(<DiagramLegend nodes={[node('a', 'c4-system')]} edges={[{ id: 'e1' }]} />);
+
+    expect(screen.getByRole('region', { name: 'Legenda' })).toHaveClass('w-72');
+    expect(screen.getByRole('listitem')).toHaveClass('whitespace-nowrap');
   });
 
   it('não deve aparecer em um diagrama vazio', () => {

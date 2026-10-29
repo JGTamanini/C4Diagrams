@@ -85,7 +85,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
 
   return (
     <Modal title={project.name} onClose={onClose} closable size="lg">
-      <div className="grid gap-6 md:grid-cols-[1.35fr_1fr]">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-2">
           <PreviewArea preview={preview} />
           <p className="text-xs text-text-muted">Prévia do diagrama de Contexto</p>
@@ -123,7 +123,7 @@ function ProjectDetailsModal({ project, onSave, onDelete, onClose }) {
               <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
             <div className="flex items-center justify-between gap-2">
-              <Button variant="danger-ghost" size="sm" icon={Trash2} onClick={() => onDelete(project)} className="-ml-3">
+              <Button variant="danger-outline" size="sm" icon={Trash2} onClick={() => onDelete(project)}>
                 Excluir projeto
               </Button>
               <Button type="submit" variant="secondary" size="sm" icon={Save} disabled={!changed} loading={saving}>
