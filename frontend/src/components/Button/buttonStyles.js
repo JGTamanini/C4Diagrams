@@ -19,6 +19,9 @@ const VARIANTS = {
   danger: 'bg-danger text-white hover:bg-danger-hover hover:shadow-[0_8px_24px_-8px_rgb(242_85_85/0.5)]',
   // Ação destrutiva discreta (ex.: "Excluir" dentro de um modal): só o texto em vermelho, fundo ao passar o mouse
   'danger-ghost': 'text-danger hover:bg-danger/10 hover:text-danger-hover',
+  // Mesma ação destrutiva, com borda: ao lado de um botão secundário, os dois ficam com o mesmo contorno
+  'danger-outline':
+    'border border-danger/40 text-danger hover:border-danger/70 hover:bg-danger/10 hover:text-danger-hover',
 };
 
 const SIZES = {

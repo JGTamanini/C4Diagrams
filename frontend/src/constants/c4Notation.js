@@ -41,11 +41,13 @@ export const DEFAULT_RELATIONSHIP_LABEL = 'Usa';
 // O C4-PlantUML usa cinza-escuro sobre fundo branco; no canvas escuro, o equivalente legível é um tom quase branco
 export const RELATIONSHIP_COLOR = '#E6EDF3';
 
-// Uma conexão não liga um elemento a ele mesmo (mesma regra do backend) e só existe uma por sentido entre o mesmo
-// par — se houver mais de um propósito, ele vai no rótulo. A → B e B → A continuam possíveis.
+// Uma conexão não liga um elemento a ele mesmo e só existe uma entre o mesmo par, em qualquer sentido (mesmas
+// regras do backend): sem "via dupla" A → B e B → A — se houver mais de um propósito, ele vai no rótulo
 export function isValidRelationship({ source, target }, edges = []) {
   if (source === target) return false;
-  return !edges.some((edge) => edge.source === source && edge.target === target);
+  return !edges.some(
+    (edge) => (edge.source === source && edge.target === target) || (edge.source === target && edge.target === source)
+  );
 }
 
 // Mesmos limites validados pelo backend

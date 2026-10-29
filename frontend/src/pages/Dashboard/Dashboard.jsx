@@ -52,7 +52,10 @@ function LoadingCards() {
 
 function EmptyState({ onCreate }) {
   return (
-    <div className="group mx-auto mt-4 flex max-w-xl flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-canvas/40 px-8 py-14 text-center transition-[border-color,background-color] duration-300 hover:border-accent-text/40 hover:bg-surface-raised">
+    <div
+      data-testid="empty-state"
+      className="group flex w-full flex-1 flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-line bg-canvas/40 px-8 py-10 text-center transition-[border-color,background-color] duration-300 hover:border-accent-text/40 hover:bg-surface-raised"
+    >
       <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent/12 text-accent-text transition-transform duration-300 group-hover:scale-105">
         <FolderPlus aria-hidden="true" className="h-6 w-6" />
       </span>
@@ -144,8 +147,9 @@ function Dashboard() {
       </div>
 
       {/* Painel de conteúdo em faixa própria: toda a largura e o resto da altura da página */}
-      <main className="flex-1 border-t border-line bg-surface">
-        <div className="mx-auto max-w-7xl px-6 pt-8 pb-14">
+      {/* flex: o estado vazio preenche a altura que sobra, em vez de empurrar a página para baixo */}
+      <main className="flex flex-1 flex-col border-t border-line bg-surface">
+        <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 pt-8 pb-10">
           <div className="mb-8 flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
             <Button icon={Plus} onClick={openCreate}>

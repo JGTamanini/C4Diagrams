@@ -86,7 +86,7 @@ function ElementFormModal({ target, onSave, onDelete, onClose }) {
         )}
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <Button variant="danger-ghost" icon={Trash2} onClick={onDelete} className="-ml-3">
+          <Button variant="danger-outline" icon={Trash2} onClick={onDelete}>
             Excluir
           </Button>
           <div className="flex gap-3">

@@ -22,7 +22,8 @@ function ConfirmDialog({ title, message, confirmLabel, onConfirm, onCancel }) {
 
   return (
     <Modal title={title} role="alertdialog" onClose={onCancel}>
-      <p className="mb-6 text-sm text-text-secondary">{message}</p>
+      {/* overflow-wrap: nomes longos sem espaço quebram em vez de abrir rolagem lateral */}
+      <p className="mb-6 text-sm text-text-secondary [overflow-wrap:anywhere]">{message}</p>
 
       <div className="flex justify-end gap-3">
         <Button variant="secondary" onClick={onCancel} buttonRef={cancelButtonRef}>

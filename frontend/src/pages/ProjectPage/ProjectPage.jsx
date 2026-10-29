@@ -146,8 +146,6 @@ function ProjectPage() {
     );
   }
 
-  const activeLevel = LEVELS.find((level) => level.id === editor.activeLevel);
-
   return (
     <div className="flex h-screen flex-col bg-canvas font-sans">
       {/* Moldura (barras, paleta, abas) num tom acima do canvas, que é a área mais escura: seções bem separadas */}
@@ -163,8 +161,9 @@ function ProjectPage() {
 
       <div className="flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-2 shadow-[0_6px_16px_-10px_rgb(0_0_0/0.8)]">
         <div className="flex min-w-0 items-center gap-4">
-          <h1 className="truncate text-base font-semibold text-text-primary">
-            {activeLevel.title} — {project.name}
+          {/* Só o nome do projeto: o nível ativo já aparece nas abas. Nome longo é cortado (o completo fica no title) */}
+          <h1 title={project.name} className="max-w-[28rem] truncate text-base font-semibold text-text-primary">
+            {project.name}
           </h1>
           {editor.loadStatus === 'ready' && <EditorToolbar editor={editor} shortcutsEnabled={!modalOpen} />}
         </div>

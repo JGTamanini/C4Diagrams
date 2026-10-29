@@ -40,7 +40,12 @@ function Modal({ title, role = 'dialog', onClose, closable = false, size = 'md',
         transition={{ duration: 0.22, ease: EASE_OUT_SOFT }}
       >
         <div className="mb-6 flex items-start justify-between gap-4">
-          <h2 id={titleId} className="text-xl font-semibold text-text-primary">
+          {/* Título longo (ex.: nome de projeto sem espaços) é cortado com reticências; o completo fica no title */}
+          <h2
+            id={titleId}
+            title={typeof title === 'string' ? title : undefined}
+            className="min-w-0 truncate text-xl font-semibold text-text-primary"
+          >
             {title}
           </h2>
           {closable && <IconButton icon={X} label="Fechar" onClick={onClose} className="-mr-2 -mt-1" />}

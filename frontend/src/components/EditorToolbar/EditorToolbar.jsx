@@ -10,10 +10,10 @@ function isTyping(target) {
 }
 
 // Nota: barra de ações do editor (wireframe 7, "Controle de Diagrama") — desfazer/refazer (RF23) e excluir
-// selecionados, com os atalhos de teclado usuais (Ctrl ou ⌘). Com um modal aberto, os atalhos ficam desligados:
+// selecionados, com os atalhos de teclado usuais (Ctrl ou ⌘), incluindo Ctrl+S para salvar na hora. Com um modal aberto, os atalhos ficam desligados:
 // o diagrama por trás não pode mudar sem o usuário ver.
 function EditorToolbar({ editor, shortcutsEnabled = true }) {
-  const { undo, redo, removeSelected, canUndo, canRedo, hasSelection } = editor;
+  const { undo, redo, save, removeSelected, canUndo, canRedo, hasSelection } = editor;
 
   useEffect(() => {
     if (!shortcutsEnabled) return undefined;
@@ -28,12 +28,16 @@ function EditorToolbar({ editor, shortcutsEnabled = true }) {
       } else if (key === 'y' || (key === 'z' && event.shiftKey)) {
         event.preventDefault();
         redo();
+      } else if (key === 's') {
+        // Sem o preventDefault, o navegador abriria "Salvar página como"
+        event.preventDefault();
+        save();
       }
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, shortcutsEnabled]);
+  }, [undo, redo, save, shortcutsEnabled]);
 
   // Histórico e exclusão em grupos separados: ações de natureza diferente, sem parecer uma coisa só
   return (
