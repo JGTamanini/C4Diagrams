@@ -104,6 +104,18 @@ describe('DiagramCanvas', () => {
       expect(onAddNode).toHaveBeenCalledWith('c4-system-external', { x: expect.any(Number), y: expect.any(Number) });
     });
 
+    it('não deve criar elemento escondido quando o arraste for solto de volta em cima da paleta', () => {
+      const { onAddNode } = renderCanvas();
+      const palette = screen.getByRole('complementary', { name: 'Elementos' });
+      const dataTransfer = { getData: () => 'c4-person', dropEffect: 'move' };
+
+      fireEvent.dragOver(palette, { dataTransfer });
+      fireEvent.drop(palette, { clientX: 60, clientY: 80, dataTransfer });
+
+      expect(dataTransfer.dropEffect).toBe('none');
+      expect(onAddNode).not.toHaveBeenCalled();
+    });
+
     it('deve ignorar o que for solto e não for um elemento do nível (RN08)', () => {
       const { onAddNode } = renderCanvas();
 

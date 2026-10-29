@@ -295,11 +295,32 @@ describe('ProjectPage (editor de diagramas)', () => {
       ['saved', 'Todas as alterações salvas'],
       ['pending', 'Alterações não salvas'],
       ['saving', 'Salvando…'],
-      ['error', 'Falha ao salvar. Suas alterações continuam aqui — use Salvar (Ctrl+S) para tentar de novo.'],
+      ['error', 'Falha ao salvar. Suas alterações continuam aqui — use "Tentar de novo" ou Ctrl+S.'],
     ])('deve exibir o estado %s', async (saveStatus, text) => {
       await renderLoaded({ saveStatus });
 
       expect(screen.getByTestId('save-status')).toHaveTextContent(text);
+    });
+
+    it('deve mostrar "Não salvo" em texto (não só o ícone) enquanto houver alteração pendente', async () => {
+      await renderLoaded({ saveStatus: 'pending' });
+
+      expect(within(screen.getByTestId('save-status')).getByText('Não salvo')).toBeInTheDocument();
+    });
+
+    it('deve oferecer "Tentar de novo" ao lado do aviso quando o salvamento falhar', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ saveStatus: 'error' });
+
+      await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+
+      expect(editor.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('não deve mostrar "Tentar de novo" fora da falha', async () => {
+      await renderLoaded({ saveStatus: 'saved' });
+
+      expect(screen.queryByRole('button', { name: 'Tentar de novo' })).not.toBeInTheDocument();
     });
 
     it('deve salvar na hora pelo menu de configurações', async () => {
