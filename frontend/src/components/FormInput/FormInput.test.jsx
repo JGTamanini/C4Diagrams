@@ -14,6 +14,15 @@ function DescriptionField() {
 }
 
 describe('FormInput', () => {
+  it('não deve mostrar contador no campo de texto longo sem limite', () => {
+    render(<FormInput id="notes" label="Notas" multiline value="Loja" onChange={() => {}} className="mb-4" />);
+
+    const field = screen.getByLabelText('Notas');
+    expect(field).not.toHaveAttribute('aria-describedby');
+    expect(field).toHaveClass('mb-4');
+    expect(screen.queryByText(/\/\d+$/)).not.toBeInTheDocument();
+  });
+
   it('deve mostrar quantos caracteres faltam no campo de texto longo com limite', async () => {
     const user = userEvent.setup();
     render(<DescriptionField />);
