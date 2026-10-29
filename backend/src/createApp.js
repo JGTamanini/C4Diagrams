@@ -6,6 +6,7 @@ const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const diagramRoutes = require('./routes/diagramRoutes');
+const userRoutes = require('./routes/userRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 // Arquivos gerados pelo Vite com hash no nome: o conteúdo nunca muda, então podem ficar em cache por um ano
@@ -45,6 +46,7 @@ function createApp({ staticDir, corsOrigin } = {}) {
 
   app.use('/api', healthRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/users', userRoutes);
   app.use('/api/projects/:projectId/diagrams', diagramRoutes);
   app.use('/api/projects', projectRoutes);
   app.use('/api', (req, res) => res.status(404).json({ message: 'Rota não encontrada.' }));

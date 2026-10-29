@@ -14,6 +14,7 @@ const {
   MissingFieldError,
 } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
+const { IncorrectPasswordError, UnauthorizedError, AccountLockedError } = require('../../src/errors/auth.errors');
 
 describe('UserService', () => {
   const inputData = {
@@ -282,4 +283,71 @@ describe('resetPassword', () => {
     expect(userRepository.updatePassword).not.toHaveBeenCalled();
   });
 });
+
+  describe('deleteAccount (excluir a própria conta)', () => {
+    const userId = '8f14e45f-ceea-467a-9575-6f1c8e3b2a10';
+    const storedUser = {
+      id: userId,
+      email: 'joao@example.com',
+      password_hash: 'hash-salvo',
+      failed_login_attempts: 0,
+      locked_until: null,
+    };
+
+    it('deve confirmar a senha atual e excluir a conta', async () => {
+      userRepository.findById.mockResolvedValue(storedUser);
+      bcrypt.compare.mockResolvedValue(true);
+      userRepository.remove.mockResolvedValue(true);
+
+      await userService.deleteAccount(userId, 'Senha@12345');
+
+      expect(bcrypt.compare).toHaveBeenCalledWith('Senha@12345', 'hash-salvo');
+      expect(userRepository.remove).toHaveBeenCalledWith(userId);
+    });
+
+    it('deve recusar senha incorreta sem excluir nada, contando a tentativa errada (mesmo contador do login)', async () => {
+      userRepository.findById.mockResolvedValue(storedUser);
+      bcrypt.compare.mockResolvedValue(false);
+      userRepository.incrementFailedAttempts.mockResolvedValue(3);
+
+      await expect(userService.deleteAccount(userId, 'errada')).rejects.toThrow(IncorrectPasswordError);
+      expect(userRepository.incrementFailedAttempts).toHaveBeenCalledWith(userId);
+      expect(userRepository.lockAccount).not.toHaveBeenCalled();
+      expect(userRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('deve bloquear a conta na 10ª tentativa errada, como no login', async () => {
+      userRepository.findById.mockResolvedValue(storedUser);
+      bcrypt.compare.mockResolvedValue(false);
+      userRepository.incrementFailedAttempts.mockResolvedValue(10);
+
+      await expect(userService.deleteAccount(userId, 'errada')).rejects.toThrow(IncorrectPasswordError);
+      expect(userRepository.lockAccount).toHaveBeenCalledWith(userId, expect.any(Date));
+    });
+
+    it('deve recusar sem conferir a senha enquanto a conta estiver bloqueada', async () => {
+      userRepository.findById.mockResolvedValue({ ...storedUser, locked_until: new Date(Date.now() + 3 * 60 * 1000) });
+
+      await expect(userService.deleteAccount(userId, 'Senha@12345')).rejects.toThrow(AccountLockedError);
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(userRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it.each([123, {}, ['Senha@12345']])('deve tratar senha que não é texto (%p) como ausente', async (password) => {
+      await expect(userService.deleteAccount(userId, password)).rejects.toThrow(MissingFieldError);
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('deve exigir a senha', async () => {
+      await expect(userService.deleteAccount(userId, '')).rejects.toThrow(MissingFieldError);
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('deve tratar como não autenticado um token de conta que já não existe', async () => {
+      userRepository.findById.mockResolvedValue(undefined);
+
+      await expect(userService.deleteAccount(userId, 'Senha@12345')).rejects.toThrow(UnauthorizedError);
+      expect(userRepository.remove).not.toHaveBeenCalled();
+    });
+  });
 });
