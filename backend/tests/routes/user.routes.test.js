@@ -60,6 +60,24 @@ describe('Rotas de usuário /api/users', () => {
       expect((await pool.query('SELECT 1 FROM users WHERE id = $1', [user.id])).rowCount).toBe(1);
     });
 
+    it('deve responder 400 (e não 500) quando a senha não for texto', async () => {
+      const response = await request(app).delete('/api/users/me').set('Authorization', auth).send({ password: 123 });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('deve bloquear a conta depois de 10 senhas erradas, sem permitir testar senhas sem limite (423)', async () => {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const wrong = await request(app).delete('/api/users/me').set('Authorization', auth).send({ password: 'Errada@123' });
+        expect(wrong.status).toBe(403);
+      }
+
+      const response = await request(app).delete('/api/users/me').set('Authorization', auth).send({ password: PASSWORD });
+
+      expect(response.status).toBe(423);
+      expect((await pool.query('SELECT 1 FROM users WHERE id = $1', [user.id])).rowCount).toBe(1);
+    });
+
     it('deve responder 400 sem a senha', async () => {
       const response = await request(app).delete('/api/users/me').set('Authorization', auth).send({});
 

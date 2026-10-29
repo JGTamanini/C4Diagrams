@@ -158,7 +158,7 @@ async function updatePassword(userId, passwordHash) {
 // Nota: usado para confirmar ações sensíveis com a senha atual (ex.: excluir a conta)
 async function findById(userId) {
   const query = `
-    SELECT id, name, email, password_hash
+    SELECT id, name, email, password_hash, failed_login_attempts, locked_until
     FROM users
     WHERE id = $1
   `;

@@ -319,7 +319,13 @@ describe('updatePassword', () => {
 
       const user = await userRepository.findById(created.id);
 
-      expect(user).toMatchObject({ id: created.id, email: testUser.email, password_hash: testUser.passwordHash });
+      expect(user).toMatchObject({
+        id: created.id,
+        email: testUser.email,
+        password_hash: testUser.passwordHash,
+        failed_login_attempts: 0,
+        locked_until: null,
+      });
     });
 
     it('deve retornar undefined para id inexistente', async () => {
