@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react';
 import { listDiagrams, saveDiagram } from '../services/diagrams';
-import { C4_ELEMENTS, DEFAULT_RELATIONSHIP_LABEL, LEVEL_IDS, isAllowedInLevel, isValidRelationship } from '../constants/c4Notation';
+import {
+  C4_ELEMENTS,
+  DEFAULT_RELATIONSHIP_LABEL,
+  LEVEL_IDS,
+  MAX_EDGES,
+  MAX_NODES,
+  isAllowedInLevel,
+  isValidRelationship,
+} from '../constants/c4Notation';
 import { fromApi, pickNodeData, toApi } from '../services/diagramMapper';
 
 export const AUTOSAVE_DELAY_MS = 2000;
@@ -47,6 +55,9 @@ export function useDiagramEditor(projectId) {
   const clipboardRef = useRef(null);
   const pasteCountRef = useRef(0);
   const [hasClipboard, setHasClipboard] = useState(false);
+  // Aviso curto para o usuário quando uma ação é bloqueada (ex.: limite de elementos do diagrama)
+  const [notice, setNotice] = useState(null);
+  const dismissNotice = useCallback(() => setNotice(null), []);
 
   useEffect(() => {
     diagramsRef.current = diagrams;
@@ -183,6 +194,10 @@ export function useDiagramEditor(projectId) {
   const addNode = useCallback(
     (type, position) => {
       if (!isAllowedInLevel(activeLevel, type)) return;
+      if (diagramsRef.current[activeLevel].nodes.length >= MAX_NODES) {
+        setNotice(`O diagrama pode ter no máximo ${MAX_NODES} elementos.`);
+        return;
+      }
       const node = { id: crypto.randomUUID(), type, position, data: { label: C4_ELEMENTS[type].name } };
       editActive((diagram) => ({ ...diagram, nodes: [...diagram.nodes, node] }));
     },
@@ -279,6 +294,19 @@ export function useDiagramEditor(projectId) {
       const nodes = clipboard?.nodes.filter((node) => isAllowedInLevel(activeLevel, node.type)) ?? [];
       if (nodes.length === 0) return;
 
+      // Colagem que passaria do tamanho máximo do diagrama não é feita (o salvamento falharia depois, sem explicação)
+      const current = diagramsRef.current[activeLevel];
+      const copiedIds = new Set(nodes.map((node) => node.id));
+      const edgeCount = clipboard.edges.filter((edge) => copiedIds.has(edge.source) && copiedIds.has(edge.target)).length;
+      if (current.nodes.length + nodes.length > MAX_NODES) {
+        setNotice(`O diagrama pode ter no máximo ${MAX_NODES} elementos: a colagem não foi feita.`);
+        return;
+      }
+      if (current.edges.length + edgeCount > MAX_EDGES) {
+        setNotice(`O diagrama pode ter no máximo ${MAX_EDGES} relações: a colagem não foi feita.`);
+        return;
+      }
+
       pasteCountRef.current += 1;
       const offset = PASTE_OFFSET * pasteCountRef.current;
       const shift = position
@@ -367,6 +395,8 @@ export function useDiagramEditor(projectId) {
     copy,
     paste,
     hasClipboard,
+    notice,
+    dismissNotice,
     hasSelection:
       diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected),
     undo,

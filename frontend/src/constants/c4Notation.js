@@ -57,6 +57,11 @@ export const TITLE_MAX_LENGTH = 60;
 export const DESCRIPTION_MAX_LENGTH = 200;
 export const TECHNOLOGY_MAX_LENGTH = 100;
 
+// Tamanho máximo de um diagrama: os mesmos limites do backend (diagram.validation.js). Passar deles faria o
+// salvamento falhar com 400, então o editor bloqueia antes e avisa o motivo
+export const MAX_NODES = 200;
+export const MAX_EDGES = 400;
+
 // Notação oficial: todo elemento explicita o tipo; containers e componentes, também a tecnologia
 export function typeLabel(type, technology) {
   const elementType = C4_ELEMENTS[type].type;

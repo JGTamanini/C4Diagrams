@@ -706,4 +706,55 @@ describe('useDiagramEditor', () => {
       expect(result.current.edges).toHaveLength(1);
     });
   });
+
+  describe('limite de elementos e relações do diagrama (o mesmo do backend)', () => {
+    function person(index) {
+      return { id: `p${index}`, type: 'c4-person', position: { x: index, y: 0 }, data: { label: `Pessoa ${index}` } };
+    }
+
+    async function renderWith(nodes, edges = []) {
+      listDiagrams.mockResolvedValue([{ level: 'context', data: { nodes, edges } }]);
+      return renderLoadedEditor();
+    }
+
+    it('deve bloquear a colagem que passaria de 200 elementos, avisando o motivo', async () => {
+      const nodes = Array.from({ length: 199 }, (_, index) => person(index));
+      const { result } = await renderWith(nodes);
+      act(() => {
+        result.current.copy(['p0', 'p1']);
+      });
+
+      act(() => result.current.paste());
+
+      expect(result.current.nodes).toHaveLength(199);
+      expect(result.current.notice).toBe('O diagrama pode ter no máximo 200 elementos: a colagem não foi feita.');
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve bloquear a colagem que passaria de 400 relações', async () => {
+      const nodes = [person(1), person(2)];
+      const edges = Array.from({ length: 399 }, (_, index) => ({ id: `e${index}`, source: 'p1', target: 'p2', label: 'Usa' }));
+      const { result } = await renderWith(nodes, edges);
+      act(() => {
+        result.current.copy(['p1', 'p2']);
+      });
+
+      act(() => result.current.paste());
+
+      expect(result.current.nodes).toHaveLength(2);
+      expect(result.current.notice).toBe('O diagrama pode ter no máximo 400 relações: a colagem não foi feita.');
+    });
+
+    it('deve bloquear um novo elemento da paleta no limite, e o aviso pode ser fechado', async () => {
+      const nodes = Array.from({ length: 200 }, (_, index) => person(index));
+      const { result } = await renderWith(nodes);
+
+      act(() => result.current.addNode('c4-system', { x: 0, y: 0 }));
+
+      expect(result.current.nodes).toHaveLength(200);
+      expect(result.current.notice).toBe('O diagrama pode ter no máximo 200 elementos.');
+      act(() => result.current.dismissNotice());
+      expect(result.current.notice).toBeNull();
+    });
+  });
 });

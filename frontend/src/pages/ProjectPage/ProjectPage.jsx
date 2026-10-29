@@ -12,7 +12,10 @@ import {
   RotateCw,
   Save,
   Settings,
+  TriangleAlert,
+  X,
 } from 'lucide-react';
+import IconButton from '../../components/Button/IconButton';
 import Button from '../../components/Button/Button';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import Brand from '../../components/Brand/Brand';
@@ -62,6 +65,34 @@ function SaveStatus({ status, onRetry }) {
         </Button>
       )}
     </div>
+  );
+}
+
+// Tempo que o aviso do editor fica na tela antes de sumir sozinho
+const NOTICE_DURATION_MS = 5000;
+
+// Nota: aviso curto do editor (ex.: colagem bloqueada pelo limite de elementos), acima das dicas do canvas.
+// Some sozinho depois de alguns segundos ou pelo botão de fechar.
+function EditorNotice({ message, onDismiss }) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, NOTICE_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [message, onDismiss]);
+
+  return (
+    <motion.div
+      role="status"
+      aria-label="Aviso do editor"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+      className="absolute bottom-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-[var(--radius-control)] border border-highlight/40 bg-surface-raised py-1.5 pr-1.5 pl-3 text-sm text-text-primary shadow-[var(--shadow-raised)]"
+    >
+      <TriangleAlert aria-hidden="true" className="h-4 w-4 shrink-0 text-highlight-text" />
+      {message}
+      <IconButton icon={X} label="Fechar aviso" onClick={onDismiss} />
+    </motion.div>
   );
 }
 
@@ -289,6 +320,9 @@ function ProjectPage() {
           onTogglePalette={togglePalette}
         />
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} paletteOpen={paletteOpen} />
+        <AnimatePresence>
+          {editor.notice && <EditorNotice key={editor.notice} message={editor.notice} onDismiss={editor.dismissNotice} />}
+        </AnimatePresence>
       </main>
 
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />

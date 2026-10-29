@@ -67,6 +67,8 @@ const editor = {
   copy: vi.fn(() => true),
   paste: vi.fn(),
   hasClipboard: false,
+  notice: null,
+  dismissNotice: vi.fn(),
   hasSelection: false,
   undo: vi.fn(),
   redo: vi.fn(),
@@ -356,6 +358,30 @@ describe('ProjectPage (editor de diagramas)', () => {
       await renderLoaded({ saveStatus });
 
       expect(screen.getByTestId('save-status')).toHaveTextContent(text);
+    });
+
+    it('deve mostrar o aviso do editor (ex.: limite de elementos) e permitir fechá-lo', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ notice: 'O diagrama pode ter no máximo 200 elementos.' });
+
+      expect(screen.getByRole('status', { name: 'Aviso do editor' })).toHaveTextContent('O diagrama pode ter no máximo 200 elementos.');
+      await user.click(screen.getByRole('button', { name: 'Fechar aviso' }));
+
+      expect(editor.dismissNotice).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve fechar o aviso sozinho depois de alguns segundos', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        await renderLoaded({ notice: 'O diagrama pode ter no máximo 200 elementos.' });
+
+        expect(editor.dismissNotice).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(6000);
+
+        expect(editor.dismissNotice).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('deve mostrar "Não salvo" em texto (não só o ícone) enquanto houver alteração pendente', async () => {
