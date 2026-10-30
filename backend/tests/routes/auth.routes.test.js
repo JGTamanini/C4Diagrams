@@ -150,6 +150,14 @@ describe('POST /api/auth/verify-email', () => {
     const response = await request(app).post('/api/auth/verify-email').send({ token });
 
     expect(response.status).toBe(200);
+    expect(response.body.user).toMatchObject({ email: verifyTestEmail, name: 'Verify Test User' });
+    expect(response.body.user).not.toHaveProperty('password_hash');
+    const projects = await request(app).get('/api/projects').set('Authorization', `Bearer ${response.body.token}`);
+    expect(projects.status).toBe(200);
+
+    const reused = await request(app).post('/api/auth/verify-email').send({ token });
+    expect(reused.status).toBe(400);
+    expect(reused.body).not.toHaveProperty('token');
 
     const updated = await pool.query(
       'SELECT email_verified, verification_token FROM users WHERE email = $1',

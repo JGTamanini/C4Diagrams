@@ -78,14 +78,18 @@ async function findByVerificationToken(token) {
   return result.rows[0];
 }
 
-async function markEmailAsVerified(userId) {
+// Nota: só marca se o token ainda for o mesmo (atômico no WHERE): com duas requisições ao mesmo tempo, o Postgres
+// trava a linha e a segunda reavalia o WHERE depois que a primeira limpou o token — só uma marca (e entra na conta)
+async function markEmailAsVerified(userId, token) {
   const query = `
     UPDATE users
     SET email_verified = true, verification_token = NULL, verification_token_expires_at = NULL
-    WHERE id = $1
+    WHERE id = $1 AND verification_token = $2
   `;
 
-  await pool.query(query, [userId]);
+  const result = await pool.query(query, [userId, token]);
+
+  return result.rowCount > 0;
 }
 
 // Nota: reserva o reenvio de forma atômica e devolve o token a enviar (ou null se não puder reenviar).
