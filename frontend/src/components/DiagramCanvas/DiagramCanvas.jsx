@@ -206,6 +206,9 @@ function DiagramWorkspace({
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
           onNodeContextMenu={openContextMenu}
           onPaneContextMenu={(event) => openContextMenu(event, null)}
+          // Depois de uma seleção em caixa (Shift + arrastar), o React Flow põe um retângulo por cima dos selecionados,
+          // e o clique direito cai nele, não no elemento: o menu abre igual, agindo sobre toda a seleção
+          onSelectionContextMenu={(event, selectedNodes) => openContextMenu(event, selectedNodes[0])}
           onMoveStart={closeOnUserMove}
           deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
           connectionLineComponent={FloatingConnectionLine}
