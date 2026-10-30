@@ -10,7 +10,8 @@ const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 // explica as cores e formas dos tipos usados no diagrama e a leitura das conexões.
 // Recolhível (aberta por padrão), para não cobrir elementos quando o diagrama ocupa o canto. Largura fixa e itens
 // em uma linha só: aberta ou recolhida, ela ocupa sempre a mesma largura.
-function DiagramLegend({ nodes, edges }) {
+// rightInset: quanto o painel da direita (Assistente) cobre — a legenda fica ao lado dele, nunca embaixo
+function DiagramLegend({ nodes, edges, rightInset = 0 }) {
   const [open, setOpen] = useState(true);
 
   if (nodes.length === 0) return null;
@@ -20,7 +21,8 @@ function DiagramLegend({ nodes, edges }) {
   return (
     <section
       aria-label="Legenda"
-      className="absolute right-4 bottom-4 z-10 w-72 overflow-hidden rounded-[var(--radius-control)] border border-line bg-surface/90 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
+      style={{ right: rightInset + 16 }}
+      className="absolute bottom-4 z-10 w-72 transition-[right] duration-200 overflow-hidden rounded-[var(--radius-control)] border border-line bg-surface/90 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
     >
       <button
         type="button"

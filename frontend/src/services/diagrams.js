@@ -20,3 +20,9 @@ export async function saveDiagram(projectId, level, data) {
   const response = await api.put(`${diagramsPath(projectId)}/${level}`, data);
   return response.status === 204 ? null : response.data;
 }
+
+// Nota: RF17 — valida o estado atual do nível (ainda não salvo) no motor de validação C4 do backend, sem gravar
+export async function validateDiagram(projectId, level, data) {
+  const response = await api.post(`${diagramsPath(projectId)}/${level}/validate`, data);
+  return response.data.issues;
+}

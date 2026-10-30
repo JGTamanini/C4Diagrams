@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import api from './api';
-import { listDiagrams, saveDiagram } from './diagrams';
+import { listDiagrams, saveDiagram, validateDiagram } from './diagrams';
 import { InvalidProjectIdError } from './projects';
 
 vi.mock('./api');
@@ -29,6 +29,16 @@ describe('diagrams service', () => {
 
     expect(api.put).toHaveBeenCalledWith(`/projects/${PROJECT_ID}/diagrams/context`, data);
     expect(result).toEqual({ level: 'context', data });
+  });
+
+  it('deve validar o estado do nível sem salvar e devolver os problemas encontrados (RF17)', async () => {
+    const issues = [{ code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n1', message: 'Sem descrição.' }];
+    api.post.mockResolvedValue({ data: { issues } });
+
+    const result = await validateDiagram(PROJECT_ID, 'context', data);
+
+    expect(api.post).toHaveBeenCalledWith(`/projects/${PROJECT_ID}/diagrams/context/validate`, data);
+    expect(result).toEqual(issues);
   });
 
   it('deve devolver null quando o nível for salvo vazio (204)', async () => {
