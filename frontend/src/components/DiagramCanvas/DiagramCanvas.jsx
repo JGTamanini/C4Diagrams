@@ -15,6 +15,8 @@ import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPalette/ElementPalette';
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
+import ElementTree from '../ElementTree/ElementTree';
+import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
 import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
@@ -46,6 +48,10 @@ const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 // Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
 const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
+// Alturas mínimas ao ajustar a divisória: a paleta mostra sempre o título e uma fileira inteira (o resto rola)
+const PALETTE_MIN_HEIGHT = 190;
+const TREE_MIN_HEIGHT = 120;
+
 // Ao focar um problema da validação: aproxima o alvo sem passar do tamanho real, com folga em volta
 const FOCUS_OPTIONS = { maxZoom: 1, padding: 0.6, duration: 300 };
 
@@ -78,6 +84,8 @@ function DiagramWorkspace({
   issues = [],
   focusRequest = null,
   rightInset = 0,
+  nodesByLevel = null,
+  onSelectTreeElement,
   onTogglePalette,
   onCopyNodes,
   onPaste,
@@ -94,6 +102,20 @@ function DiagramWorkspace({
   const dropAreaRef = useRef(null);
   const paletteRef = useRef(null);
   const fittedLevelRef = useRef(null);
+  // Foco pedido antes de o nível terminar de ser enquadrado (ex.: clique na árvore que troca de nível): fica
+  // guardado e é aplicado no lugar do enquadramento do nível inteiro
+  const pendingFocusRef = useRef(null);
+  const edgesRef = useRef(edges);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  // Elementos a centralizar: o do problema ou os dois lados da relação
+  function focusTargets(request) {
+    const edge = request.edgeId && edgesRef.current.find((candidate) => candidate.id === request.edgeId);
+    const ids = edge ? [edge.source, edge.target] : [request.nodeId].filter(Boolean);
+    return ids.map((nodeId) => ({ id: nodeId }));
+  }
 
   // Nota: enquadra cada nível ao abri-lo, esperando (quadro a quadro, com limite) o React Flow medir os elementos
   // desse nível. O provider sobrevive à troca de nível, e o fitView automático enquadrava com as medidas antigas.
@@ -107,7 +129,9 @@ function DiagramWorkspace({
       const measured = current.length > 0 && current.every((node) => getInternalNode(node.id)?.measured?.width);
       if (measured || attempts >= MAX_FIT_ATTEMPTS) {
         fittedLevelRef.current = level;
-        void fitView(FIT_VIEW_OPTIONS);
+        const pending = pendingFocusRef.current && focusTargets(pendingFocusRef.current);
+        pendingFocusRef.current = null;
+        void fitView(pending?.length ? { ...FOCUS_OPTIONS, nodes: pending } : FIT_VIEW_OPTIONS);
         return;
       }
       attempts += 1;
@@ -138,12 +162,16 @@ function DiagramWorkspace({
     }));
   }, [edges, issues]);
 
-  // Foco pedido pelo painel de validação: centraliza o elemento (ou os dois lados da relação) do problema clicado
+  // Foco pedido pelo painel de validação ou pela árvore: centraliza o alvo. Se o nível ainda não foi enquadrado (acabou
+  // de trocar), o foco espera e substitui o enquadramento do nível inteiro
   useEffect(() => {
     if (!focusRequest) return;
-    const edge = focusRequest.edgeId && edges.find((candidate) => candidate.id === focusRequest.edgeId);
-    const ids = edge ? [edge.source, edge.target] : [focusRequest.nodeId].filter(Boolean);
-    if (ids.length > 0) void fitView({ ...FOCUS_OPTIONS, nodes: ids.map((nodeId) => ({ id: nodeId })) });
+    if (fittedLevelRef.current !== level) {
+      pendingFocusRef.current = focusRequest;
+      return;
+    }
+    const targets = focusTargets(focusRequest);
+    if (targets.length > 0) void fitView({ ...FOCUS_OPTIONS, nodes: targets });
     // Só um pedido novo de foco move a visão — editar o diagrama depois não deve recentralizar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest]);
@@ -214,6 +242,13 @@ function DiagramWorkspace({
       },
     ];
   }
+
+  // Divisória entre a paleta e a árvore: null = altura automática da paleta (até o usuário ajustar)
+  const [paletteHeight, setPaletteHeight] = useState(null);
+  const paletteBoxRef = useRef(null);
+  const showTree = Boolean(nodesByLevel && onSelectTreeElement);
+  const maxPaletteHeight = () =>
+    Math.max(PALETTE_MIN_HEIGHT, (paletteRef.current?.getBoundingClientRect().height ?? 0) - TREE_MIN_HEIGHT);
 
   // Clique na paleta: adiciona no centro da parte visível do canvas (descontando a paleta aberta por cima)
   function handlePaletteAdd(type) {
@@ -302,9 +337,30 @@ function DiagramWorkspace({
               exit={{ x: -24, opacity: 0 }}
               transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
               // A coluna da paleta deixa passar os cliques (zoom, canvas); só a paleta em si recebe clique
-              className="pointer-events-none absolute top-3 bottom-3 left-3 z-20 flex flex-col"
+              className="pointer-events-none absolute top-3 bottom-28 left-3 z-20 flex w-56 flex-col"
             >
-              <ElementPalette level={level} onAdd={handlePaletteAdd} onCollapse={onTogglePalette} />
+              <div
+                ref={paletteBoxRef}
+                style={paletteHeight ? { height: paletteHeight } : undefined}
+                className="pointer-events-none flex min-h-0 flex-col"
+              >
+                <ElementPalette level={level} onAdd={handlePaletteAdd} onCollapse={onTogglePalette} />
+              </div>
+              {showTree && (
+                <>
+                  <ColumnSplitter
+                    label="Ajustar a divisão entre elementos e estrutura"
+                    value={paletteHeight}
+                    min={PALETTE_MIN_HEIGHT}
+                    max={maxPaletteHeight()}
+                    getStartValue={() => paletteBoxRef.current?.getBoundingClientRect().height ?? PALETTE_MIN_HEIGHT}
+                    onChange={setPaletteHeight}
+                  />
+                  <div className="pointer-events-none flex min-h-0 flex-1 flex-col">
+                    <ElementTree nodesByLevel={nodesByLevel} activeLevel={level} onSelectElement={onSelectTreeElement} />
+                  </div>
+                </>
+              )}
             </motion.div>
           ) : (
             <motion.div
