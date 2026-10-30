@@ -46,6 +46,24 @@ const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 // Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
 const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
+// Ao focar um problema da validação: aproxima o alvo sem passar do tamanho real, com folga em volta
+const FOCUS_OPTIONS = { maxZoom: 1, padding: 0.6, duration: 300 };
+
+// Só erro e aviso marcam o canvas; as sugestões (info) ficam só no painel, para o diagrama não ficar poluído
+const MARKED_SEVERITIES = ['error', 'warning'];
+const SEVERITY_COLOR = { error: 'var(--color-danger)', warning: 'var(--color-warning)' };
+
+// Gravidade mais alta por elemento e por relação (um erro prevalece sobre um aviso no mesmo alvo)
+function severityByTarget(issues, key) {
+  const result = new Map();
+  for (const issue of issues) {
+    const target = issue[key];
+    if (!target || !MARKED_SEVERITIES.includes(issue.severity)) continue;
+    if (result.get(target) !== 'error') result.set(target, issue.severity);
+  }
+  return result;
+}
+
 // Quadros a esperar pela medição dos elementos antes de enquadrar mesmo assim (~0,5 s)
 const MAX_FIT_ATTEMPTS = 30;
 
@@ -57,6 +75,9 @@ function DiagramWorkspace({
   keyboardEnabled = true,
   paletteOpen = true,
   canPaste = false,
+  issues = [],
+  focusRequest = null,
+  rightInset = 0,
   onTogglePalette,
   onCopyNodes,
   onPaste,
@@ -97,15 +118,35 @@ function DiagramWorkspace({
     return () => cancelAnimationFrame(frame);
   }, [level, nodes.length, fitView, getNodes, getInternalNode]);
   // Nota: só para exibição — tipo flutuante e deslocamento das relações paralelas não vão para a API
+  // Marcas da validação (RF17): só para exibição — não vão para o estado do editor nem para a API
+  const displayedNodes = useMemo(() => {
+    const severities = severityByTarget(issues, 'nodeId');
+    return nodes.map((node) =>
+      severities.has(node.id) ? { ...node, data: { ...node.data, issueSeverity: severities.get(node.id) } } : node
+    );
+  }, [nodes, issues]);
+
   const displayedEdges = useMemo(() => {
     const offsets = parallelOffsets(edges);
+    const severities = severityByTarget(issues, 'edgeId');
     return edges.map((edge) => ({
       ...withTechnologyLabel(edge),
       ...RELATIONSHIP_STYLE,
+      ...(severities.has(edge.id) ? { labelBgStyle: { stroke: SEVERITY_COLOR[severities.get(edge.id)], strokeWidth: 1.5 } } : {}),
       type: 'floating',
       data: { ...edge.data, offset: offsets.get(edge.id) },
     }));
-  }, [edges]);
+  }, [edges, issues]);
+
+  // Foco pedido pelo painel de validação: centraliza o elemento (ou os dois lados da relação) do problema clicado
+  useEffect(() => {
+    if (!focusRequest) return;
+    const edge = focusRequest.edgeId && edges.find((candidate) => candidate.id === focusRequest.edgeId);
+    const ids = edge ? [edge.source, edge.target] : [focusRequest.nodeId].filter(Boolean);
+    if (ids.length > 0) void fitView({ ...FOCUS_OPTIONS, nodes: ids.map((nodeId) => ({ id: nodeId })) });
+    // Só um pedido novo de foco move a visão — editar o diagrama depois não deve recentralizar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest]);
 
   function addAt(type, screenPoint) {
     const position = screenToFlowPosition(screenPoint);
@@ -193,7 +234,7 @@ function DiagramWorkspace({
       >
         <ReactFlow
           key={level}
-          nodes={nodes}
+          nodes={displayedNodes}
           edges={displayedEdges}
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
@@ -233,13 +274,13 @@ function DiagramWorkspace({
         ) : (
           <p
             data-testid="canvas-hints"
-            className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line-subtle bg-surface/85 px-4 py-1.5 text-[11px] text-text-muted backdrop-blur-sm"
+            className="pointer-events-none absolute bottom-4 left-16 z-10 rounded-full border border-line-subtle bg-surface/85 px-4 py-1.5 text-[11px] text-text-muted backdrop-blur-sm"
           >
             Duplo clique para editar · Arraste de um ponto de conexão até outro elemento · Delete exclui
           </p>
         )}
 
-        <DiagramLegend nodes={nodes} edges={edges} />
+        <DiagramLegend nodes={nodes} edges={edges} rightInset={rightInset} />
 
         {contextMenu && (
           <ContextMenu
@@ -260,7 +301,8 @@ function DiagramWorkspace({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -24, opacity: 0 }}
               transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
-              className="absolute top-3 bottom-3 left-3 z-20 flex flex-col"
+              // A coluna da paleta deixa passar os cliques (zoom, canvas); só a paleta em si recebe clique
+              className="pointer-events-none absolute top-3 bottom-3 left-3 z-20 flex flex-col"
             >
               <ElementPalette level={level} onAdd={handlePaletteAdd} onCollapse={onTogglePalette} />
             </motion.div>

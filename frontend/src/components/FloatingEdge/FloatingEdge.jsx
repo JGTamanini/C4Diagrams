@@ -12,14 +12,25 @@ function toRect(node) {
 
 // Nota: relação C4 desenhada entre as bordas que se encaram — acompanha os elementos quando eles se movem,
 // sem pontos de conexão fixos (o modelo C4 não tem "lado" de conexão)
-function FloatingEdge({ id, source, target, label, markerEnd, style, data }) {
+function FloatingEdge({ id, source, target, label, labelBgStyle, markerEnd, style, data }) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
   if (!sourceNode || !targetNode) return null;
 
   const { path, labelX, labelY } = floatingEdgePath(toRect(sourceNode), toRect(targetNode), data.offset);
 
-  return <BaseEdge id={id} path={path} label={label} labelX={labelX} labelY={labelY} markerEnd={markerEnd} style={style} />;
+  return (
+    <BaseEdge
+      id={id}
+      path={path}
+      label={label}
+      labelX={labelX}
+      labelY={labelY}
+      labelBgStyle={labelBgStyle}
+      markerEnd={markerEnd}
+      style={style}
+    />
+  );
 }
 
 export default FloatingEdge;

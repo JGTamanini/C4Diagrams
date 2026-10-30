@@ -20,7 +20,7 @@ function ElementPalette({ level, onAdd, onCollapse }) {
   return (
     <aside
       aria-labelledby="element-palette-title"
-      className="flex max-h-full w-56 flex-col gap-3 overflow-y-auto rounded-[var(--radius-card)] border border-line bg-surface/95 p-4 shadow-[var(--shadow-raised)] backdrop-blur-sm"
+      className="pointer-events-auto flex max-h-full w-56 flex-col gap-3 overflow-y-auto rounded-[var(--radius-card)] border border-line bg-surface/95 p-4 shadow-[var(--shadow-raised)] backdrop-blur-sm"
     >
       <div className="flex items-start justify-between gap-2">
         <div>
