@@ -61,6 +61,40 @@ describe('AppHeader', () => {
       return screen.getByRole('menu');
     }
 
+    // Excluir conta: primeiro a confirmação de que a ação é irreversível, depois o pedido de senha
+    async function startDeletion(user) {
+      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await user.click(within(screen.getByRole('alertdialog', { name: 'Excluir sua conta?' })).getByRole('button', { name: 'Continuar' }));
+    }
+
+    it('deve confirmar que a exclusão é irreversível antes de pedir a senha', async () => {
+      const user = userEvent.setup();
+      loggedIn();
+      renderHeader();
+
+      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+
+      const confirm = screen.getByRole('alertdialog', { name: 'Excluir sua conta?' });
+      expect(confirm).toHaveTextContent('Esta ação é irreversível');
+      expect(screen.queryByLabelText('Senha atual')).not.toBeInTheDocument();
+      await user.click(within(confirm).getByRole('button', { name: 'Continuar' }));
+
+      expect(await screen.findByLabelText('Senha atual')).toBeInTheDocument();
+    });
+
+    it('não deve pedir a senha nem excluir quando o usuário desistir na confirmação', async () => {
+      const user = userEvent.setup();
+      loggedIn();
+      renderHeader();
+
+      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+      expect(screen.queryByLabelText('Senha atual')).not.toBeInTheDocument();
+      expect(deleteAccount).not.toHaveBeenCalled();
+    });
+
     it('deve abrir pelo nome do usuário com as opções Excluir conta e Sair, e fechar com Esc', async () => {
       const user = userEvent.setup();
       loggedIn();
@@ -105,7 +139,7 @@ describe('AppHeader', () => {
       deleteAccount.mockResolvedValue(undefined);
       renderHeader();
 
-      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await startDeletion(user);
       const dialog = screen.getByRole('dialog', { name: 'Excluir conta' });
       expect(dialog).toHaveTextContent('Todos os seus projetos e diagramas serão excluídos permanentemente.');
       await user.type(within(dialog).getByLabelText('Senha atual'), 'Senha@12345');
@@ -122,7 +156,7 @@ describe('AppHeader', () => {
       deleteAccount.mockRejectedValue({ response: { status: 403, data: { message: 'Senha incorreta.' } } });
       renderHeader();
 
-      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await startDeletion(user);
       await user.type(screen.getByLabelText('Senha atual'), 'Errada@123');
       await user.click(screen.getByRole('button', { name: 'Excluir minha conta' }));
 
@@ -136,7 +170,7 @@ describe('AppHeader', () => {
       loggedIn();
       renderHeader();
 
-      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await startDeletion(user);
       await user.click(screen.getByRole('button', { name: 'Excluir minha conta' }));
 
       expect(screen.getByRole('alert')).toHaveTextContent('Informe sua senha para confirmar.');
@@ -148,7 +182,7 @@ describe('AppHeader', () => {
       loggedIn();
       renderHeader();
 
-      await user.click(within(await openMenu(user)).getByRole('menuitem', { name: 'Excluir conta' }));
+      await startDeletion(user);
       await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
