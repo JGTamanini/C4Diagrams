@@ -135,6 +135,11 @@ function DiagramWorkspace({
   // do canvas (colar no ponto clicado)
   const [contextMenu, setContextMenu] = useState(null);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  // Fecha o menu quando o usuário move o canvas; movimentos automáticos (ex.: o enquadramento do nível, que roda
+  // logo depois de medir os elementos) chegam sem evento e não devem fechar um menu recém-aberto
+  const closeOnUserMove = useCallback((event) => {
+    if (event) setContextMenu(null);
+  }, []);
 
   function openContextMenu(event, node) {
     event.preventDefault();
@@ -201,7 +206,7 @@ function DiagramWorkspace({
           onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
           onNodeContextMenu={openContextMenu}
           onPaneContextMenu={(event) => openContextMenu(event, null)}
-          onMoveStart={closeContextMenu}
+          onMoveStart={closeOnUserMove}
           deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
           connectionLineComponent={FloatingConnectionLine}
           connectionRadius={36}

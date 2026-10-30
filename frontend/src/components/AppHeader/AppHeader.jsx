@@ -5,6 +5,7 @@ import { ChevronDown, LogOut, UserX } from 'lucide-react';
 import Button from '../Button/Button';
 import Brand from '../Brand/Brand';
 import DropdownMenu from '../DropdownMenu/DropdownMenu';
+import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import DeleteAccountModal from '../DeleteAccountModal/DeleteAccountModal';
 import { getUser, clearSession } from '../../services/session';
 
@@ -47,7 +48,10 @@ function AccountMenu({ name, onDeleteAccount, onLogout }) {
 function AppHeader() {
   const navigate = useNavigate();
   const user = getUser();
-  const [deletingAccount, setDeletingAccount] = useState(false);
+  // Excluir a conta em dois passos: confirmar que a ação é irreversível ('confirm') e só então pedir a senha
+  // ('password'). Evita excluir no impulso, sem tempo de desistir.
+  const [deletionStep, setDeletionStep] = useState(null);
+  const cancelDeletion = () => setDeletionStep(null);
 
   // Sair e excluir a conta terminam igual: sessão encerrada e volta para a página inicial
   function leave() {
@@ -60,7 +64,7 @@ function AppHeader() {
       <Brand className="" />
 
       {user?.name ? (
-        <AccountMenu name={user.name} onDeleteAccount={() => setDeletingAccount(true)} onLogout={leave} />
+        <AccountMenu name={user.name} onDeleteAccount={() => setDeletionStep('confirm')} onLogout={leave} />
       ) : (
         <Button variant="ghost" size="sm" icon={LogOut} onClick={leave}>
           Sair
@@ -68,8 +72,18 @@ function AppHeader() {
       )}
 
       <AnimatePresence>
-        {deletingAccount && (
-          <DeleteAccountModal key="delete-account" onDeleted={leave} onClose={() => setDeletingAccount(false)} />
+        {deletionStep === 'confirm' && (
+          <ConfirmDialog
+            key="confirm-delete-account"
+            title="Excluir sua conta?"
+            message="Esta ação é irreversível: a conta e todos os seus projetos e diagramas serão apagados para sempre, sem como recuperar. Na próxima etapa, confirme com a sua senha."
+            confirmLabel="Continuar"
+            onConfirm={() => setDeletionStep('password')}
+            onCancel={cancelDeletion}
+          />
+        )}
+        {deletionStep === 'password' && (
+          <DeleteAccountModal key="delete-account" onDeleted={leave} onClose={cancelDeletion} />
         )}
       </AnimatePresence>
     </header>

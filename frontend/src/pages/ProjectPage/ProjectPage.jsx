@@ -5,7 +5,6 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
-  CircleDot,
   Download,
   Keyboard,
   LoaderCircle,
@@ -41,7 +40,9 @@ const SAVE_STATUS_TEXT = {
 const SAVE_STATUS_SHORT = { pending: 'Não salvo', error: 'Falha ao salvar' };
 const SAVE_STATUS_COLOR = { saved: 'text-text-muted', saving: 'text-text-muted', pending: 'text-highlight-text', error: 'text-danger' };
 
-const SAVE_STATUS_ICON = { saved: Check, pending: CircleDot, saving: LoaderCircle, error: AlertCircle };
+// "Não salvo" fica só no texto curto; o "salvo" é um check verde, para ser percebido de relance
+const SAVE_STATUS_ICON = { saved: Check, pending: null, saving: LoaderCircle, error: AlertCircle };
+const SAVE_STATUS_ICON_COLOR = { saved: 'text-success', saving: 'animate-spin' };
 
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
@@ -55,7 +56,7 @@ function SaveStatus({ status, onRetry }) {
   return (
     <div className="flex items-center gap-2">
       <output data-testid="save-status" title={text} className={`flex items-center gap-1.5 text-xs ${SAVE_STATUS_COLOR[status]}`}>
-        <Icon aria-hidden="true" className={`h-4 w-4 ${status === 'saving' ? 'animate-spin' : ''}`} />
+        {Icon && <Icon aria-hidden="true" className={`h-4 w-4 ${SAVE_STATUS_ICON_COLOR[status] ?? ''}`} />}
         {short && <span aria-hidden="true">{short}</span>}
         <span className="sr-only">{text}</span>
       </output>
