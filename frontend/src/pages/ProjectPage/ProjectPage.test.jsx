@@ -384,10 +384,18 @@ describe('ProjectPage (editor de diagramas)', () => {
       }
     });
 
-    it('deve mostrar "Não salvo" em texto (não só o ícone) enquanto houver alteração pendente', async () => {
+    it('deve mostrar "Não salvo" só em texto, sem ícone, enquanto houver alteração pendente', async () => {
       await renderLoaded({ saveStatus: 'pending' });
 
-      expect(within(screen.getByTestId('save-status')).getByText('Não salvo')).toBeInTheDocument();
+      const status = screen.getByTestId('save-status');
+      expect(within(status).getByText('Não salvo')).toBeInTheDocument();
+      expect(status.querySelector('svg')).toBeNull();
+    });
+
+    it('deve mostrar o "salvo" com o ícone em verde, para ser percebido de relance', async () => {
+      await renderLoaded({ saveStatus: 'saved' });
+
+      expect(screen.getByTestId('save-status').querySelector('svg')).toHaveClass('text-success');
     });
 
     it('deve oferecer "Tentar de novo" ao lado do aviso quando o salvamento falhar', async () => {
