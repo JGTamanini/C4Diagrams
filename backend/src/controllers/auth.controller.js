@@ -16,8 +16,8 @@ const login = asyncHandler(async (req, res) => {
 
 const verifyEmail = asyncHandler(async (req, res) => {
   const { token } = req.body;
-  await userService.verifyEmail(token);
-  res.status(200).json({ message: 'E-mail verificado com sucesso.' });
+  const session = await userService.verifyEmail(token);
+  res.status(200).json({ message: 'E-mail verificado com sucesso.', ...session });
 });
 
 const resendVerification = asyncHandler(async (req, res) => {

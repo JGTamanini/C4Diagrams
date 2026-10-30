@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../../services/api';
+import { saveSession } from '../../services/session';
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 
 const STATUS_CONFIG = {
@@ -35,14 +36,21 @@ function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState('');
+  // O link vale uma vez só: um segundo envio do mesmo token (ex.: o efeito rodando duas vezes no StrictMode) receberia
+  // "token inválido" e trocaria o sucesso por erro na tela
+  const sentTokenRef = useRef(null);
 
   useEffect(() => {
     const token = searchParams.get('token');
+    if (sentTokenRef.current === token) return;
+    sentTokenRef.current = token;
 
     async function verify() {
       try {
         const response = await api.post('/auth/verify-email', { token });
-        setMessage(response.data.message);
+        // O link também entra na conta: a sessão fica salva no navegador, e a aba do cadastro (se ainda estiver
+        // aberta) percebe e segue sozinha para os projetos — esta guia pode ser fechada
+        saveSession(response.data.token, response.data.user);
         setStatus('success');
       } catch (err) {
         const errorMessage = err.response?.data?.message || 'Erro ao verificar e-mail.';
@@ -75,11 +83,15 @@ function VerifyEmail() {
       {status === 'success' && (
         <>
           <output className="mb-4 max-w-xs text-sm text-text-secondary">
-            {message}
+            E-mail verificado! Pode fechar esta guia: a aba do cadastro já entrou na sua conta.
           </output>
-          <Link to="/login" className="text-link text-sm">
-            Ir para o login
-          </Link>
+          {/* Link aberto em outro aparelho: não há aba de cadastro aqui, mas a sessão já está salva neste navegador */}
+          <p className="text-xs text-text-muted">
+            <span>Abriu o link em outro aparelho?</span>{' '}
+            <Link to="/projetos" className="text-link">
+              Ir para meus projetos
+            </Link>
+          </p>
         </>
       )}
 

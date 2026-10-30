@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/user.repository');
 const { InvalidCredentialsError } = require('../errors/auth.errors');
 const { assertNotLocked, registerFailedAttempt } = require('./passwordAttempts');
+const { createSession } = require('./session.service');
 
 async function login({ email, password }) {
   const user = await userRepository.findByEmail(email);
@@ -22,15 +22,7 @@ async function login({ email, password }) {
 
   await userRepository.resetFailedAttempts(user.id);
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
-
-  const { password_hash, failed_login_attempts, locked_until, verification_token, verification_token_expires_at, ...safeUser } = user;
-
-  return { token, user: safeUser };
+  return createSession(user);
 }
 
 module.exports = { login };

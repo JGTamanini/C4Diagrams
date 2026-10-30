@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
@@ -17,6 +17,20 @@ function Register() {
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   useAuthIllustration(successMessage ? 'emailSent' : 'register');
+  const navigate = useNavigate();
+
+  // Nota: enquanto espera a verificação, esta aba escuta o login feito pelo link do e-mail em outra aba do mesmo
+  // navegador (o evento "storage" avisa as outras abas quando a sessão é salva) e segue sozinha para os projetos
+  useEffect(() => {
+    if (!successMessage) return undefined;
+
+    function handleStorage(event) {
+      if (event.key === 'token' && event.newValue) void navigate('/projetos', { replace: true });
+    }
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [successMessage, navigate]);
 
   async function handleSubmit(event) {
     event.preventDefault();
