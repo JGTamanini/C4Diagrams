@@ -50,6 +50,12 @@ export function isValidRelationship({ source, target }, edges = []) {
   );
 }
 
+// O mesmo elemento em níveis diferentes: cada nível guarda cópias próprias (sem id em comum), então a
+// correspondência é por tipo e nome, ignorando maiúsculas e espaços extras — a mesma regra do motor de validação
+export function elementMatchKey(node) {
+  return `${node.type}:${node.data.label.trim().toLowerCase().replaceAll(/\s+/g, ' ')}`;
+}
+
 // Limites dos campos do elemento: o título cabe no elemento do canvas e a descrição, nas 4 linhas do campo (sem
 // rolagem). São menores que os do backend (100 e 1000) de propósito: o backend continua aceitando textos já
 // salvos antes destes limites — o salvamento envia o diagrama inteiro e não pode falhar por um texto antigo

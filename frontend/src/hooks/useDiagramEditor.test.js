@@ -780,4 +780,27 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodes.every((node) => !node.selected)).toBe(true);
     });
   });
+
+  describe('elementos de todos os níveis (árvore)', () => {
+    it('deve expor os elementos de cada nível, inclusive os vazios', async () => {
+      const { result } = await renderLoadedEditor();
+
+      expect(result.current.nodesByLevel.context.map((node) => node.id)).toEqual(['n1', 'n2']);
+      expect(result.current.nodesByLevel.container).toEqual([]);
+      expect(result.current.nodesByLevel.component).toEqual([]);
+    });
+
+    it('deve selecionar um elemento de outro nível (o clique na árvore troca de nível e seleciona)', async () => {
+      listDiagrams.mockResolvedValue([
+        savedContext,
+        { level: 'container', data: { nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }], edges: [] } },
+      ]);
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.selectOnly({ nodeId: 'c1', level: 'container' }));
+
+      expect(result.current.nodesByLevel.container[0].selected).toBe(true);
+      expect(result.current.nodes.every((node) => !node.selected)).toBe(true);
+    });
+  });
 });
