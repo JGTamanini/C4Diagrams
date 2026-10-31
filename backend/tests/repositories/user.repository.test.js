@@ -129,12 +129,25 @@ describe('UserRepository', () => {
     it('deve marcar email_verified como true e limpar os campos de token', async () => {
       const createdUser = await userRepository.create(testUser);
 
-      await userRepository.markEmailAsVerified(createdUser.id);
+      const marked = await userRepository.markEmailAsVerified(createdUser.id, testUser.verificationToken);
+
+      expect(marked).toBe(true);
 
       const user = await userRepository.findByEmail(testUser.email);
       expect(user.email_verified).toBe(true);
       expect(user.verification_token).toBeNull();
       expect(user.verification_token_expires_at).toBeNull();
+    });
+
+    it('deve valer uma vez só: o segundo uso do mesmo token não marca nada (duas abas ao mesmo tempo)', async () => {
+      const createdUser = await userRepository.create(testUser);
+
+      const [first, second] = await Promise.all([
+        userRepository.markEmailAsVerified(createdUser.id, testUser.verificationToken),
+        userRepository.markEmailAsVerified(createdUser.id, testUser.verificationToken),
+      ]);
+
+      expect([first, second].sort()).toEqual([false, true]);
     });
   });
 
@@ -211,7 +224,7 @@ describe('UserRepository', () => {
 
     it('não deve reenviar quando a conta já estiver verificada', async () => {
       const userId = await createPendingUser({ sentMsAgo: 2 * 60 * 1000 });
-      await userRepository.markEmailAsVerified(userId);
+      await userRepository.markEmailAsVerified(userId, testUser.verificationToken);
 
       const token = await userRepository.claimVerificationResend(userId, claimArgs());
 

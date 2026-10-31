@@ -6,6 +6,7 @@ const { EmailAlreadyExistsError, WeakPasswordError, MissingFieldError } = requir
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 const { IncorrectPasswordError, UnauthorizedError } = require('../errors/auth.errors');
 const { assertNotLocked, registerFailedAttempt } = require('./passwordAttempts');
+const { createSession } = require('./session.service');
 
 const SALT_ROUNDS = 10;
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
@@ -54,6 +55,10 @@ async function register({ name, email, password }) {
   return createdUser;
 }
 
+// Nota: o link de verificação também entra na conta (devolve a sessão), para quem acabou de se cadastrar não ter
+// que voltar e fazer login. Não abre uma porta nova: quem tem acesso ao e-mail já entraria pelo "Esqueci a senha".
+// O link vale uma vez só (24 h) — a marcação só acontece se o token ainda for o mesmo, então duas abas abertas com
+// o mesmo link ao mesmo tempo não entram as duas.
 async function verifyEmail(token) {
   const user = await userRepository.findByVerificationToken(token);
 
@@ -65,7 +70,11 @@ async function verifyEmail(token) {
     throw new InvalidOrExpiredTokenError();
   }
 
-  await userRepository.markEmailAsVerified(user.id);
+  const marked = await userRepository.markEmailAsVerified(user.id, token);
+  if (!marked) throw new InvalidOrExpiredTokenError();
+
+  // O usuário foi lido antes da marcação: a sessão já sai com o e-mail verificado
+  return createSession({ ...user, email_verified: true });
 }
 
 async function resendVerificationEmail(email) {

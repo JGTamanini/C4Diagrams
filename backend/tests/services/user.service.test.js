@@ -2,11 +2,13 @@ jest.mock('../../src/repositories/user.repository');
 jest.mock('bcryptjs');
 jest.mock('node:crypto');
 jest.mock('../../src/services/email.service');
+jest.mock('../../src/services/session.service');
 
 const userRepository = require('../../src/repositories/user.repository');
 const bcrypt = require('bcryptjs');
 const crypto = require('node:crypto');
 const emailService = require('../../src/services/email.service');
+const sessionService = require('../../src/services/session.service');
 const userService = require('../../src/services/user.service');
 const {
   EmailAlreadyExistsError,
@@ -129,15 +131,34 @@ describe('UserService', () => {
   });
 
   describe('verifyEmail', () => {
-    it('deve verificar o e-mail quando o token é válido e não expirado', async () => {
+    it('deve verificar o e-mail e já devolver a sessão (o link do e-mail também entra na conta)', async () => {
+      const user = {
+        id: 'uuid-mock',
+        email: 'joao@example.com',
+        email_verified: false,
+        verification_token_expires_at: new Date(Date.now() + 60 * 60 * 1000),
+      };
+      userRepository.findByVerificationToken.mockResolvedValue(user);
+      userRepository.markEmailAsVerified.mockResolvedValue(true);
+      sessionService.createSession.mockReturnValue({ token: 'jwt', user: { id: 'uuid-mock' } });
+
+      const session = await userService.verifyEmail('token-valido');
+
+      expect(userRepository.markEmailAsVerified).toHaveBeenCalledWith('uuid-mock', 'token-valido');
+      // A sessão já sai com o e-mail verificado (o usuário foi lido antes da marcação)
+      expect(sessionService.createSession).toHaveBeenCalledWith({ ...user, email_verified: true });
+      expect(session).toEqual({ token: 'jwt', user: { id: 'uuid-mock' } });
+    });
+
+    it('não deve entrar na conta quando outra requisição já usou o mesmo link', async () => {
       userRepository.findByVerificationToken.mockResolvedValue({
         id: 'uuid-mock',
         verification_token_expires_at: new Date(Date.now() + 60 * 60 * 1000),
       });
+      userRepository.markEmailAsVerified.mockResolvedValue(false);
 
-      await userService.verifyEmail('token-valido');
-
-      expect(userRepository.markEmailAsVerified).toHaveBeenCalledWith('uuid-mock');
+      await expect(userService.verifyEmail('token-valido')).rejects.toThrow(InvalidOrExpiredTokenError);
+      expect(sessionService.createSession).not.toHaveBeenCalled();
     });
 
     it('deve rejeitar quando o token não existe', async () => {
