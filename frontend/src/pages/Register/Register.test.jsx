@@ -88,18 +88,31 @@ describe('Register', () => {
       mockNavigate.mockClear();
     });
 
-    it('deve ir para os projetos quando o link do e-mail entrar na conta em outra aba', async () => {
+    it('deve ir para os projetos quando o link do e-mail entrar nesta conta em outra aba', async () => {
       await registerAndWait();
 
       storageFromOtherTab('token', 'header.payload.signature');
+      storageFromOtherTab('user', '{"name":"João","email":"Joao@Example.com"}');
 
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
       expect(mockNavigate).toHaveBeenCalledWith('/projetos', { replace: true });
     });
 
-    it('deve ignorar saídas de sessão e outras chaves do armazenamento', async () => {
+    it('não deve seguir quando outra conta entrar em outra aba', async () => {
+      await registerAndWait();
+
+      storageFromOtherTab('token', 'header.payload.signature');
+      storageFromOtherTab('user', '{"name":"Maria","email":"maria@example.com"}');
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('deve ignorar saídas de sessão e dados que não sejam de um usuário', async () => {
       await registerAndWait();
 
       storageFromOtherTab('token', null);
+      storageFromOtherTab('user', null);
+      storageFromOtherTab('user', 'não é json');
       storageFromOtherTab('user', '{"name":"João"}');
 
       expect(mockNavigate).not.toHaveBeenCalled();
@@ -108,7 +121,7 @@ describe('Register', () => {
     it('não deve reagir antes de terminar o cadastro', () => {
       renderWithRouter(<Register />);
 
-      storageFromOtherTab('token', 'header.payload.signature');
+      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
 
       expect(mockNavigate).not.toHaveBeenCalled();
     });

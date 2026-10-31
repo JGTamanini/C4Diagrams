@@ -73,7 +73,8 @@ async function verifyEmail(token) {
   const marked = await userRepository.markEmailAsVerified(user.id, token);
   if (!marked) throw new InvalidOrExpiredTokenError();
 
-  return createSession(user);
+  // O usuário foi lido antes da marcação: a sessão já sai com o e-mail verificado
+  return createSession({ ...user, email_verified: true });
 }
 
 async function resendVerificationEmail(email) {

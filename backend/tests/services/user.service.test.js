@@ -132,7 +132,12 @@ describe('UserService', () => {
 
   describe('verifyEmail', () => {
     it('deve verificar o e-mail e já devolver a sessão (o link do e-mail também entra na conta)', async () => {
-      const user = { id: 'uuid-mock', email: 'joao@example.com', verification_token_expires_at: new Date(Date.now() + 60 * 60 * 1000) };
+      const user = {
+        id: 'uuid-mock',
+        email: 'joao@example.com',
+        email_verified: false,
+        verification_token_expires_at: new Date(Date.now() + 60 * 60 * 1000),
+      };
       userRepository.findByVerificationToken.mockResolvedValue(user);
       userRepository.markEmailAsVerified.mockResolvedValue(true);
       sessionService.createSession.mockReturnValue({ token: 'jwt', user: { id: 'uuid-mock' } });
@@ -140,7 +145,8 @@ describe('UserService', () => {
       const session = await userService.verifyEmail('token-valido');
 
       expect(userRepository.markEmailAsVerified).toHaveBeenCalledWith('uuid-mock', 'token-valido');
-      expect(sessionService.createSession).toHaveBeenCalledWith(user);
+      // A sessão já sai com o e-mail verificado (o usuário foi lido antes da marcação)
+      expect(sessionService.createSession).toHaveBeenCalledWith({ ...user, email_verified: true });
       expect(session).toEqual({ token: 'jwt', user: { id: 'uuid-mock' } });
     });
 
