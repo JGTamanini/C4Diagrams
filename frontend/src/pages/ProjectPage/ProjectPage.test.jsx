@@ -5,9 +5,11 @@ import { vi } from 'vitest';
 import ProjectPage from './ProjectPage';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
+import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
+vi.mock('../../hooks/useDiagramValidation');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: ({
     level,
@@ -15,6 +17,9 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     keyboardEnabled,
     paletteOpen,
     canPaste,
+    issues,
+    focusRequest,
+    rightInset,
     onTogglePalette,
     onAddNode,
     onConnect,
@@ -32,6 +37,9 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-keyboard={String(keyboardEnabled)}
       data-palette={String(paletteOpen)}
       data-can-paste={String(canPaste)}
+      data-issues={issues.length}
+      data-focus={focusRequest ? JSON.stringify({ nodeId: focusRequest.nodeId, edgeId: focusRequest.edgeId }) : ''}
+      data-right-inset={rightInset}
     >
       <button type="button" onClick={() => onCopyNodes(['n1'])}>mock-copy</button>
       <button type="button" onClick={() => onPaste({ x: 1, y: 2 })}>mock-paste</button>
@@ -65,6 +73,7 @@ const editor = {
   removeEdge: vi.fn(),
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
+  selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
   notice: null,
@@ -81,6 +90,11 @@ const editor = {
 function mockEditor(overrides = {}) {
   useDiagramEditor.mockReturnValue({ ...editor, ...overrides });
 }
+
+const validationIssues = [
+  { code: 'ISOLATED_ELEMENT', severity: 'warning', nodeId: 'n2', message: '"Loja" não tem nenhuma relação.' },
+  { code: 'DUPLICATE_RELATIONSHIP', severity: 'error', edgeId: 'e1', message: 'Relação repetida.' },
+];
 
 function renderAt(path) {
   return render(
@@ -103,6 +117,7 @@ describe('ProjectPage (editor de diagramas)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEditor();
+    useDiagramValidation.mockReturnValue({ status: 'ready', issues: validationIssues });
   });
 
   describe('estrutura (wireframe 7)', () => {
@@ -137,7 +152,7 @@ describe('ProjectPage (editor de diagramas)', () => {
     it('deve listar Contexto, Container e Componente, marcando o nível ativo', async () => {
       await renderLoaded();
 
-      const tabs = screen.getAllByRole('tab');
+      const tabs = within(screen.getByRole('tablist', { name: 'Níveis do modelo C4' })).getAllByRole('tab');
       expect(tabs.map((tab) => tab.textContent)).toEqual(['Contexto', 'Container', 'Componente']);
       expect(screen.getByRole('tab', { name: 'Contexto' })).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByRole('tab', { name: 'Container' })).toHaveAttribute('aria-selected', 'false');
@@ -532,6 +547,48 @@ describe('ProjectPage (editor de diagramas)', () => {
       settle(resolveFn, rejectFn);
 
       await expect(Promise.resolve()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('validação do diagrama (RF17)', () => {
+    it('deve validar o nível aberto e mostrar o resultado no assistente', async () => {
+      await renderLoaded();
+
+      expect(useDiagramValidation).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges);
+      const panel = screen.getByRole('complementary', { name: 'Assistente' });
+      expect(within(panel).getByRole('region', { name: 'Erros (1)' })).toBeInTheDocument();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-issues', '2');
+    });
+
+    it('não deve bloquear os cliques no canvas abaixo do assistente', async () => {
+      await renderLoaded();
+
+      expect(screen.getByRole('complementary', { name: 'Assistente' }).parentElement).toHaveClass('pointer-events-none');
+    });
+
+    it('deve selecionar e centralizar o elemento do problema clicado', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: '"Loja" não tem nenhuma relação.' }));
+
+      expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', edgeId: undefined });
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-focus', JSON.stringify({ nodeId: 'n2' }));
+    });
+
+    it('deve ocultar o assistente, liberando a direita do canvas e recentralizando as abas', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+      const tabsWrapper = screen.getByRole('tablist', { name: 'Níveis do modelo C4' }).parentElement;
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '300');
+      expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'true');
+
+      await user.click(screen.getByRole('button', { name: 'Ocultar assistente' }));
+
+      expect(screen.queryByRole('complementary', { name: 'Assistente' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Mostrar assistente (1 erro, 1 aviso)' })).toBeInTheDocument();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '0');
+      expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'false');
     });
   });
 });

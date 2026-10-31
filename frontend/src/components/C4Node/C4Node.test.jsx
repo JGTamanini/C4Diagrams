@@ -81,4 +81,23 @@ describe('C4Node', () => {
     );
     expect(screen.getByTestId('c4-node')).toHaveAttribute('data-selected', 'true');
   });
+
+  describe('marcador da validação (RF17)', () => {
+    it.each([
+      ['error', 'Este elemento tem erro de validação'],
+      ['warning', 'Este elemento tem aviso de validação'],
+    ])('deve marcar o elemento com %s', (issueSeverity, label) => {
+      renderNode('c4-person', { label: 'Cliente', issueSeverity });
+
+      const marker = screen.getByTestId('issue-marker');
+      expect(marker).toHaveAttribute('data-severity', issueSeverity);
+      expect(marker).toHaveAttribute('title', label);
+    });
+
+    it('não deve marcar elemento sem problema', () => {
+      renderNode('c4-person', { label: 'Cliente' });
+
+      expect(screen.queryByTestId('issue-marker')).not.toBeInTheDocument();
+    });
+  });
 });

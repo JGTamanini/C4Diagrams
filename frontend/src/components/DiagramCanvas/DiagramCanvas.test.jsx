@@ -77,6 +77,62 @@ describe('DiagramCanvas', () => {
     expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
   });
 
+  describe('problemas da validação (RF17)', () => {
+    const edgesWithLabel = [{ id: 'e1', source: 'n1', target: 'n2', label: 'Compra em', data: {} }];
+    const issues = [
+      { code: 'ISOLATED_ELEMENT', severity: 'warning', nodeId: 'n1', message: 'Isolado' },
+      { code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n2', message: 'Sem descrição' },
+      { code: 'DUPLICATE_RELATIONSHIP', severity: 'error', edgeId: 'e1', message: 'Repetida' },
+    ];
+
+    it('deve marcar os elementos com erro ou aviso, mas não os que só têm sugestão', async () => {
+      renderCanvas({ edges: edgesWithLabel, issues });
+      await screen.findByText('Cliente');
+
+      const markers = screen.getAllByTestId('issue-marker');
+      expect(markers).toHaveLength(1);
+      expect(markers[0]).toHaveAttribute('data-severity', 'warning');
+    });
+
+    it('deve contornar o rótulo da relação com problema na cor da gravidade', async () => {
+      renderCanvas({ edges: edgesWithLabel, issues });
+      await screen.findByText('Compra em');
+
+      expect(document.querySelector('.react-flow__edge-textbg')).toHaveStyle({ stroke: 'var(--color-danger)' });
+    });
+
+    it('deve marcar como erro o elemento que tem erro e aviso ao mesmo tempo, em qualquer ordem', async () => {
+      renderCanvas({
+        issues: [
+          { code: 'A', severity: 'warning', nodeId: 'n1', message: 'aviso' },
+          { code: 'B', severity: 'error', nodeId: 'n1', message: 'erro' },
+          { code: 'C', severity: 'warning', nodeId: 'n1', message: 'outro aviso' },
+        ],
+      });
+      await screen.findByText('Cliente');
+
+      expect(screen.getByTestId('issue-marker')).toHaveAttribute('data-severity', 'error');
+    });
+
+    it.each([
+      ['um elemento', { nodeId: 'n1' }],
+      ['uma relação (os dois lados)', { edgeId: 'e1' }],
+      ['uma relação que já não existe', { edgeId: 'removida' }],
+    ])('deve aceitar o pedido de foco em %s sem perder o diagrama', async (_, focusRequest) => {
+      renderCanvas({ edges: edgesWithLabel, focusRequest });
+
+      expect(await screen.findByText('Cliente')).toBeInTheDocument();
+      expect(screen.getByText('Loja Online')).toBeInTheDocument();
+    });
+
+    it('deve afastar a legenda quando o painel da direita estiver aberto', async () => {
+      renderCanvas({ rightInset: 300 });
+      await screen.findByText('Cliente');
+
+      expect(screen.getByRole('region', { name: 'Legenda' })).toHaveStyle({ right: '316px' });
+    });
+  });
+
   describe('menu de clique direito', () => {
     async function openNodeMenu(label) {
       fireEvent.contextMenu((await screen.findByText(label)).closest('.react-flow__node'), { clientX: 120, clientY: 80 });
@@ -138,6 +194,14 @@ describe('DiagramCanvas', () => {
   });
 
   describe('paleta sobre o canvas', () => {
+    it('não deve bloquear os cliques no canvas abaixo da paleta (ex.: botões de zoom): só a paleta recebe clique', () => {
+      renderCanvas();
+
+      const palette = screen.getByRole('complementary', { name: 'Elementos' });
+      expect(palette.parentElement).toHaveClass('pointer-events-none');
+      expect(palette).toHaveClass('pointer-events-auto');
+    });
+
     it('deve mostrar a paleta aberta com o botão para ocultá-la', async () => {
       const user = userEvent.setup();
       const { onTogglePalette } = renderCanvas();

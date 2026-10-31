@@ -757,4 +757,27 @@ describe('useDiagramEditor', () => {
       expect(result.current.notice).toBeNull();
     });
   });
+
+  describe('selecionar o alvo de um problema da validação', () => {
+    it('deve selecionar só o elemento indicado, sem entrar no histórico nem marcar para salvar', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.onEdgesChange([{ type: 'select', id: 'e1', selected: true }]));
+
+      act(() => result.current.selectOnly({ nodeId: 'n2' }));
+
+      expect(result.current.nodes.map((node) => Boolean(node.selected))).toEqual([false, true]);
+      expect(result.current.edges[0].selected).toBe(false);
+      expect(result.current.canUndo).toBe(false);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('deve selecionar só a relação indicada', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.selectOnly({ edgeId: 'e1' }));
+
+      expect(result.current.edges[0].selected).toBe(true);
+      expect(result.current.nodes.every((node) => !node.selected)).toBe(true);
+    });
+  });
 });

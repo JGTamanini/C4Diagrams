@@ -342,6 +342,24 @@ export function useDiagramEditor(projectId) {
     [activeLevel, editActive]
   );
 
+  // Seleciona só o elemento ou a relação indicados (ex.: ao clicar num problema da validação). Seleção não é edição:
+  // não entra no histórico nem marca o nível para salvar
+  const selectOnly = useCallback(
+    ({ nodeId, edgeId }) => {
+      setDiagrams((current) => {
+        const diagram = current[activeLevel];
+        return {
+          ...current,
+          [activeLevel]: {
+            nodes: diagram.nodes.map((node) => ({ ...node, selected: node.id === nodeId })),
+            edges: diagram.edges.map((edge) => ({ ...edge, selected: edge.id === edgeId })),
+          },
+        };
+      });
+    },
+    [activeLevel]
+  );
+
   // Desfazer e refazer (RF23): trocam o diagrama do nível ativo pelo passo guardado e marcam para salvar
   const travel = useCallback(
     (from) => {
@@ -392,6 +410,7 @@ export function useDiagramEditor(projectId) {
     removeNode,
     removeEdge,
     removeSelected,
+    selectOnly,
     copy,
     paste,
     hasClipboard,

@@ -27,6 +27,8 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { PALETTE_OFFSET } from '../../components/ElementPalette/ElementPalette';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
+import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import ValidationPanel, { ASSISTANT_OFFSET } from '../../components/ValidationPanel/ValidationPanel';
 import { LEVELS } from '../../constants/c4Notation';
 
 const SAVE_STATUS_TEXT = {
@@ -99,12 +101,13 @@ function EditorNotice({ message, onDismiss }) {
 
 // Nota: abas de nível flutuando no topo do canvas, centralizadas na área de trabalho (deslizam junto com a paleta);
 // o destaque do nível ativo também desliza entre as abas (layoutId)
-function LevelTabs({ activeLevel, onSelect, paletteOpen }) {
+function LevelTabs({ activeLevel, onSelect, paletteOpen, assistantOpen }) {
   return (
     <motion.div
       data-palette-open={String(paletteOpen)}
+      data-assistant-open={String(assistantOpen)}
       initial={false}
-      animate={{ left: paletteOpen ? PALETTE_OFFSET : 0 }}
+      animate={{ left: paletteOpen ? PALETTE_OFFSET : 0, right: assistantOpen ? ASSISTANT_OFFSET : 0 }}
       transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
       className="pointer-events-none absolute top-3 right-0 z-20 flex justify-center"
     >
@@ -143,7 +146,7 @@ function LevelTabs({ activeLevel, onSelect, paletteOpen }) {
   );
 }
 
-function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePalette }) {
+function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePalette, issues, focusRequest, rightInset }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -169,6 +172,9 @@ function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePale
       onPaste={editor.paste}
       onRemoveNode={editor.removeNode}
       onRemoveSelected={editor.removeSelected}
+      issues={issues}
+      focusRequest={focusRequest}
+      rightInset={rightInset}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}
@@ -234,6 +240,19 @@ function ProjectPage() {
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const [paletteOpen, setPaletteOpen] = useState(true);
+  // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
+  const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
+  const [assistantOpen, setAssistantOpen] = useState(true);
+  const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
+  const [focusRequest, setFocusRequest] = useState(null);
+  const rightInset = assistantOpen ? ASSISTANT_OFFSET : 0;
+
+  // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
+  // quando o mesmo problema é clicado de novo)
+  function selectIssue({ nodeId, edgeId }) {
+    editor.selectOnly({ nodeId, edgeId });
+    setFocusRequest({ nodeId, edgeId });
+  }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
   const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts;
@@ -319,8 +338,28 @@ function ProjectPage() {
           keyboardEnabled={!modalOpen}
           paletteOpen={paletteOpen}
           onTogglePalette={togglePalette}
+          issues={validation.issues}
+          focusRequest={focusRequest}
+          rightInset={rightInset}
         />
-        <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} paletteOpen={paletteOpen} />
+        <LevelTabs
+          activeLevel={editor.activeLevel}
+          onSelect={editor.selectLevel}
+          paletteOpen={paletteOpen}
+          assistantOpen={assistantOpen}
+        />
+        {editor.loadStatus === 'ready' && (
+          // A coluna do assistente deixa passar os cliques para o canvas; só o painel (ou o botão) recebe clique
+          <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-20 flex flex-col items-end">
+            <ValidationPanel
+              open={assistantOpen}
+              status={validation.status}
+              issues={validation.issues}
+              onToggle={toggleAssistant}
+              onSelectIssue={selectIssue}
+            />
+          </div>
+        )}
         <AnimatePresence>
           {editor.notice && <EditorNotice key={editor.notice} message={editor.notice} onDismiss={editor.dismissNotice} />}
         </AnimatePresence>
