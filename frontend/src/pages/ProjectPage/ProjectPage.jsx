@@ -155,6 +155,7 @@ function EditorBody({
   issues,
   focusRequest,
   rightInset,
+  rightObstacle,
   onSelectTreeElement,
 }) {
   if (editor.loadStatus === 'loading') {
@@ -185,6 +186,7 @@ function EditorBody({
       issues={issues}
       focusRequest={focusRequest}
       rightInset={rightInset}
+      rightObstacle={rightObstacle}
       nodesByLevel={editor.nodesByLevel}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
@@ -258,6 +260,8 @@ function ProjectPage() {
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
   const rightInset = assistantOpen ? ASSISTANT_OFFSET : 0;
+  // O painel (ou o botão) do assistente, medido pela legenda para saber se ele desce até ela
+  const [assistantBox, setAssistantBox] = useState(null);
 
   // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
   // quando o mesmo problema é clicado de novo)
@@ -360,6 +364,7 @@ function ProjectPage() {
           issues={validation.issues}
           focusRequest={focusRequest}
           rightInset={rightInset}
+          rightObstacle={assistantBox}
           onSelectTreeElement={selectTreeElement}
         />
         <LevelTabs
@@ -371,13 +376,15 @@ function ProjectPage() {
         {editor.loadStatus === 'ready' && (
           // A coluna do assistente deixa passar os cliques para o canvas; só o painel (ou o botão) recebe clique
           <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-20 flex flex-col items-end">
-            <ValidationPanel
-              open={assistantOpen}
-              status={validation.status}
-              issues={validation.issues}
-              onToggle={toggleAssistant}
-              onSelectIssue={selectIssue}
-            />
+            <div ref={setAssistantBox} className="pointer-events-none flex max-h-full min-h-0 flex-col items-end">
+              <ValidationPanel
+                open={assistantOpen}
+                status={validation.status}
+                issues={validation.issues}
+                onToggle={toggleAssistant}
+                onSelectIssue={selectIssue}
+              />
+            </div>
           </div>
         )}
         <AnimatePresence>

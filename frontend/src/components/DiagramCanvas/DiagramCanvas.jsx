@@ -84,6 +84,7 @@ function DiagramWorkspace({
   issues = [],
   focusRequest = null,
   rightInset = 0,
+  rightObstacle = null,
   nodesByLevel = null,
   onSelectTreeElement,
   onTogglePalette,
@@ -315,7 +316,7 @@ function DiagramWorkspace({
           </p>
         )}
 
-        <DiagramLegend nodes={nodes} edges={edges} rightInset={rightInset} />
+        <DiagramLegend nodes={nodes} edges={edges} rightInset={rightInset} rightObstacle={rightObstacle} />
 
         {contextMenu && (
           <ContextMenu
