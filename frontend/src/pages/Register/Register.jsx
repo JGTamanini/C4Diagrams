@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
@@ -9,6 +9,16 @@ import ResendVerification from '../../components/ResendVerification/ResendVerifi
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
 
+function parseUser(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+const sameEmail = (a, b) => Boolean(a) && a.trim().toLowerCase() === b.trim().toLowerCase();
+
 function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,6 +27,22 @@ function Register() {
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   useAuthIllustration(successMessage ? 'emailSent' : 'register');
+  const navigate = useNavigate();
+
+  // Nota: enquanto espera a verificação, esta aba escuta o login feito pelo link do e-mail em outra aba do mesmo
+  // navegador (o evento "storage" avisa as outras abas quando a sessão é salva) e segue sozinha para os projetos.
+  // Só segue se a sessão salva for desta conta: o usuário é gravado depois do token, então é ele que é observado
+  useEffect(() => {
+    if (!successMessage) return undefined;
+
+    function handleStorage(event) {
+      if (event.key !== 'user' || !event.newValue) return;
+      if (sameEmail(parseUser(event.newValue)?.email, email)) void navigate('/projetos', { replace: true });
+    }
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [successMessage, email, navigate]);
 
   async function handleSubmit(event) {
     event.preventDefault();
