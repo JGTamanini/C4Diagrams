@@ -352,7 +352,7 @@ function DiagramWorkspace({
                     label="Ajustar a divisão entre elementos e estrutura"
                     value={paletteHeight}
                     min={PALETTE_MIN_HEIGHT}
-                    max={maxPaletteHeight()}
+                    getMax={maxPaletteHeight}
                     getStartValue={() => paletteBoxRef.current?.getBoundingClientRect().height ?? PALETTE_MIN_HEIGHT}
                     onChange={setPaletteHeight}
                   />

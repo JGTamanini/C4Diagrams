@@ -5,14 +5,15 @@ const KEYBOARD_STEP = 16;
 
 // Nota: divisória arrastável entre dois painéis empilhados (paleta e árvore). Ajusta a altura do painel de cima, pelo
 // mouse ou pelo teclado (↑/↓), sempre dentro dos limites. value pode ser null (altura automática): nesse caso, o
-// ajuste parte da altura medida agora (getStartValue).
-function ColumnSplitter({ label, value, min, max, getStartValue, onChange }) {
+// ajuste parte da altura medida agora (getStartValue). O limite de cima (getMax) é lido na hora de cada ajuste, porque
+// depende do tamanho da coluna, que pode mudar depois de desenhar (ex.: a paleta acabou de reabrir).
+function ColumnSplitter({ label, value, min, getMax, getStartValue, onChange }) {
   const dragRef = useRef(null);
   const stopDraggingRef = useRef(null);
 
   // Saiu da tela no meio do arraste (ex.: a coluna foi recolhida): para de ouvir o mouse
   useEffect(() => () => stopDraggingRef.current?.(), []);
-  const clamp = (height) => Math.min(max, Math.max(min, height));
+  const clamp = (height, max = getMax()) => Math.min(max, Math.max(min, height));
   const current = () => value ?? getStartValue();
 
   function handleKeyDown(event) {
@@ -24,11 +25,11 @@ function ColumnSplitter({ label, value, min, max, getStartValue, onChange }) {
 
   function handlePointerDown(event) {
     event.preventDefault();
-    dragRef.current = { startY: event.clientY, startHeight: current() };
+    dragRef.current = { startY: event.clientY, startHeight: current(), max: getMax() };
 
     function handlePointerMove(moveEvent) {
-      const { startY, startHeight } = dragRef.current;
-      onChange(clamp(startHeight + moveEvent.clientY - startY));
+      const { startY, startHeight, max } = dragRef.current;
+      onChange(clamp(startHeight + moveEvent.clientY - startY, max));
     }
     function handlePointerUp() {
       window.removeEventListener('pointermove', handlePointerMove);
@@ -48,7 +49,7 @@ function ColumnSplitter({ label, value, min, max, getStartValue, onChange }) {
       aria-label={label}
       aria-valuenow={Math.round(current())}
       aria-valuemin={min}
-      aria-valuemax={max}
+      aria-valuemax={Math.round(getMax())}
       tabIndex={0}
       title={label}
       onKeyDown={handleKeyDown}

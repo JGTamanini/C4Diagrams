@@ -9,7 +9,7 @@ function renderSplitter(props = {}) {
       label="Ajustar altura da paleta"
       value={200}
       min={100}
-      max={400}
+      getMax={() => 400}
       getStartValue={() => 180}
       onChange={onChange}
       {...props}
@@ -59,10 +59,23 @@ describe('ColumnSplitter', () => {
     expect(onChange).toHaveBeenCalledWith(196);
   });
 
+  it('deve ler o limite na hora do ajuste (a coluna pode ter mudado de tamanho depois de desenhar)', () => {
+    let columnLimit = 150;
+    const { splitter, onChange } = renderSplitter({ value: 380, getMax: () => columnLimit });
+
+    columnLimit = 400;
+    fireEvent.keyDown(splitter, { key: 'ArrowDown' });
+    fireEvent.pointerDown(splitter, { clientY: 100 });
+    fireEvent.pointerMove(window, { clientY: 200 });
+    fireEvent.pointerUp(window);
+
+    expect(onChange.mock.calls).toEqual([[396], [400]]);
+  });
+
   it('deve parar de ouvir o mouse se sair da tela no meio do arraste', () => {
     const onChange = vi.fn();
     const { unmount } = render(
-      <ColumnSplitter label="Divisória" value={200} min={100} max={400} getStartValue={() => 200} onChange={onChange} />
+      <ColumnSplitter label="Divisória" value={200} min={100} getMax={() => 400} getStartValue={() => 200} onChange={onChange} />
     );
     fireEvent.pointerDown(screen.getByRole('separator'), { clientY: 100 });
 
