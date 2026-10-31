@@ -16,6 +16,16 @@ function contentKey(level, document) {
 
 const EMPTY = { status: 'ready', issues: [] };
 
+// Enquanto a nova validação não chega, a lista anterior ainda pode citar um elemento ou relação já excluídos: esses
+// saem na hora (clicar neles levaria a um id que não existe mais). Problemas do diagrama inteiro ficam
+function withoutRemoved(issues, nodes, edges) {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edgeIds = new Set(edges.map((edge) => edge.id));
+  return issues.filter(
+    (issue) => (!issue.nodeId || nodeIds.has(issue.nodeId)) && (!issue.edgeId || edgeIds.has(issue.edgeId))
+  );
+}
+
 // Nota: RF17 no editor — valida o nível aberto no backend pouco depois de cada mudança de conteúdo, sem bloquear a
 // edição (RN11). Resposta antiga que chegue depois de uma mais nova é descartada; falha mantém a última lista válida
 // e tenta de novo na próxima mudança.
@@ -52,5 +62,5 @@ export function useDiagramValidation(projectId, level, nodes, edges) {
   if (isEmpty) return EMPTY;
   // Ao trocar de nível, a lista do nível anterior não vale para o novo
   if (result.level !== level) return { status: 'validating', issues: [] };
-  return { status: result.status, issues: result.issues };
+  return { status: result.status, issues: withoutRemoved(result.issues, nodes, edges) };
 }

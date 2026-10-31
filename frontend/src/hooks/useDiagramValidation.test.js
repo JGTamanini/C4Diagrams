@@ -111,10 +111,25 @@ describe('useDiagramValidation', () => {
     await waitDelay();
     validateDiagram.mockRejectedValueOnce(new Error('Network Error'));
 
-    rerender({ level: 'context', nodes: nodes.slice(1), edges: [] });
+    rerender({ level: 'context', nodes: [nodes[0], { ...nodes[1], data: { label: 'Loja 2' } }], edges });
     await waitDelay();
 
     expect(result.current).toEqual({ status: 'error', issues });
+  });
+
+  it('deve tirar na hora os problemas de elementos e relações excluídos, sem esperar a nova validação', async () => {
+    validateDiagram.mockResolvedValue([
+      { code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n1', message: 'n1' },
+      { code: 'MISSING_TECHNOLOGY', severity: 'info', edgeId: 'e1', message: 'e1' },
+      { code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n2', message: 'n2' },
+      { code: 'CONTEXT_WITHOUT_PERSON', severity: 'warning', message: 'diagrama' },
+    ]);
+    const { result, rerender } = renderValidation();
+    await waitDelay();
+
+    rerender({ level: 'context', nodes: [nodes[1]], edges: [] });
+
+    expect(result.current.issues.map((issue) => issue.message)).toEqual(['n2', 'diagrama']);
   });
 
   it('não deve validar um nível vazio (não há o que conferir)', async () => {
