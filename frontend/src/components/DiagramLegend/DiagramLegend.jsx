@@ -1,18 +1,48 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 import { C4_ELEMENTS, RELATIONSHIP_COLOR } from '../../constants/c4Notation';
 
 const ELEMENT_ORDER = Object.keys(C4_ELEMENTS);
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
+// Folga mínima entre o fim do painel da direita e o topo da legenda
+const OBSTACLE_GAP = 12;
+
+// O painel da direita (rightObstacle) desce até a legenda? Mede de novo sempre que um dos dois muda de tamanho (lista de
+// problemas que cresce, legenda recolhida) ou a janela muda. Sem painel para medir, considera que sim
+function useReachesLegend(legend, obstacle) {
+  const [reaches, setReaches] = useState(true);
+
+  useEffect(() => {
+    if (!legend || !obstacle) return undefined;
+
+    function measure() {
+      setReaches(obstacle.getBoundingClientRect().bottom + OBSTACLE_GAP > legend.getBoundingClientRect().top);
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(legend);
+    observer.observe(obstacle);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [legend, obstacle]);
+
+  return !obstacle || reaches;
+}
 
 // Nota: a notação oficial pede que todo diagrama tenha legenda (c4model.com, "Notation") —
 // explica as cores e formas dos tipos usados no diagrama e a leitura das conexões.
 // Recolhível (aberta por padrão), para não cobrir elementos quando o diagrama ocupa o canto. Largura fixa e itens
 // em uma linha só: aberta ou recolhida, ela ocupa sempre a mesma largura.
-// rightInset: quanto o painel da direita (Assistente) cobre — a legenda fica ao lado dele, nunca embaixo
-function DiagramLegend({ nodes, edges, rightInset = 0 }) {
+// rightInset: quanto o painel da direita (Assistente) cobre — a legenda fica ao lado dele, nunca embaixo. Com
+// rightObstacle (o próprio painel), só se afasta quando o painel desce até ela; se ele é curto, a legenda fica no canto
+function DiagramLegend({ nodes, edges, rightInset = 0, rightObstacle = null }) {
   const [open, setOpen] = useState(true);
+  const [legend, setLegend] = useState(null);
+  const besidePanel = useReachesLegend(legend, rightObstacle);
 
   if (nodes.length === 0) return null;
 
@@ -20,8 +50,9 @@ function DiagramLegend({ nodes, edges, rightInset = 0 }) {
 
   return (
     <section
+      ref={setLegend}
       aria-label="Legenda"
-      style={{ right: rightInset + 16 }}
+      style={{ right: (besidePanel ? rightInset : 0) + 16 }}
       className="absolute bottom-4 z-10 w-72 transition-[right] duration-200 overflow-hidden rounded-[var(--radius-control)] border border-line bg-surface/90 text-xs text-text-secondary shadow-[var(--shadow-card)] backdrop-blur-sm"
     >
       <button

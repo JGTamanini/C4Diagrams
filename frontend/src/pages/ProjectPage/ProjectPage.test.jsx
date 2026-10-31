@@ -10,8 +10,10 @@ import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
+// O elemento que a legenda deve evitar (o painel da direita), recebido pelo canvas
+let lastRightObstacle = null;
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
-  default: ({
+  default: function MockCanvas({
     level,
     nodes,
     keyboardEnabled,
@@ -20,6 +22,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     issues,
     focusRequest,
     rightInset,
+    rightObstacle,
     nodesByLevel,
     onSelectTreeElement,
     onTogglePalette,
@@ -31,7 +34,9 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     onPaste,
     onRemoveNode,
     onRemoveSelected,
-  }) => (
+  }) {
+    lastRightObstacle = rightObstacle;
+    return (
     <div
       data-testid="canvas"
       data-count={nodes.length}
@@ -56,7 +61,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
       <button type="button" onClick={() => onEditEdge('e1')}>mock-edit-edge</button>
     </div>
-  ),
+    );
+  },
 }));
 
 const editor = {
@@ -564,6 +570,13 @@ describe('ProjectPage (editor de diagramas)', () => {
       const panel = screen.getByRole('complementary', { name: 'Assistente' });
       expect(within(panel).getByRole('region', { name: 'Erros (1)' })).toBeInTheDocument();
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-issues', '2');
+    });
+
+    it('deve informar ao canvas onde está o assistente, para a legenda só se afastar quando ele chegar até ela', async () => {
+      await renderLoaded();
+
+      await waitFor(() => expect(lastRightObstacle).toBeInstanceOf(HTMLElement));
+      expect(lastRightObstacle).toContainElement(screen.getByRole('complementary', { name: 'Assistente' }));
     });
 
     it('não deve bloquear os cliques no canvas abaixo do assistente', async () => {

@@ -1,6 +1,7 @@
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { act, render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DiagramLegend from './DiagramLegend';
+import { vi } from 'vitest';
 
 const node = (id, type) => ({ id, type, position: { x: 0, y: 0 }, data: { label: id } });
 
@@ -57,5 +58,70 @@ describe('DiagramLegend', () => {
     render(<DiagramLegend nodes={[]} edges={[]} />);
 
     expect(screen.queryByRole('region', { name: 'Legenda' })).not.toBeInTheDocument();
+  });
+
+  describe('ao lado do painel da direita', () => {
+    // Observador de tamanho controlável: o teste decide quando "algo mudou de tamanho"
+    let resizeCallbacks;
+    let obstacleBottom;
+
+    beforeEach(() => {
+      resizeCallbacks = [];
+      globalThis.ResizeObserver = class {
+        constructor(callback) {
+          resizeCallbacks.push(callback);
+        }
+        observe() {
+          // a medição inicial é feita pelo próprio componente
+        }
+        disconnect() {
+          // sem efeito no teste
+        }
+      };
+      // A legenda começa em y = 700 (canto inferior); o painel termina onde o teste disser
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+        if (this.getAttribute('aria-label') === 'Legenda') return { top: 700, bottom: 880 };
+        if (this.dataset.testid === 'painel') return { top: 12, bottom: obstacleBottom };
+        return { top: 0, bottom: 0 };
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      delete globalThis.ResizeObserver;
+    });
+
+    function renderBesidePanel() {
+      const panel = document.createElement('div');
+      panel.dataset.testid = 'painel';
+      document.body.append(panel);
+      render(<DiagramLegend nodes={[node('a', 'c4-person')]} edges={[]} rightInset={300} rightObstacle={panel} />);
+      return screen.getByRole('region', { name: 'Legenda' });
+    }
+
+    it('deve ficar no canto quando o painel não desce até ela', () => {
+      obstacleBottom = 400;
+
+      expect(renderBesidePanel()).toHaveStyle({ right: '16px' });
+    });
+
+    it('deve se afastar quando o painel desce até a altura dela', () => {
+      obstacleBottom = 695;
+
+      expect(renderBesidePanel()).toHaveStyle({ right: '316px' });
+    });
+
+    it('deve acompanhar o painel quando ele cresce ou diminui', () => {
+      obstacleBottom = 400;
+      const legend = renderBesidePanel();
+
+      obstacleBottom = 760;
+      act(() => resizeCallbacks.forEach((callback) => callback([])));
+      expect(legend).toHaveStyle({ right: '316px' });
+
+      obstacleBottom = 300;
+      act(() => resizeCallbacks.forEach((callback) => callback([])));
+      expect(legend).toHaveStyle({ right: '16px' });
+    });
   });
 });

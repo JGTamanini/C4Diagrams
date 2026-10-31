@@ -125,7 +125,7 @@ describe('DiagramCanvas', () => {
       expect(screen.getByText('Loja Online')).toBeInTheDocument();
     });
 
-    it('deve afastar a legenda quando o painel da direita estiver aberto', async () => {
+    it('deve afastar a legenda quando o painel da direita estiver aberto (sem o painel para medir)', async () => {
       renderCanvas({ rightInset: 300 });
       await screen.findByText('Cliente');
 
