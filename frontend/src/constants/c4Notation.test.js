@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { C4_ELEMENTS, LEVEL_ELEMENTS, isAllowedInLevel, isValidRelationship, typeLabel, withTechnologyLabel } from './c4Notation';
+import {
+  C4_ELEMENTS,
+  LEVEL_ELEMENTS,
+  elementMatchKey,
+  isAllowedInLevel,
+  isValidRelationship,
+  typeLabel,
+  withTechnologyLabel,
+} from './c4Notation';
 
 describe('notação C4', () => {
   it('deve oferecer em cada nível só os elementos que o c4model.com prevê para ele (RN08)', () => {
@@ -65,5 +73,12 @@ describe('notação C4', () => {
 
   it('não deve exibir "undefined" quando a conexão tiver tecnologia mas não tiver rótulo', () => {
     expect(withTechnologyLabel({ id: 'e1', data: { technology: 'HTTPS' } }).label).toBe('[HTTPS]');
+  });
+
+  it('deve reconhecer o mesmo elemento em níveis diferentes por tipo e nome (como o motor de validação)', () => {
+    const node = (type, label) => ({ id: 'x', type, data: { label } });
+
+    expect(elementMatchKey(node('c4-person', '  Cliente   VIP '))).toBe(elementMatchKey(node('c4-person', 'cliente vip')));
+    expect(elementMatchKey(node('c4-person', 'Cliente'))).not.toBe(elementMatchKey(node('c4-system-external', 'Cliente')));
   });
 });

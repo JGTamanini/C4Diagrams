@@ -20,6 +20,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     issues,
     focusRequest,
     rightInset,
+    nodesByLevel,
+    onSelectTreeElement,
     onTogglePalette,
     onAddNode,
     onConnect,
@@ -40,7 +42,10 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-issues={issues.length}
       data-focus={focusRequest ? JSON.stringify({ nodeId: focusRequest.nodeId, edgeId: focusRequest.edgeId }) : ''}
       data-right-inset={rightInset}
+      data-tree-levels={Object.keys(nodesByLevel).join(',')}
     >
+      <button type="button" onClick={() => onSelectTreeElement('container', 'c1')}>mock-tree-container</button>
+      <button type="button" onClick={() => onSelectTreeElement('context', 'n2')}>mock-tree-context</button>
       <button type="button" onClick={() => onCopyNodes(['n1'])}>mock-copy</button>
       <button type="button" onClick={() => onPaste({ x: 1, y: 2 })}>mock-paste</button>
       <button type="button" onClick={() => onRemoveNode('n1')}>mock-remove-node</button>
@@ -73,6 +78,7 @@ const editor = {
   removeEdge: vi.fn(),
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
+  nodesByLevel: { context: [], container: [], component: [] },
   selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
@@ -589,6 +595,35 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.getByRole('button', { name: 'Mostrar assistente (1 erro, 1 aviso)' })).toBeInTheDocument();
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '0');
       expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'false');
+    });
+  });
+
+  describe('árvore dos elementos', () => {
+    it('deve passar os elementos de todos os níveis para a árvore', async () => {
+      await renderLoaded();
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-tree-levels', 'context,container,component');
+    });
+
+    it('deve trocar de nível, selecionar e centralizar o elemento clicado em outro nível', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-tree-container' }));
+
+      expect(editor.selectLevel).toHaveBeenCalledWith('container');
+      expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'c1', level: 'container' });
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-focus', JSON.stringify({ nodeId: 'c1' }));
+    });
+
+    it('não deve trocar de nível quando o elemento clicado já está no nível aberto', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-tree-context' }));
+
+      expect(editor.selectLevel).not.toHaveBeenCalled();
+      expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', level: 'context' });
     });
   });
 });

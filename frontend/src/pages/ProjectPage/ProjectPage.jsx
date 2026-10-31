@@ -146,7 +146,17 @@ function LevelTabs({ activeLevel, onSelect, paletteOpen, assistantOpen }) {
   );
 }
 
-function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePalette, issues, focusRequest, rightInset }) {
+function EditorBody({
+  editor,
+  onEdit,
+  keyboardEnabled,
+  paletteOpen,
+  onTogglePalette,
+  issues,
+  focusRequest,
+  rightInset,
+  onSelectTreeElement,
+}) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
   }
@@ -175,6 +185,8 @@ function EditorBody({ editor, onEdit, keyboardEnabled, paletteOpen, onTogglePale
       issues={issues}
       focusRequest={focusRequest}
       rightInset={rightInset}
+      nodesByLevel={editor.nodesByLevel}
+      onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
       onConnect={editor.connect}
@@ -252,6 +264,13 @@ function ProjectPage() {
   function selectIssue({ nodeId, edgeId }) {
     editor.selectOnly({ nodeId, edgeId });
     setFocusRequest({ nodeId, edgeId });
+  }
+
+  // Clique na árvore de elementos: abre o nível do elemento (se for outro), seleciona e centraliza nele
+  function selectTreeElement(level, nodeId) {
+    if (level !== editor.activeLevel) editor.selectLevel(level);
+    editor.selectOnly({ nodeId, level });
+    setFocusRequest({ nodeId });
   }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
@@ -341,6 +360,7 @@ function ProjectPage() {
           issues={validation.issues}
           focusRequest={focusRequest}
           rightInset={rightInset}
+          onSelectTreeElement={selectTreeElement}
         />
         <LevelTabs
           activeLevel={editor.activeLevel}

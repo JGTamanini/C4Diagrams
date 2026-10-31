@@ -193,6 +193,38 @@ describe('DiagramCanvas', () => {
     });
   });
 
+  describe('árvore dos elementos (abaixo da paleta)', () => {
+    const nodesByLevel = { context: nodes, container: [], component: [] };
+
+    it('deve mostrar a estrutura do projeto abaixo da paleta, levando ao elemento clicado', async () => {
+      const user = userEvent.setup();
+      const onSelectTreeElement = vi.fn();
+      renderCanvas({ nodesByLevel, onSelectTreeElement });
+
+      const tree = screen.getByRole('complementary', { name: 'Estrutura do projeto' });
+      await user.click(within(tree).getByRole('button', { name: 'Loja Online' }));
+
+      expect(onSelectTreeElement).toHaveBeenCalledWith('context', 'n2');
+    });
+
+    it('deve ajustar a altura da paleta pela divisória entre as duas', () => {
+      renderCanvas({ nodesByLevel, onSelectTreeElement: vi.fn() });
+      const splitter = screen.getByRole('separator', { name: 'Ajustar a divisão entre elementos e estrutura' });
+
+      fireEvent.keyDown(splitter, { key: 'ArrowDown' });
+
+      expect(screen.getByRole('complementary', { name: 'Elementos' }).parentElement).toHaveStyle({ height: '190px' });
+      expect(splitter).toHaveAttribute('aria-valuenow', '190');
+    });
+
+    it('não deve mostrar a árvore sem os elementos dos níveis', () => {
+      renderCanvas();
+
+      expect(screen.queryByRole('complementary', { name: 'Estrutura do projeto' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    });
+  });
+
   describe('paleta sobre o canvas', () => {
     it('não deve bloquear os cliques no canvas abaixo da paleta (ex.: botões de zoom): só a paleta recebe clique', () => {
       renderCanvas();

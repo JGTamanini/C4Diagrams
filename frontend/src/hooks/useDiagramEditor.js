@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyEdgeChanges, applyNodeChanges } from '@xyflow/react';
 import { listDiagrams, saveDiagram } from '../services/diagrams';
 import {
@@ -342,15 +342,22 @@ export function useDiagramEditor(projectId) {
     [activeLevel, editActive]
   );
 
+  // Elementos de todos os níveis (árvore de elementos): a mesma referência enquanto nada muda
+  const nodesByLevel = useMemo(
+    () => Object.fromEntries(LEVEL_IDS.map((level) => [level, diagrams[level].nodes])),
+    [diagrams]
+  );
+
   // Seleciona só o elemento ou a relação indicados (ex.: ao clicar num problema da validação). Seleção não é edição:
   // não entra no histórico nem marca o nível para salvar
+  // level: o nível do alvo (padrão: o aberto) — a árvore de elementos seleciona elementos de qualquer nível
   const selectOnly = useCallback(
-    ({ nodeId, edgeId }) => {
+    ({ nodeId, edgeId, level = activeLevel }) => {
       setDiagrams((current) => {
-        const diagram = current[activeLevel];
+        const diagram = current[level];
         return {
           ...current,
-          [activeLevel]: {
+          [level]: {
             nodes: diagram.nodes.map((node) => ({ ...node, selected: node.id === nodeId })),
             edges: diagram.edges.map((edge) => ({ ...edge, selected: edge.id === edgeId })),
           },
@@ -401,6 +408,7 @@ export function useDiagramEditor(projectId) {
     selectLevel,
     nodes: diagrams[activeLevel].nodes,
     edges: diagrams[activeLevel].edges,
+    nodesByLevel,
     onNodesChange,
     onEdgesChange,
     addNode,
