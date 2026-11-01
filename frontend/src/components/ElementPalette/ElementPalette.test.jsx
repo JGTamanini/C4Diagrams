@@ -50,4 +50,27 @@ describe('ElementPalette', () => {
     expect(database).toHaveAttribute('title', 'Banco de Dados — arraste para o canvas ou clique para adicionar');
     expect(within(database).getByTestId('element-glyph')).toHaveAttribute('data-shape', 'database');
   });
+
+  describe('recolher na vertical', () => {
+    it('deve oferecer recolher a paleta, deixando só o título', async () => {
+      const user = userEvent.setup();
+      const onToggleCollapsed = vi.fn();
+      render(<ElementPalette level="context" onAdd={vi.fn()} onToggleCollapsed={onToggleCollapsed} />);
+
+      const toggle = screen.getByRole('button', { name: 'Recolher elementos' });
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await user.click(toggle);
+
+      expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+    });
+
+    it('recolhida, deve mostrar só o título e o botão para expandir', () => {
+      render(<ElementPalette level="context" onAdd={vi.fn()} collapsed onToggleCollapsed={vi.fn()} />);
+
+      expect(screen.getByRole('heading', { name: 'Elementos' })).toBeInTheDocument();
+      expect(screen.queryByRole('list')).not.toBeInTheDocument();
+      expect(screen.queryByText('Arraste para o canvas ou clique')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expandir elementos' })).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
 });

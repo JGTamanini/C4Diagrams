@@ -10,8 +10,6 @@ import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
-// O elemento que a legenda deve evitar (o painel da direita), recebido pelo canvas
-let lastRightObstacle = null;
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: function MockCanvas({
     level,
@@ -21,9 +19,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     canPaste,
     issues,
     focusRequest,
-    rightInset,
-    rightObstacle,
     nodesByLevel,
+    onOpenShortcuts,
     onSelectTreeElement,
     onTogglePalette,
     onAddNode,
@@ -35,7 +32,6 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     onRemoveNode,
     onRemoveSelected,
   }) {
-    lastRightObstacle = rightObstacle;
     return (
     <div
       data-testid="canvas"
@@ -46,9 +42,9 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-can-paste={String(canPaste)}
       data-issues={issues.length}
       data-focus={focusRequest ? JSON.stringify({ nodeId: focusRequest.nodeId, edgeId: focusRequest.edgeId }) : ''}
-      data-right-inset={rightInset}
       data-tree-levels={Object.keys(nodesByLevel).join(',')}
     >
+      <button type="button" onClick={onOpenShortcuts}>mock-shortcuts</button>
       <button type="button" onClick={() => onSelectTreeElement('container', 'c1')}>mock-tree-container</button>
       <button type="button" onClick={() => onSelectTreeElement('context', 'n2')}>mock-tree-context</button>
       <button type="button" onClick={() => onCopyNodes(['n1'])}>mock-copy</button>
@@ -572,11 +568,23 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-issues', '2');
     });
 
-    it('deve informar ao canvas onde está o assistente, para a legenda só se afastar quando ele chegar até ela', async () => {
+    it('deve mostrar a legenda na coluna do assistente, no canto de baixo (o assistente encolhe e rola se chegar até ela)', async () => {
       await renderLoaded();
 
-      await waitFor(() => expect(lastRightObstacle).toBeInstanceOf(HTMLElement));
-      expect(lastRightObstacle).toContainElement(screen.getByRole('complementary', { name: 'Assistente' }));
+      const panelBox = screen.getByRole('complementary', { name: 'Assistente' }).parentElement;
+      const legend = screen.getByRole('region', { name: 'Legenda' });
+      expect(panelBox.parentElement).toContainElement(legend);
+      expect(panelBox).toHaveClass('min-h-0');
+      expect(legend.parentElement).toHaveClass('mt-auto', 'shrink-0');
+    });
+
+    it('deve abrir os atalhos pela barra de controles do canvas', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-shortcuts' }));
+
+      expect(screen.getByRole('dialog', { name: 'Atalhos do editor' })).toBeInTheDocument();
     });
 
     it('não deve bloquear os cliques no canvas abaixo do assistente', async () => {
@@ -599,14 +607,13 @@ describe('ProjectPage (editor de diagramas)', () => {
       const user = userEvent.setup();
       await renderLoaded();
       const tabsWrapper = screen.getByRole('tablist', { name: 'Níveis do modelo C4' }).parentElement;
-      expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '300');
       expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'true');
 
       await user.click(screen.getByRole('button', { name: 'Ocultar assistente' }));
 
       expect(screen.queryByRole('complementary', { name: 'Assistente' })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Mostrar assistente (1 erro, 1 aviso)' })).toBeInTheDocument();
-      expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '0');
+      expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
       expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'false');
     });
   });

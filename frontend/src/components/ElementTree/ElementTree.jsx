@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { LEVELS, elementMatchKey } from '../../constants/c4Notation';
 import ElementGlyph from '../ElementGlyph/ElementGlyph';
+import IconButton from '../Button/IconButton';
+
+const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 // Em quais OUTROS níveis o elemento aparece (mesmo tipo e nome — a regra do motor de validação)
 function otherLevelsByKey(nodesByLevel) {
@@ -73,13 +77,15 @@ function LevelFolder({ level, nodes, active, expanded, onToggle, otherLevels, on
 
 // Nota: árvore dos elementos do projeto (abaixo da paleta) — os três níveis como pastas, com os elementos de cada um.
 // Clicar num elemento leva até ele (troca de nível se preciso). Os níveis ainda não têm ligação explícita entre si,
-// então a árvore é por nível; o mesmo elemento em outro nível aparece como "também em".
-function ElementTree({ nodesByLevel, activeLevel, onSelectElement }) {
-  const [collapsed, setCollapsed] = useState(() => new Set());
+// então a árvore é por nível; o mesmo elemento em outro nível aparece como "também em". Pode ser recolhida na
+// vertical, ficando só o título (collapsed + onToggleCollapsed).
+function ElementTree({ nodesByLevel, activeLevel, onSelectElement, collapsed = false, onToggleCollapsed }) {
+  // Pastas de nível fechadas pelo usuário
+  const [closedLevels, setClosedLevels] = useState(() => new Set());
   const otherLevels = otherLevelsByKey(nodesByLevel);
 
   function toggle(levelId) {
-    setCollapsed((current) => {
+    setClosedLevels((current) => {
       const next = new Set(current);
       if (next.has(levelId)) next.delete(levelId);
       else next.add(levelId);
@@ -92,23 +98,45 @@ function ElementTree({ nodesByLevel, activeLevel, onSelectElement }) {
       aria-labelledby="element-tree-title"
       className="pointer-events-auto flex max-h-full w-56 flex-col rounded-[var(--radius-card)] border border-line bg-surface/95 shadow-[var(--shadow-raised)] backdrop-blur-sm"
     >
-      <h2 id="element-tree-title" className="px-4 pt-3 pb-1 text-sm font-semibold text-text-primary">
-        Estrutura do projeto
-      </h2>
-      <ul className="min-h-0 overflow-y-auto px-2 pb-2">
+      <div className={`flex items-center justify-between gap-2 pr-2 pl-4 ${collapsed ? 'py-2' : 'pt-2 pb-0.5'}`}>
+        <h2 id="element-tree-title" className="text-sm font-semibold text-text-primary">
+          Estrutura do projeto
+        </h2>
+        {onToggleCollapsed && (
+          <IconButton
+            icon={ChevronDown}
+            label={collapsed ? 'Expandir estrutura' : 'Recolher estrutura'}
+            expanded={!collapsed}
+            onClick={onToggleCollapsed}
+            className={`transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}
+          />
+        )}
+      </div>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+      <motion.ul
+        key="tree-levels"
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+        className="min-h-0 overflow-y-auto px-2 pb-2"
+      >
         {LEVELS.map((level) => (
           <LevelFolder
             key={level.id}
             level={level}
             nodes={nodesByLevel[level.id]}
             active={level.id === activeLevel}
-            expanded={!collapsed.has(level.id)}
+            expanded={!closedLevels.has(level.id)}
             onToggle={() => toggle(level.id)}
             otherLevels={otherLevels}
             onSelectElement={onSelectElement}
           />
         ))}
-      </ul>
+      </motion.ul>
+        )}
+      </AnimatePresence>
     </aside>
   );
 }

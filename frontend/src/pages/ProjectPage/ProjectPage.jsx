@@ -29,6 +29,7 @@ import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 import ValidationPanel, { ASSISTANT_OFFSET } from '../../components/ValidationPanel/ValidationPanel';
+import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
 
 const SAVE_STATUS_TEXT = {
@@ -154,9 +155,8 @@ function EditorBody({
   onTogglePalette,
   issues,
   focusRequest,
-  rightInset,
-  rightObstacle,
   onSelectTreeElement,
+  onOpenShortcuts,
 }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
@@ -185,9 +185,8 @@ function EditorBody({
       onRemoveSelected={editor.removeSelected}
       issues={issues}
       focusRequest={focusRequest}
-      rightInset={rightInset}
-      rightObstacle={rightObstacle}
       nodesByLevel={editor.nodesByLevel}
+      onOpenShortcuts={onOpenShortcuts}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
@@ -253,15 +252,13 @@ function ProjectPage() {
   const closeEditor = useCallback(() => setEditing(null), []);
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
+  const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
-  const rightInset = assistantOpen ? ASSISTANT_OFFSET : 0;
-  // O painel (ou o botão) do assistente, medido pela legenda para saber se ele desce até ela
-  const [assistantBox, setAssistantBox] = useState(null);
 
   // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
   // quando o mesmo problema é clicado de novo)
@@ -363,9 +360,8 @@ function ProjectPage() {
           onTogglePalette={togglePalette}
           issues={validation.issues}
           focusRequest={focusRequest}
-          rightInset={rightInset}
-          rightObstacle={assistantBox}
           onSelectTreeElement={selectTreeElement}
+          onOpenShortcuts={openShortcuts}
         />
         <LevelTabs
           activeLevel={editor.activeLevel}
@@ -374,9 +370,11 @@ function ProjectPage() {
           assistantOpen={assistantOpen}
         />
         {editor.loadStatus === 'ready' && (
-          // A coluna do assistente deixa passar os cliques para o canvas; só o painel (ou o botão) recebe clique
-          <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-20 flex flex-col items-end">
-            <div ref={setAssistantBox} className="pointer-events-none flex max-h-full min-h-0 flex-col items-end">
+          // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
+          // é ele que encolhe e rola por dentro; a legenda não se mexe. A coluna deixa passar os cliques para o canvas:
+          // só o painel (ou o botão) e a legenda recebem clique
+          <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-20 flex flex-col items-end gap-3">
+            <div className="pointer-events-none flex min-h-0 flex-col items-end">
               <ValidationPanel
                 open={assistantOpen}
                 status={validation.status}
@@ -384,6 +382,9 @@ function ProjectPage() {
                 onToggle={toggleAssistant}
                 onSelectIssue={selectIssue}
               />
+            </div>
+            <div className="pointer-events-none mt-auto shrink-0">
+              <DiagramLegend nodes={editor.nodes} edges={editor.edges} />
             </div>
           </div>
         )}
