@@ -35,7 +35,7 @@ function ShortcutsModal({ onClose }) {
         {SHORTCUT_GROUPS.map((group) => (
           <section key={group.title}>
             <h3 className="mb-2 text-xs font-semibold text-text-muted">{group.title}</h3>
-            <dl className="divide-y divide-line-subtle rounded-[var(--radius-control)] border border-line-subtle">
+            <dl className="divide-y divide-line rounded-[var(--radius-control)] border border-line">
               {group.items.map((item) => (
                 <div key={item.action} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
                   <dt className="text-text-secondary">{item.action}</dt>

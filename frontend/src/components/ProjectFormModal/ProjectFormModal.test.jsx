@@ -81,6 +81,21 @@ describe('ProjectFormModal', () => {
       resolveSubmit();
       await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     });
+
+    it('não deve fechar pelo Esc enquanto o envio está em andamento', async () => {
+      const user = userEvent.setup();
+      let resolveSubmit;
+      const onSubmit = vi.fn(() => new Promise((resolve) => { resolveSubmit = resolve; }));
+      const { onClose } = renderModal({ onSubmit });
+
+      await user.type(screen.getByLabelText('Nome do projeto'), 'Loja');
+      await user.click(screen.getByRole('button', { name: 'Criar' }));
+      await user.keyboard('{Escape}');
+
+      expect(onClose).not.toHaveBeenCalled();
+      resolveSubmit();
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    });
   });
 
   describe('modo edição (RF05)', () => {
