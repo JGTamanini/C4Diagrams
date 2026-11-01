@@ -31,7 +31,7 @@ function DeleteAccountModal({ onDeleted, onClose }) {
   }
 
   return (
-    <Modal title="Excluir conta" onClose={onClose} closable>
+    <Modal title="Excluir conta" onClose={onClose} closable busy={deleting}>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col">
         <p className="mb-5 text-sm text-text-secondary">
           Todos os seus projetos e diagramas serão excluídos permanentemente. Esta ação não pode ser desfeita.

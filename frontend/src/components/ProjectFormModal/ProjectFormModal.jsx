@@ -38,7 +38,7 @@ function ProjectFormModal({ mode = 'create', initialValues, onSubmit, onClose })
   }
 
   return (
-    <Modal title={isEdit ? 'Editar projeto' : 'Novo projeto'} onClose={onClose} closable>
+    <Modal title={isEdit ? 'Editar projeto' : 'Novo projeto'} onClose={onClose} closable busy={submitting}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-1">
         <FormInput
           id="project-name"

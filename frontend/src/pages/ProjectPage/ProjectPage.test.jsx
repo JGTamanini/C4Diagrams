@@ -179,17 +179,19 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.selectLevel).toHaveBeenCalledWith('container');
     });
 
-    it('deve centralizar as abas na área de trabalho, acompanhando a paleta aberta ou oculta', async () => {
+    it('deve manter as abas fixas no centro do editor, sem acompanhar a paleta nem o assistente', async () => {
       const user = userEvent.setup();
       await renderLoaded();
-      const tablist = screen.getByRole('tablist', { name: 'Níveis do modelo C4' });
-      expect(screen.getByTestId('canvas')).toHaveAttribute('data-palette', 'true');
-      expect(tablist.parentElement).toHaveAttribute('data-palette-open', 'true');
+      const tabsWrapper = screen.getByRole('tablist', { name: 'Níveis do modelo C4' }).parentElement;
+      const position = tabsWrapper.getAttribute('style');
+      expect(tabsWrapper).toHaveClass('inset-x-0');
 
       await user.click(screen.getByRole('button', { name: 'mock-toggle-palette' }));
+      await user.click(screen.getByRole('button', { name: 'Ocultar assistente' }));
 
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-palette', 'false');
-      expect(tablist.parentElement).toHaveAttribute('data-palette-open', 'false');
+      expect(tabsWrapper.getAttribute('style')).toBe(position);
+      expect(tabsWrapper).toHaveClass('inset-x-0');
     });
   });
 
@@ -595,19 +597,16 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-focus', JSON.stringify({ nodeId: 'n2' }));
     });
 
-    it('deve ocultar o assistente, liberando a direita do canvas e recentralizando as abas', async () => {
+    it('deve ocultar o assistente, liberando a direita do canvas', async () => {
       const user = userEvent.setup();
       await renderLoaded();
-      const tabsWrapper = screen.getByRole('tablist', { name: 'Níveis do modelo C4' }).parentElement;
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '300');
-      expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'true');
 
       await user.click(screen.getByRole('button', { name: 'Ocultar assistente' }));
 
       expect(screen.queryByRole('complementary', { name: 'Assistente' })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Mostrar assistente (1 erro, 1 aviso)' })).toBeInTheDocument();
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-right-inset', '0');
-      expect(tabsWrapper).toHaveAttribute('data-assistant-open', 'false');
     });
   });
 
