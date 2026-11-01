@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { AlertCircle, ChevronDown, Lightbulb, PanelRightClose, PanelRightOpen, TriangleAlert } from 'lucide-react';
 import IconButton from '../Button/IconButton';
 
-
 const GROUPS = [
   { severity: 'error', title: 'Erros', icon: AlertCircle, color: 'text-danger' },
   { severity: 'warning', title: 'Avisos', icon: TriangleAlert, color: 'text-warning' },
