@@ -24,11 +24,10 @@ import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
-import { PALETTE_OFFSET } from '../../components/ElementPalette/ElementPalette';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
-import ValidationPanel, { ASSISTANT_OFFSET } from '../../components/ValidationPanel/ValidationPanel';
+import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
 
@@ -100,18 +99,11 @@ function EditorNotice({ message, onDismiss }) {
   );
 }
 
-// Nota: abas de nível flutuando no topo do canvas, centralizadas na área de trabalho (deslizam junto com a paleta);
-// o destaque do nível ativo também desliza entre as abas (layoutId)
-function LevelTabs({ activeLevel, onSelect, paletteOpen, assistantOpen }) {
+// Nota: abas de nível flutuando no topo do canvas, fixas no centro do editor (não acompanham a paleta nem o
+// assistente, para não "dançarem" ao abrir e fechar os painéis); o destaque do nível ativo desliza entre as abas
+function LevelTabs({ activeLevel, onSelect }) {
   return (
-    <motion.div
-      data-palette-open={String(paletteOpen)}
-      data-assistant-open={String(assistantOpen)}
-      initial={false}
-      animate={{ left: paletteOpen ? PALETTE_OFFSET : 0, right: assistantOpen ? ASSISTANT_OFFSET : 0 }}
-      transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
-      className="pointer-events-none absolute top-3 right-0 z-20 flex justify-center"
-    >
+    <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
       <div
         role="tablist"
         aria-label="Níveis do modelo C4"
@@ -143,7 +135,7 @@ function LevelTabs({ activeLevel, onSelect, paletteOpen, assistantOpen }) {
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -363,12 +355,7 @@ function ProjectPage() {
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
         />
-        <LevelTabs
-          activeLevel={editor.activeLevel}
-          onSelect={editor.selectLevel}
-          paletteOpen={paletteOpen}
-          assistantOpen={assistantOpen}
-        />
+        <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
         {editor.loadStatus === 'ready' && (
           // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
           // é ele que encolhe e rola por dentro; a legenda não se mexe. A coluna deixa passar os cliques para o canvas:

@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import IconButton from '../Button/IconButton';
@@ -7,22 +7,38 @@ const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 const SIZES = { md: 'max-w-lg', lg: 'max-w-4xl' };
 
-// Nota: casca comum dos modais — overlay, semântica de diálogo acessível e fechamento com Esc.
+// Nota: casca comum dos modais — overlay, semântica de diálogo acessível e fechamento com Esc ou clicando fora (no
+// fundo escurecido), que equivalem a "Cancelar". Com busy (algo sendo salvo), nenhum dos dois fecha.
 // Entra com fade + leve escala; a saída animada depende de um <AnimatePresence> em volta, em quem o renderiza.
-function Modal({ title, role = 'dialog', onClose, closable = false, size = 'md', children }) {
+function Modal({ title, role = 'dialog', onClose, closable = false, busy = false, size = 'md', children }) {
   const titleId = useId();
+  // O clique só fecha se também começou no fundo: selecionar o texto de um campo e soltar fora não fecha
+  const pressedBackdropRef = useRef(false);
 
   useEffect(() => {
     function handleKeyDown(event) {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !busy) onClose();
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, busy]);
+
+  function handleBackdropMouseDown(event) {
+    pressedBackdropRef.current = event.target === event.currentTarget;
+  }
+
+  function handleBackdropClick(event) {
+    const outside = pressedBackdropRef.current && event.target === event.currentTarget;
+    pressedBackdropRef.current = false;
+    if (outside && !busy) onClose();
+  }
 
   return (
+    // O fundo só responde ao mouse; pelo teclado, o Esc faz o mesmo papel
     <motion.div
+      onMouseDown={handleBackdropMouseDown}
+      onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-[3px]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
