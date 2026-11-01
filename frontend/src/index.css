@@ -109,7 +109,7 @@
 /* Canvas do editor (React Flow) nas cores da interface — sem o cinza padrão da biblioteca */
 .react-flow {
   --xy-background-color: var(--color-canvas-deep);
-  --xy-background-pattern-color: #1f2a40;
+  --xy-background-pattern-color: #33415c;
   --xy-edge-label-background-color: var(--color-surface);
   --xy-edge-label-color: var(--color-text-primary);
   --xy-handle-background-color: var(--color-accent-text);
@@ -127,10 +127,52 @@
   --xy-attribution-background-color: transparent;
 }
 
+/* Barra de controles (embaixo, no centro): pílula como a das abas de nível, botões sem divisórias entre si */
 .react-flow__controls {
-  overflow: hidden;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-control);
+  border-radius: 9999px;
+  background: rgb(17 24 38 / 0.9);
+  backdrop-filter: blur(4px);
+}
+
+.react-flow__controls .react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.react-flow__controls .react-flow__controls-button:hover {
+  background: var(--color-surface-raised);
+}
+
+.react-flow__controls .react-flow__controls-button[aria-pressed='true'] {
+  background: rgb(61 111 214 / 0.18);
+  color: var(--color-accent-text);
+}
+
+/* Ícones do lucide são de traço: sem o preenchimento que o React Flow aplica aos ícones dele */
+.react-flow__controls .react-flow__controls-button svg {
+  max-width: 16px;
+  max-height: 16px;
+  fill: none;
+}
+
+.react-flow__controls .c4-controls-zoom {
+  width: 52px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.react-flow__controls .c4-controls-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--color-line);
 }
 
 .react-flow__edge-textbg {

@@ -54,27 +54,97 @@ describe('DiagramCanvas', () => {
     expect(screen.getByText('[Software System]')).toBeInTheDocument();
   });
 
-  it('deve indicar quando o nível ainda não tem elementos, sem legenda', () => {
+  it('deve indicar quando o nível ainda não tem elementos', () => {
     renderCanvas({ nodes: [] });
 
     expect(screen.getByText('Este nível ainda não tem elementos')).toBeInTheDocument();
     expect(screen.getByText('Arraste um elemento da paleta (ou clique nele) para começar.')).toBeInTheDocument();
-    expect(screen.queryByTestId('canvas-hints')).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Legenda' })).not.toBeInTheDocument();
   });
 
-  it('deve ensinar a editar, conectar e excluir quando houver elementos', () => {
+  it('não deve repetir as dicas de uso sobre o canvas (elas estão na tela de Atalhos)', () => {
     renderCanvas();
 
-    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Duplo clique para editar');
-    expect(screen.getByTestId('canvas-hints')).toHaveTextContent('Delete exclui');
+    expect(screen.queryByTestId('canvas-hints')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Duplo clique para editar/)).not.toBeInTheDocument();
   });
 
-  it('deve exibir a paleta do nível e a legenda do diagrama', () => {
+  it('deve exibir a paleta do nível (a legenda fica na coluna do assistente, fora do canvas)', () => {
     renderCanvas({ level: 'container' });
 
     expect(screen.getByRole('button', { name: 'Banco de Dados' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Legenda' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Legenda' })).not.toBeInTheDocument();
+  });
+
+  describe('barra de controles (embaixo, no centro)', () => {
+    function controls() {
+      return within(screen.getByLabelText('Controles do canvas'));
+    }
+
+    it('deve reunir zoom, enquadrar, travar, grade e atalhos numa barra só', () => {
+      renderCanvas({ onOpenShortcuts: vi.fn() });
+
+      const bar = controls();
+      expect(bar.getByRole('button', { name: 'Afastar' })).toBeInTheDocument();
+      expect(bar.getByRole('button', { name: /^Zoom em \d+%/ })).toBeInTheDocument();
+      expect(bar.getByRole('button', { name: 'Aproximar' })).toBeInTheDocument();
+      expect(bar.getByRole('button', { name: 'Enquadrar o diagrama' })).toBeInTheDocument();
+      expect(bar.getByRole('button', { name: 'Travar o canvas' })).toHaveAttribute('aria-pressed', 'false');
+      expect(bar.getByRole('button', { name: 'Alinhar à grade' })).toHaveAttribute('aria-pressed', 'false');
+      expect(bar.getByRole('button', { name: 'Atalhos' })).toBeInTheDocument();
+    });
+
+    it('deve mostrar o zoom atual e acompanhar a aproximação', async () => {
+      const user = userEvent.setup();
+      renderCanvas();
+      await screen.findByText('Cliente');
+      const zoomLabel = () => controls().getByRole('button', { name: /^Zoom em \d+%/ }).textContent;
+      const before = zoomLabel();
+
+      await user.click(controls().getByRole('button', { name: 'Aproximar' }));
+
+      await waitFor(() => expect(zoomLabel()).not.toBe(before));
+      expect(zoomLabel()).toMatch(/^\d+%$/);
+    });
+
+    it('deve travar o canvas: os elementos deixam de poder ser arrastados ou selecionados', async () => {
+      const user = userEvent.setup();
+      renderCanvas();
+      const element = (await screen.findByText('Cliente')).closest('.react-flow__node');
+      expect(element).toHaveClass('draggable');
+
+      await user.click(controls().getByRole('button', { name: 'Travar o canvas' }));
+
+      expect(controls().getByRole('button', { name: 'Travar o canvas' })).toHaveAttribute('aria-pressed', 'true');
+      expect(element).not.toHaveClass('draggable');
+      expect(element).not.toHaveClass('selectable');
+    });
+
+    it('deve ligar e desligar o alinhamento à grade', async () => {
+      const user = userEvent.setup();
+      renderCanvas();
+      const snap = controls().getByRole('button', { name: 'Alinhar à grade' });
+
+      await user.click(snap);
+      expect(snap).toHaveAttribute('aria-pressed', 'true');
+      await user.click(snap);
+      expect(snap).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('deve abrir os atalhos pela barra', async () => {
+      const user = userEvent.setup();
+      const onOpenShortcuts = vi.fn();
+      renderCanvas({ onOpenShortcuts });
+
+      await user.click(controls().getByRole('button', { name: 'Atalhos' }));
+
+      expect(onOpenShortcuts).toHaveBeenCalledTimes(1);
+    });
+
+    it('não deve mostrar o botão de atalhos sem a tela de atalhos', () => {
+      renderCanvas();
+
+      expect(controls().queryByRole('button', { name: 'Atalhos' })).not.toBeInTheDocument();
+    });
   });
 
   describe('problemas da validação (RF17)', () => {
@@ -125,12 +195,6 @@ describe('DiagramCanvas', () => {
       expect(screen.getByText('Loja Online')).toBeInTheDocument();
     });
 
-    it('deve afastar a legenda quando o painel da direita estiver aberto (sem o painel para medir)', async () => {
-      renderCanvas({ rightInset: 300 });
-      await screen.findByText('Cliente');
-
-      expect(screen.getByRole('region', { name: 'Legenda' })).toHaveStyle({ right: '316px' });
-    });
   });
 
   describe('menu de clique direito', () => {
@@ -215,6 +279,34 @@ describe('DiagramCanvas', () => {
 
       expect(screen.getByRole('complementary', { name: 'Elementos' }).parentElement).toHaveStyle({ height: '190px' });
       expect(splitter).toHaveAttribute('aria-valuenow', '190');
+    });
+
+    it('deve recolher a paleta, deixando o espaço para a estrutura e tirando a divisória', async () => {
+      const user = userEvent.setup();
+      renderCanvas({ nodesByLevel, onSelectTreeElement: vi.fn() });
+
+      await user.click(screen.getByRole('button', { name: 'Recolher elementos' }));
+
+      expect(screen.queryByRole('button', { name: 'Pessoa' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Elementos de Contexto' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Expandir elementos' }));
+
+      expect(screen.getByRole('button', { name: 'Pessoa' })).toBeInTheDocument();
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+    });
+
+    it('deve recolher a estrutura, deixando só o título dela', async () => {
+      const user = userEvent.setup();
+      renderCanvas({ nodesByLevel, onSelectTreeElement: vi.fn() });
+
+      await user.click(screen.getByRole('button', { name: 'Recolher estrutura' }));
+
+      expect(screen.getByRole('heading', { name: 'Estrutura do projeto' })).toBeInTheDocument();
+      expect(screen.queryByRole('list', { name: 'Elementos de Contexto' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Pessoa' })).toBeInTheDocument();
     });
 
     it('não deve mostrar a árvore sem os elementos dos níveis', () => {

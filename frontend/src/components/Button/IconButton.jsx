@@ -1,11 +1,12 @@
 import { iconButtonClasses } from './buttonStyles';
 
 // Nota: botão só com ícone — o rótulo é obrigatório: vira o nome acessível e a dica ao passar o mouse
-function IconButton({ icon: Icon, label, onClick, tone = 'neutral', className = '', disabled = false }) {
+function IconButton({ icon: Icon, label, onClick, tone = 'neutral', className = '', disabled = false, expanded }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-expanded={expanded}
       title={label}
       onClick={onClick}
       disabled={disabled}

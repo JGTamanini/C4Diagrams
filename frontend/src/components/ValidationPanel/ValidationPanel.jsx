@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { AlertCircle, ChevronDown, Lightbulb, PanelRightClose, PanelRightOpen, TriangleAlert } from 'lucide-react';
 import IconButton from '../Button/IconButton';
 
-// Largura do painel aberto (w-72) mais a margem dele sobre o canvas: o que ele cobre à direita
-export const ASSISTANT_OFFSET = 300;
-
 const GROUPS = [
   { severity: 'error', title: 'Erros', icon: AlertCircle, color: 'text-danger' },
   { severity: 'warning', title: 'Avisos', icon: TriangleAlert, color: 'text-warning' },

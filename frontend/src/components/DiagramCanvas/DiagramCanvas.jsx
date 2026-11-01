@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ClipboardPaste, Copy, MousePointerClick, PanelLeftOpen, Pencil, Trash2 } from 'lucide-react';
+import {
+  ClipboardPaste,
+  Copy,
+  Grid3x3,
+  Keyboard,
+  Lock,
+  LockOpen,
+  Minus,
+  MousePointerClick,
+  PanelLeftOpen,
+  Pencil,
+  Plus,
+  Scan,
+  Trash2,
+} from 'lucide-react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -9,6 +23,8 @@ import {
   ConnectionMode,
   MarkerType,
   useReactFlow,
+  useViewport,
+  ControlButton,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import C4Node from '../C4Node/C4Node';
@@ -17,7 +33,6 @@ import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ElementTree from '../ElementTree/ElementTree';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
-import DiagramLegend from '../DiagramLegend/DiagramLegend';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
 import { parallelOffsets } from '../FloatingEdge/edgeGeometry';
@@ -48,6 +63,66 @@ const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
 // Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
 const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
+// Espaço entre os pontos da grade do fundo; o "alinhar à grade" encaixa os elementos nesses mesmos pontos
+const GRID_GAP = 22;
+// Zoom pelos botões da barra: animado, sem ser lento
+const ZOOM_ANIMATION = { duration: 200 };
+// Nome da barra de controles para leitores de tela (o padrão do React Flow é em inglês)
+const ARIA_LABELS = { 'controls.ariaLabel': 'Controles do canvas' };
+
+// Nota: barra de controles do canvas, embaixo e no centro — zoom (com o valor atual, que volta a 100% ao clicar),
+// enquadrar, travar o canvas, alinhar à grade e os atalhos. Fica dentro do React Flow para acompanhar o zoom.
+function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpenShortcuts }) {
+  const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
+  const { zoom } = useViewport();
+  const percent = Math.round(zoom * 100);
+
+  return (
+    <Controls position="bottom-center" orientation="horizontal" showZoom={false} showFitView={false} showInteractive={false}>
+      <ControlButton aria-label="Afastar" title="Afastar" onClick={() => void zoomOut(ZOOM_ANIMATION)}>
+        <Minus aria-hidden="true" />
+      </ControlButton>
+      <ControlButton
+        aria-label={`Zoom em ${percent}% (clique para voltar a 100%)`}
+        title="Voltar para 100%"
+        className="c4-controls-zoom"
+        onClick={() => void zoomTo(1, ZOOM_ANIMATION)}
+      >
+        {percent}%
+      </ControlButton>
+      <ControlButton aria-label="Aproximar" title="Aproximar" onClick={() => void zoomIn(ZOOM_ANIMATION)}>
+        <Plus aria-hidden="true" />
+      </ControlButton>
+      <span aria-hidden="true" className="c4-controls-divider" />
+      <ControlButton
+        aria-label="Enquadrar o diagrama"
+        title="Enquadrar o diagrama"
+        onClick={() => void fitView({ ...FIT_VIEW_OPTIONS, ...ZOOM_ANIMATION })}
+      >
+        <Scan aria-hidden="true" />
+      </ControlButton>
+      <ControlButton
+        aria-label="Travar o canvas"
+        aria-pressed={locked}
+        title={locked ? 'Destravar o canvas' : 'Travar o canvas (evita mover ou editar sem querer)'}
+        onClick={onToggleLock}
+      >
+        {locked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
+      </ControlButton>
+      <ControlButton aria-label="Alinhar à grade" aria-pressed={snapToGrid} title="Alinhar à grade" onClick={onToggleSnap}>
+        <Grid3x3 aria-hidden="true" />
+      </ControlButton>
+      {onOpenShortcuts && (
+        <>
+          <span aria-hidden="true" className="c4-controls-divider" />
+          <ControlButton aria-label="Atalhos" title="Atalhos" onClick={onOpenShortcuts}>
+            <Keyboard aria-hidden="true" />
+          </ControlButton>
+        </>
+      )}
+    </Controls>
+  );
+}
 // Alturas mínimas ao ajustar a divisória: a paleta mostra sempre o título e uma fileira inteira (o resto rola)
 const PALETTE_MIN_HEIGHT = 190;
 const TREE_MIN_HEIGHT = 120;
@@ -83,8 +158,7 @@ function DiagramWorkspace({
   canPaste = false,
   issues = [],
   focusRequest = null,
-  rightInset = 0,
-  rightObstacle = null,
+  onOpenShortcuts,
   nodesByLevel = null,
   onSelectTreeElement,
   onTogglePalette,
@@ -248,6 +322,13 @@ function DiagramWorkspace({
   const [paletteHeight, setPaletteHeight] = useState(null);
   const paletteBoxRef = useRef(null);
   const showTree = Boolean(nodesByLevel && onSelectTreeElement);
+  // Paleta e estrutura recolhíveis na vertical (só o título fica); com as duas abertas, a divisória ajusta a altura
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
+  const bothExpanded = !paletteCollapsed && !treeCollapsed;
+  // Barra de controles: canvas travado e alinhamento à grade
+  const [locked, setLocked] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const maxPaletteHeight = () =>
     Math.max(PALETTE_MIN_HEIGHT, (paletteRef.current?.getBoundingClientRect().height ?? 0) - TREE_MIN_HEIGHT);
 
@@ -279,25 +360,38 @@ function DiagramWorkspace({
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           isValidConnection={(connection) => isValidRelationship(connection, edges)}
-          onNodeDoubleClick={(_, node) => onEditNode(node.id)}
-          onEdgeDoubleClick={(_, edge) => onEditEdge(edge.id)}
+          onNodeDoubleClick={(_, node) => !locked && onEditNode(node.id)}
+          onEdgeDoubleClick={(_, edge) => !locked && onEditEdge(edge.id)}
           onNodeContextMenu={openContextMenu}
           onPaneContextMenu={(event) => openContextMenu(event, null)}
+          // Canvas travado: nada se move, conecta, seleciona ou edita (dá para navegar e apresentar sem mexer sem querer)
+          nodesDraggable={!locked}
+          nodesConnectable={!locked}
+          elementsSelectable={!locked}
+          snapToGrid={snapToGrid}
+          snapGrid={[GRID_GAP, GRID_GAP]}
+          ariaLabelConfig={ARIA_LABELS}
           // Depois de uma seleção em caixa (Shift + arrastar), o React Flow põe um retângulo por cima dos selecionados,
           // e o clique direito cai nele, não no elemento: o menu abre igual, agindo sobre toda a seleção
           onSelectionContextMenu={(event, selectedNodes) => openContextMenu(event, selectedNodes[0])}
           onMoveStart={closeOnUserMove}
-          deleteKeyCode={keyboardEnabled ? DELETE_KEYS : null}
+          deleteKeyCode={keyboardEnabled && !locked ? DELETE_KEYS : null}
           connectionLineComponent={FloatingConnectionLine}
           connectionRadius={36}
           zoomOnDoubleClick={false}
           colorMode="dark"
         >
-          <Background gap={22} size={1.4} />
-          <Controls showInteractive={false} fitViewOptions={FIT_VIEW_OPTIONS} />
+          <Background gap={GRID_GAP} size={2} />
+          <CanvasControls
+            locked={locked}
+            onToggleLock={() => setLocked((current) => !current)}
+            snapToGrid={snapToGrid}
+            onToggleSnap={() => setSnapToGrid((current) => !current)}
+            onOpenShortcuts={onOpenShortcuts}
+          />
         </ReactFlow>
 
-        {nodes.length === 0 ? (
+        {nodes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
             <div className="flex max-w-sm flex-col items-center rounded-[var(--radius-card)] border border-dashed border-line bg-surface/70 px-8 py-10 text-center backdrop-blur-sm">
               <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/12 text-accent-text">
@@ -307,16 +401,7 @@ function DiagramWorkspace({
               <p className="mt-1 text-sm text-text-secondary">Arraste um elemento da paleta (ou clique nele) para começar.</p>
             </div>
           </div>
-        ) : (
-          <p
-            data-testid="canvas-hints"
-            className="pointer-events-none absolute bottom-4 left-16 z-10 rounded-full border border-line-subtle bg-surface/85 px-4 py-1.5 text-[11px] text-text-muted backdrop-blur-sm"
-          >
-            Duplo clique para editar · Arraste de um ponto de conexão até outro elemento · Delete exclui
-          </p>
         )}
-
-        <DiagramLegend nodes={nodes} edges={edges} rightInset={rightInset} rightObstacle={rightObstacle} />
 
         {contextMenu && (
           <ContextMenu
@@ -338,17 +423,25 @@ function DiagramWorkspace({
               exit={{ x: -24, opacity: 0 }}
               transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
               // A coluna da paleta deixa passar os cliques (zoom, canvas); só a paleta em si recebe clique
-              className="pointer-events-none absolute top-3 bottom-28 left-3 z-20 flex w-56 flex-col"
+              className="pointer-events-none absolute top-3 bottom-3 left-3 z-20 flex w-56 flex-col"
             >
               <div
                 ref={paletteBoxRef}
-                style={paletteHeight ? { height: paletteHeight } : undefined}
+                style={paletteHeight && bothExpanded ? { height: paletteHeight } : undefined}
                 className="pointer-events-none flex min-h-0 flex-col"
               >
-                <ElementPalette level={level} onAdd={handlePaletteAdd} onCollapse={onTogglePalette} />
+                <ElementPalette
+                  level={level}
+                  onAdd={handlePaletteAdd}
+                  onCollapse={onTogglePalette}
+                  collapsed={paletteCollapsed}
+                  onToggleCollapsed={showTree ? () => setPaletteCollapsed((current) => !current) : undefined}
+                />
               </div>
               {showTree && (
                 <>
+                  {/* Com um dos dois recolhido, não há o que dividir: a divisória vira só o espaço entre eles */}
+                  {bothExpanded ? (
                   <ColumnSplitter
                     label="Ajustar a divisão entre elementos e estrutura"
                     value={paletteHeight}
@@ -357,8 +450,17 @@ function DiagramWorkspace({
                     getStartValue={() => paletteBoxRef.current?.getBoundingClientRect().height ?? PALETTE_MIN_HEIGHT}
                     onChange={setPaletteHeight}
                   />
+                  ) : (
+                    <div aria-hidden="true" className="h-3 shrink-0" />
+                  )}
                   <div className="pointer-events-none flex min-h-0 flex-1 flex-col">
-                    <ElementTree nodesByLevel={nodesByLevel} activeLevel={level} onSelectElement={onSelectTreeElement} />
+                    <ElementTree
+                      nodesByLevel={nodesByLevel}
+                      activeLevel={level}
+                      onSelectElement={onSelectTreeElement}
+                      collapsed={treeCollapsed}
+                      onToggleCollapsed={() => setTreeCollapsed((current) => !current)}
+                    />
                   </div>
                 </>
               )}

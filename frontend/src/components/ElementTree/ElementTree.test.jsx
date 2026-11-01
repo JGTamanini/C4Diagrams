@@ -73,4 +73,24 @@ describe('ElementTree', () => {
 
     expect(screen.getByText('Nenhum elemento ainda')).toBeInTheDocument();
   });
+
+  describe('recolher na vertical', () => {
+    it('deve oferecer recolher a estrutura', async () => {
+      const user = userEvent.setup();
+      const onToggleCollapsed = vi.fn();
+      renderTree({ onToggleCollapsed });
+
+      await user.click(screen.getByRole('button', { name: 'Recolher estrutura' }));
+
+      expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+    });
+
+    it('recolhida, deve mostrar só o título e o botão para expandir', () => {
+      renderTree({ collapsed: true, onToggleCollapsed: vi.fn() });
+
+      expect(screen.getByRole('heading', { name: 'Estrutura do projeto' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Contexto (2)' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expandir estrutura' })).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
 });
