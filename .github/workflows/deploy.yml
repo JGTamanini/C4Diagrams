@@ -118,6 +118,8 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+          # RF16: enquanto o secret não existir, chega vazio e as sugestões da IA ficam indisponíveis (sem erro)
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           az webapp config appsettings set -g $RESOURCE_GROUP -n $WEB_APP --output none --settings \
             WEBSITES_PORT=8080 \
@@ -128,7 +130,7 @@ jobs:
             DATABASE_URL="$DATABASE_URL" \
             JWT_SECRET="$JWT_SECRET" \
             RESEND_API_KEY="$RESEND_API_KEY" \
-            NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY"
+            NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \n            ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
 
       - name: Apontar o Web App para a nova imagem
         run: az webapp config set -g $RESOURCE_GROUP -n $WEB_APP --linux-fx-version "DOCKER|$IMAGE:${{ github.sha }}" --output none
