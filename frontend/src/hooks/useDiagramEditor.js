@@ -348,6 +348,12 @@ export function useDiagramEditor(projectId) {
     [diagrams]
   );
 
+  // Elementos e relações de todos os níveis, como estão no editor (exportação do projeto, RF21)
+  const diagramsByLevel = useMemo(
+    () => Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: diagrams[level].nodes, edges: diagrams[level].edges }])),
+    [diagrams]
+  );
+
   // Seleciona só o elemento ou a relação indicados (ex.: ao clicar num problema da validação). Seleção não é edição:
   // não entra no histórico nem marca o nível para salvar
   // level: o nível do alvo (padrão: o aberto) — a árvore de elementos seleciona elementos de qualquer nível
@@ -409,6 +415,7 @@ export function useDiagramEditor(projectId) {
     nodes: diagrams[activeLevel].nodes,
     edges: diagrams[activeLevel].edges,
     nodesByLevel,
+    diagramsByLevel,
     onNodesChange,
     onEdgesChange,
     addNode,

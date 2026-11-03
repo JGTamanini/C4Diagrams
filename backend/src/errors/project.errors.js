@@ -19,4 +19,12 @@ class NoFieldsToUpdateError extends Error {
   }
 }
 
-module.exports = { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError };
+// RF21: arquivo de projeto que não pode ser importado (formato, versão ou conteúdo), com o motivo
+class InvalidImportFileError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'InvalidImportFileError';
+  }
+}
+
+module.exports = { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError, InvalidImportFileError };

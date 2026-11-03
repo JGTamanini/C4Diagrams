@@ -2,7 +2,12 @@ const errorHandler = require('../../src/middlewares/errorHandler');
 const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
 const { UnauthorizedError } = require('../../src/errors/auth.errors');
-const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../../src/errors/project.errors');
+const {
+  ProjectNotFoundError,
+  FieldTooLongError,
+  NoFieldsToUpdateError,
+  InvalidImportFileError,
+} = require('../../src/errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
 
 describe('errorHandler', () => {
@@ -137,6 +142,16 @@ describe('errorHandler', () => {
 
   it('deve retornar 400 para FieldTooLongError', () => {
     const err = new FieldTooLongError('name', 255);
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 400 para arquivo de projeto inválido na importação', () => {
+    const err = new InvalidImportFileError('Nível Contexto: elemento sem título.');
     const res = mockRes();
 
     errorHandler(err, {}, res, jest.fn());

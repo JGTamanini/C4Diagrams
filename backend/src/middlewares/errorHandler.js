@@ -6,7 +6,12 @@ const {
   IncorrectPasswordError,
 } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
-const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
+const {
+  ProjectNotFoundError,
+  FieldTooLongError,
+  NoFieldsToUpdateError,
+  InvalidImportFileError,
+} = require('../errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
 
 // Nota: valores vindos da requisição entram no log só com caracteres permitidos — evita forjar linhas (log injection)
@@ -22,7 +27,8 @@ function errorHandler(err, req, res, next) {
     err instanceof FieldTooLongError ||
     err instanceof NoFieldsToUpdateError ||
     err instanceof InvalidDiagramLevelError ||
-    err instanceof InvalidDiagramDataError
+    err instanceof InvalidDiagramDataError ||
+    err instanceof InvalidImportFileError
   ) {
     return res.status(400).json({ message: err.message });
   }
