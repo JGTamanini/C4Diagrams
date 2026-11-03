@@ -20,6 +20,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     issues,
     focusRequest,
     nodesByLevel,
+    onOpenText,
     onOpenShortcuts,
     onSelectTreeElement,
     onTogglePalette,
@@ -45,6 +46,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-tree-levels={Object.keys(nodesByLevel).join(',')}
     >
       <button type="button" onClick={onOpenShortcuts}>mock-shortcuts</button>
+      <button type="button" onClick={onOpenText}>mock-open-text</button>
       <button type="button" onClick={() => onSelectTreeElement('container', 'c1')}>mock-tree-container</button>
       <button type="button" onClick={() => onSelectTreeElement('context', 'n2')}>mock-tree-context</button>
       <button type="button" onClick={() => onCopyNodes(['n1'])}>mock-copy</button>
@@ -81,6 +83,7 @@ const editor = {
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
   nodesByLevel: { context: [], container: [], component: [] },
+  applyTextChanges: vi.fn(),
   selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
@@ -642,6 +645,35 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       expect(editor.selectLevel).not.toHaveBeenCalled();
       expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', level: 'context' });
+    });
+  });
+
+  describe('modo textual (RF19)', () => {
+    it('deve abrir o painel com o nível aberto em texto e aplicar no editor', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-open-text' }));
+      const panel = screen.getByRole('complementary', { name: 'Modo textual' });
+      const text = within(panel).getByLabelText('Texto do nível Contexto');
+      expect(text.value).toContain('Pessoa(cliente, "Cliente")');
+
+      await user.click(text);
+      await user.keyboard('{Control>}{End}{/Control}');
+      await user.paste('\nSistemaExterno(email, "E-mail")');
+      await user.click(within(panel).getByRole('button', { name: 'Aplicar ao canvas' }));
+
+      expect(editor.applyTextChanges).toHaveBeenCalledWith(expect.objectContaining({ addNodes: [expect.any(Object)] }));
+    });
+
+    it('deve fechar o painel', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'mock-open-text' }));
+      await user.click(screen.getByRole('button', { name: 'Fechar modo textual' }));
+
+      expect(screen.queryByRole('complementary', { name: 'Modo textual' })).not.toBeInTheDocument();
     });
   });
 });

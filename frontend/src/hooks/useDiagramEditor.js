@@ -342,6 +342,30 @@ export function useDiagramEditor(projectId) {
     [activeLevel, editActive]
   );
 
+  // RF19: o que o modo textual aplica no nível aberto (adicionar e atualizar; nunca exclui) — um passo do desfazer
+  const applyTextChanges = useCallback(
+    ({ addNodes = [], addEdges = [], updateNodes = [], updateEdges = [] }) => {
+      const nodeChanges = new Map(updateNodes.map((change) => [change.id, change.data]));
+      const edgeChanges = new Map(updateEdges.map((change) => [change.id, change]));
+      editActive((diagram) => ({
+        ...diagram,
+        nodes: [
+          ...diagram.nodes.map((node) => (nodeChanges.has(node.id) ? { ...node, data: pickNodeData(nodeChanges.get(node.id)) } : node)),
+          ...addNodes,
+        ],
+        edges: [
+          ...diagram.edges.map((edge) => {
+            const change = edgeChanges.get(edge.id);
+            if (!change) return edge;
+            return { ...edge, label: change.label, data: change.technology ? { technology: change.technology } : {} };
+          }),
+          ...addEdges,
+        ],
+      }));
+    },
+    [editActive]
+  );
+
   // Elementos de todos os níveis (árvore de elementos): a mesma referência enquanto nada muda
   const nodesByLevel = useMemo(
     () => Object.fromEntries(LEVEL_IDS.map((level) => [level, diagrams[level].nodes])),
@@ -409,6 +433,7 @@ export function useDiagramEditor(projectId) {
     nodes: diagrams[activeLevel].nodes,
     edges: diagrams[activeLevel].edges,
     nodesByLevel,
+    applyTextChanges,
     onNodesChange,
     onEdgesChange,
     addNode,

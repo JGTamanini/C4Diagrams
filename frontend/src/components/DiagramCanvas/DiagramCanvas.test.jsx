@@ -487,4 +487,14 @@ describe('DiagramCanvas', () => {
       expect(container.querySelector('.react-flow__arrowhead polyline')).toHaveStyle({ stroke: RELATIONSHIP_COLOR });
     });
   });
+
+  it('deve abrir o modo textual pela barra de controles (RF19)', async () => {
+    const user = userEvent.setup();
+    const onOpenText = vi.fn();
+    renderCanvas({ onOpenText });
+
+    await user.click(within(screen.getByLabelText('Controles do canvas')).getByRole('button', { name: 'Modo textual' }));
+
+    expect(onOpenText).toHaveBeenCalled();
+  });
 });

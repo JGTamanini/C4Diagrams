@@ -24,6 +24,7 @@ import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
+import TextModePanel from '../../components/TextModePanel/TextModePanel';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
@@ -149,6 +150,7 @@ function EditorBody({
   focusRequest,
   onSelectTreeElement,
   onOpenShortcuts,
+  onOpenText,
 }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
@@ -179,6 +181,7 @@ function EditorBody({
       focusRequest={focusRequest}
       nodesByLevel={editor.nodesByLevel}
       onOpenShortcuts={onOpenShortcuts}
+      onOpenText={onOpenText}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
@@ -245,6 +248,9 @@ function ProjectPage() {
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
+  // RF19: painel do modo textual (sobre a coluna da direita), aberto pela barra de controles do canvas
+  const [textMode, setTextMode] = useState(false);
+  const openText = useCallback(() => setTextMode(true), []);
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
@@ -354,7 +360,22 @@ function ProjectPage() {
           focusRequest={focusRequest}
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
+          onOpenText={openText}
         />
+        {textMode && editor.loadStatus === 'ready' && (
+          // Trocar de nível gera o texto do novo nível (a chave recria o painel)
+          <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-30 flex">
+            <TextModePanel
+              key={editor.activeLevel}
+              level={editor.activeLevel}
+              levelLabel={LEVELS.find((level) => level.id === editor.activeLevel).label}
+              nodes={editor.nodes}
+              edges={editor.edges}
+              onApply={editor.applyTextChanges}
+              onClose={() => setTextMode(false)}
+            />
+          </div>
+        )}
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
         {editor.loadStatus === 'ready' && (
           // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
