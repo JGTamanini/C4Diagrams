@@ -27,6 +27,7 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
@@ -248,6 +249,8 @@ function ProjectPage() {
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
+  // RF16: sugestões da IA sob pedido, na aba Sugestões do mesmo painel
+  const ai = useAiSuggestions(id, editor.activeLevel, editor.nodes, editor.edges);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
@@ -368,6 +371,10 @@ function ProjectPage() {
                 issues={validation.issues}
                 onToggle={toggleAssistant}
                 onSelectIssue={selectIssue}
+                ai={ai}
+                nodes={editor.nodes}
+                edges={editor.edges}
+                projectDescription={project?.description}
               />
             </div>
             <div className="pointer-events-none mt-auto shrink-0">
