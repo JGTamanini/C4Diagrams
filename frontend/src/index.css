@@ -263,3 +263,23 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-accent-text);
 }
+
+/* RF18: exportação da imagem — classes que só existem durante a captura (saem logo depois). Os marcadores da
+   validação não vão para a imagem; no fundo claro, as relações (claras no editor) escurecem para aparecer no branco */
+.c4-exporting .c4-issue-marker {
+  display: none;
+}
+
+.react-flow.c4-export-light {
+  --xy-edge-label-background-color: #ffffff;
+  --xy-edge-label-color: #111826;
+}
+
+.c4-export-light .react-flow__edge-path {
+  stroke: #4b5563 !important;
+}
+
+.c4-export-light .react-flow__arrowhead polyline {
+  stroke: #4b5563 !important;
+  fill: #4b5563 !important;
+}

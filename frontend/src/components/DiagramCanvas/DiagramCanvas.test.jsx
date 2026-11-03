@@ -487,4 +487,12 @@ describe('DiagramCanvas', () => {
       expect(container.querySelector('.react-flow__arrowhead polyline')).toHaveStyle({ stroke: RELATIONSHIP_COLOR });
     });
   });
+
+  it('deve oferecer à página a exportação da imagem do nível (RF18)', async () => {
+    const exporterRef = { current: null };
+    renderCanvas({ exporterRef });
+
+    await screen.findByText('Cliente');
+    expect(exporterRef.current).toEqual(expect.any(Function));
+  });
 });

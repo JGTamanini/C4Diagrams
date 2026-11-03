@@ -65,7 +65,7 @@ function C4Node({ id, type, data, selected = false }) {
             data-testid="issue-marker"
             data-severity={data.issueSeverity}
             title={ISSUE_MARKER[data.issueSeverity].label}
-            className={`absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-canvas ${ISSUE_MARKER[data.issueSeverity].color}`}
+            className={`c4-issue-marker absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-canvas ${ISSUE_MARKER[data.issueSeverity].color}`}
           />
         )}
         <strong className="block text-sm font-semibold">{data.label}</strong>
