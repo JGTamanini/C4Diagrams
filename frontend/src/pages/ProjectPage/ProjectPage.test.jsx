@@ -20,6 +20,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     issues,
     focusRequest,
     nodesByLevel,
+    scopeLabels,
+    boundary,
     onOpenShortcuts,
     onSelectTreeElement,
     onTogglePalette,
@@ -43,6 +45,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-issues={issues.length}
       data-focus={focusRequest ? JSON.stringify({ nodeId: focusRequest.nodeId, edgeId: focusRequest.edgeId }) : ''}
       data-tree-levels={Object.keys(nodesByLevel).join(',')}
+      data-scope-labels={JSON.stringify(scopeLabels)}
+      data-boundary={boundary ? `${boundary.label} [${boundary.type}] ${boundary.innerTypes.join(',')}` : ''}
     >
       <button type="button" onClick={onOpenShortcuts}>mock-shortcuts</button>
       <button type="button" onClick={() => onSelectTreeElement('container', 'c1')}>mock-tree-container</button>
@@ -55,6 +59,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       <button type="button" onClick={() => onAddNode('c4-system', { x: 1, y: 2 })}>mock-add</button>
       <button type="button" onClick={() => onConnect({ source: 'n1', target: 'n2' })}>mock-connect</button>
       <button type="button" onClick={() => onEditNode('n1')}>mock-edit-node</button>
+      <button type="button" onClick={() => onEditNode('n2')}>mock-edit-system</button>
       <button type="button" onClick={() => onEditEdge('e1')}>mock-edit-edge</button>
     </div>
     );
@@ -81,6 +86,8 @@ const editor = {
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
   nodesByLevel: { context: [], container: [], component: [] },
+  scopeByLevel: { context: null, container: null, component: null },
+  setScope: vi.fn(),
   selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
@@ -215,7 +222,7 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.type(title, 'Cliente VIP');
       await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Salvar' }));
 
-      expect(editor.updateNode).toHaveBeenCalledWith('n1', { label: 'Cliente VIP', description: '' });
+      expect(editor.updateNode).toHaveBeenCalledWith('n1', { label: 'Cliente VIP', description: '' }, { updated: [], removed: [] });
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
@@ -642,6 +649,66 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       expect(editor.selectLevel).not.toHaveBeenCalled();
       expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', level: 'context' });
+    });
+  });
+
+  describe('ligação entre níveis (RF22)', () => {
+    const contextNodes = [
+      { id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+      { id: 'n2', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
+    ];
+    const containerNodes = [
+      { id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } },
+      { id: 'c2', type: 'c4-container', position: { x: 0, y: 200 }, data: { label: 'Web' } },
+    ];
+    const nodesByLevel = { context: contextNodes, container: containerNodes, component: [] };
+
+    it('deve desenhar no canvas a fronteira do elemento que o nível detalha e mostrar o foco na árvore', async () => {
+      await renderLoaded({ activeLevel: 'container', nodes: containerNodes, edges: [], nodesByLevel });
+
+      const canvas = screen.getByTestId('canvas');
+      expect(canvas).toHaveAttribute('data-boundary', 'Loja [Software System] c4-container,c4-container-db');
+      expect(JSON.parse(canvas.dataset.scopeLabels)).toEqual({ container: 'Loja', component: null });
+    });
+
+    it('deve pedir qual elemento o nível detalha quando há mais de um candidato, e guardar a escolha', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ activeLevel: 'component', nodes: [], edges: [], nodesByLevel });
+
+      const picker = screen.getByLabelText('Elemento que este nível detalha');
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-boundary', '');
+      await user.selectOptions(picker, 'c2');
+
+      expect(editor.setScope).toHaveBeenCalledWith('component', 'c2');
+    });
+
+    it('não deve mostrar a escolha quando só há um candidato (ele é o foco)', async () => {
+      await renderLoaded({ activeLevel: 'container', nodes: containerNodes, edges: [], nodesByLevel });
+
+      expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
+    });
+
+    it('deve mostrar no modal as relações do elemento', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ nodes: contextNodes, nodesByLevel });
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+      expect(screen.getByRole('heading', { name: 'Relações (1)' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Rótulo da relação com Loja')).toHaveValue('Usa');
+    });
+
+    it('deve detalhar o sistema no nível Container a partir do modal', async () => {
+      const user = userEvent.setup();
+      const withTwoSystems = [...contextNodes, { ...contextNodes[1], id: 'n3', data: { label: 'ERP' } }];
+      await renderLoaded({ nodes: withTwoSystems, nodesByLevel: { ...nodesByLevel, context: withTwoSystems } });
+
+      await user.click(screen.getByRole('button', { name: 'mock-edit-system' }));
+      await user.click(screen.getByRole('button', { name: 'Detalhar no nível Container' }));
+
+      expect(editor.setScope).toHaveBeenCalledWith('container', 'n2');
+      expect(editor.selectLevel).toHaveBeenCalledWith('container');
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
   });
 });

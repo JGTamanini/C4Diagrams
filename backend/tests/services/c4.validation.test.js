@@ -272,5 +272,63 @@ describe('Motor de validação C4', () => {
         expect(codes(validateDiagram('component', { container, component }))).toEqual(['PARENT_LEVEL_WITHOUT_FOCUS']);
       });
     });
+
+    describe('foco do nível (qual elemento do nível acima ele detalha — RF22)', () => {
+      const twoSystems = {
+        ...completeContext,
+        nodes: [...completeContext.nodes, node('s2', 'c4-system', 'ERP', { description: 'Gestão interna' })],
+        edges: [...completeContext.edges, edge('e3', 's2', 'x1')],
+      };
+
+      it('não deve pedir o foco quando só há um candidato no nível acima (ele é o foco)', () => {
+        expect(validateDiagram('container', { context: completeContext, container: completeContainer })).toEqual([]);
+      });
+
+      it('deve pedir o foco quando o nível acima tem mais de um candidato', () => {
+        expect(validateDiagram('container', { context: twoSystems, container: completeContainer })).toEqual([
+          {
+            code: 'LEVEL_SCOPE_NOT_CHOSEN',
+            severity: 'warning',
+            message: 'O diagrama de Contexto tem 2 sistemas de software: indique qual deles o de Containers detalha.',
+          },
+        ]);
+      });
+
+      it('não deve avisar quando o foco foi escolhido', () => {
+        const container = { ...completeContainer, scope: { nodeId: 's2' } };
+
+        expect(validateDiagram('container', { context: twoSystems, container })).toEqual([]);
+      });
+
+      it.each([
+        ['apagado', 'zz'],
+        ['de outro tipo (o foco do nível de Containers é um Sistema de Software)', 'x1'],
+      ])('deve avisar quando o elemento em foco foi %s', (_, nodeId) => {
+        const container = { ...completeContainer, scope: { nodeId } };
+
+        expect(validateDiagram('container', { context: twoSystems, container })).toEqual([
+          {
+            code: 'LEVEL_SCOPE_NOT_FOUND',
+            severity: 'warning',
+            message: 'O elemento que o diagrama de Containers detalhava não existe mais no de Contexto: indique qual sistema ele detalha.',
+          },
+        ]);
+      });
+
+      it('deve pedir o container que o nível de Componentes detalha quando há mais de um', () => {
+        const container = {
+          ...completeContainer,
+          nodes: [...completeContainer.nodes, node('c2', 'c4-container', 'Aplicação Web', { description: 'Loja', technology: 'React' })],
+          edges: [...completeContainer.edges, edge('e4', 'c2', 'c1', { technology: 'HTTPS' })],
+        };
+        const component = {
+          nodes: [node('k1', 'c4-component', 'Controlador', { description: 'Recebe', technology: 'Express' })],
+          edges: [],
+        };
+
+        expect(codes(validateDiagram('component', { container, component }))).toEqual(['LEVEL_SCOPE_NOT_CHOSEN']);
+        expect(validateDiagram('component', { container, component: { ...component, scope: { nodeId: 'c1' } } })).toEqual([]);
+      });
+    });
   });
 });

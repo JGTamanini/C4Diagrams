@@ -4,6 +4,7 @@
 // API → React Flow: a tecnologia da conexão vai para edge.data
 export function fromApi(data) {
   return {
+    ...(data.scope ? { scope: data.scope } : {}),
     nodes: data.nodes,
     edges: data.edges.map(({ technology, ...edge }) => ({ ...edge, data: technology ? { technology } : {} })),
   };
@@ -20,7 +21,8 @@ export function pickNodeData({ label, description, technology }) {
 
 // React Flow → API: só os campos do documento (o estado interno do React Flow fica de fora).
 // Conexões cujo elemento foi removido são descartadas para não enviar um documento inválido.
-export function toApi({ nodes, edges }) {
+// scope (RF22): o elemento do nível de cima que este nível detalha, quando escolhido
+export function toApi({ nodes, edges, scope }) {
   const nodeIds = new Set(nodes.map((node) => node.id));
 
   return {
@@ -39,5 +41,6 @@ export function toApi({ nodes, edges }) {
         label,
         ...(data?.technology ? { technology: data.technology } : {}),
       })),
+    ...(scope ? { scope } : {}),
   };
 }
