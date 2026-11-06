@@ -50,7 +50,8 @@ describe('Rotas da IA (RF16)', () => {
     delete process.env.ANTHROPIC_API_KEY;
     process.env.AI_DEMO = 'true';
     aiService.resetProviderForTests();
-    await pool.query('DELETE FROM ai_usage');
+    // Só as linhas deste usuário: os arquivos de teste rodam em paralelo no mesmo banco
+    await pool.query('DELETE FROM ai_usage WHERE user_id = $1', [owner.id]);
   });
 
   afterAll(async () => {
@@ -131,6 +132,18 @@ describe('Rotas da IA (RF16)', () => {
 
       expect(response.status).toBe(429);
       expect(response.body.scope).toBe('deep');
+    });
+
+    it('não deve deixar pedidos simultâneos passarem do limite diário', async () => {
+      const responses = await Promise.all(
+        Array.from({ length: AI_LIMITS.suggestion + 10 }, () =>
+          request(app).post(suggestionsUrl(projectId)).set('Authorization', auth).send({ diagram })
+        )
+      );
+
+      const statuses = responses.map((response) => response.status);
+      expect(statuses.filter((status) => status === 200)).toHaveLength(AI_LIMITS.suggestion);
+      expect(statuses.filter((status) => status === 429)).toHaveLength(10);
     });
 
     it('deve responder 503 com a IA desligada', async () => {

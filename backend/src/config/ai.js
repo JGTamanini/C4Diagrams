@@ -9,11 +9,12 @@ const AI_MODELS = {
 
 // Cada nível de pedido: modelo, esforço de raciocínio, teto de tokens da resposta e tempo máximo (RNF03 revisto:
 // alvo de ~10 s no Haiku). fallback: a própria API refaz no modelo alternativo uma recusa dos filtros de segurança
-// do Opus (ex.: diagrama de um sistema de segurança barrado por engano)
+// do Opus (ex.: diagrama de um sistema de segurança barrado por engano). reservedUsd: custo máximo do pedido (o maior
+// diagrama, ~27 mil tokens de entrada, e o teto de tokens da resposta), reservado no teto até a API informar o real
 const AI_TIERS = {
-  fast: { model: AI_MODELS.fast, effort: 'low', maxTokens: 4_000, timeoutMs: 30_000, fallback: false },
-  escalation: { model: AI_MODELS.deep, effort: 'medium', maxTokens: 8_000, timeoutMs: 90_000, fallback: true },
-  deep: { model: AI_MODELS.deep, effort: 'medium', maxTokens: 12_000, timeoutMs: 90_000, fallback: true },
+  fast: { model: AI_MODELS.fast, effort: 'low', maxTokens: 4_000, timeoutMs: 30_000, fallback: false, reservedUsd: 0.005 },
+  escalation: { model: AI_MODELS.deep, effort: 'medium', maxTokens: 8_000, timeoutMs: 90_000, fallback: true, reservedUsd: 0.27 },
+  deep: { model: AI_MODELS.deep, effort: 'medium', maxTokens: 12_000, timeoutMs: 90_000, fallback: true, reservedUsd: 0.35 },
 };
 
 // Limites por usuário por dia (fuso de Brasília) e teto de gasto do sistema inteiro por dia, em dólares

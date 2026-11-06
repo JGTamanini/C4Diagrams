@@ -8,7 +8,7 @@ const diagramRepository = require('../../src/repositories/diagram.repository');
 const projectService = require('../../src/services/project.service');
 const aiProvider = require('../../src/services/ai.provider');
 const aiService = require('../../src/services/ai.service');
-const { AI_LIMITS } = require('../../src/config/ai');
+const { AI_LIMITS, AI_TIERS } = require('../../src/config/ai');
 const { AiUnavailableError, AiDailyLimitError, AiGenerationError, InvalidSuggestionRequestError } = require('../../src/errors/ai.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
 
@@ -60,8 +60,9 @@ describe('AiService (RF16)', () => {
     projectService.getProject.mockResolvedValue(project);
     diagramRepository.findAllByProject.mockResolvedValue([]);
     aiUsageRepository.countToday.mockResolvedValue({ suggestion: 0, deep: 0, escalation: 0 });
-    aiUsageRepository.costToday.mockResolvedValue(0);
-    aiUsageRepository.record.mockResolvedValue();
+    aiUsageRepository.reserve.mockImplementation(async (_, kind) => ({ ok: true, id: `reserva-${kind}` }));
+    aiUsageRepository.settle.mockResolvedValue();
+    aiUsageRepository.release.mockResolvedValue();
   });
 
   afterAll(() => {
@@ -90,6 +91,7 @@ describe('AiService (RF16)', () => {
   describe('suggest', () => {
     it('deve devolver as sugestões que passaram pelo motor, registrando o uso e o custo', async () => {
       provider.generate.mockResolvedValue(answer(good, 0.0012));
+      aiUsageRepository.countToday.mockResolvedValue({ suggestion: 1, deep: 0, escalation: 0 });
 
       const result = await aiService.suggest(projectId, userId, 'context', { diagram });
 
@@ -102,7 +104,13 @@ describe('AiService (RF16)', () => {
           context: expect.objectContaining({ level: 'context', project }),
         })
       );
-      expect(aiUsageRepository.record).toHaveBeenCalledWith(userId, 'suggestion', 0.0012);
+      expect(aiUsageRepository.reserve).toHaveBeenCalledWith(userId, 'suggestion', {
+        limit: AI_LIMITS.suggestion,
+        budgetUsd: AI_LIMITS.dailyBudgetUsd,
+        estimatedCost: AI_TIERS.fast.reservedUsd,
+      });
+      expect(aiUsageRepository.reserve.mock.invocationCallOrder[0]).toBeLessThan(provider.generate.mock.invocationCallOrder[0]);
+      expect(aiUsageRepository.settle).toHaveBeenCalledWith('reserva-suggestion', 0.0012);
       expect(result).toEqual({
         suggestions: [
           expect.objectContaining({ title: 'Ligue o Cliente à Loja', nodeId: null }),
@@ -151,8 +159,13 @@ describe('AiService (RF16)', () => {
       expect(provider.generate.mock.calls[1][0]).toEqual(
         expect.objectContaining({ tier: 'escalation', user: expect.stringMatching(/foram descartadas/) })
       );
-      expect(aiUsageRepository.record).toHaveBeenCalledWith(userId, 'suggestion', 0.001);
-      expect(aiUsageRepository.record).toHaveBeenCalledWith(userId, 'escalation', 0.07);
+      expect(aiUsageRepository.settle).toHaveBeenCalledWith('reserva-suggestion', 0.001);
+      expect(aiUsageRepository.reserve).toHaveBeenCalledWith(userId, 'escalation', {
+        limit: AI_LIMITS.escalation,
+        budgetUsd: AI_LIMITS.dailyBudgetUsd,
+        estimatedCost: AI_TIERS.escalation.reservedUsd,
+      });
+      expect(aiUsageRepository.settle).toHaveBeenCalledWith('reserva-escalation', 0.07);
       expect(result).toEqual(expect.objectContaining({ source: 'claude-opus-5-5', escalated: true }));
       expect(result.suggestions).toHaveLength(2);
     });
@@ -165,7 +178,7 @@ describe('AiService (RF16)', () => {
       const result = await aiService.suggest(projectId, userId, 'context', { diagram });
 
       expect(result.escalated).toBe(true);
-      expect(aiUsageRepository.record).toHaveBeenCalledWith(userId, 'suggestion', 0.0002);
+      expect(aiUsageRepository.settle).toHaveBeenCalledWith('reserva-suggestion', 0.0002);
     });
 
     it('deve ficar com o resultado do Haiku quando a escalada também falhar', async () => {
@@ -180,7 +193,9 @@ describe('AiService (RF16)', () => {
     });
 
     it('não deve escalar além do limite diário de escaladas (devolve o que o Haiku tiver)', async () => {
-      aiUsageRepository.countToday.mockResolvedValue({ suggestion: 0, deep: 0, escalation: AI_LIMITS.escalation });
+      aiUsageRepository.reserve.mockImplementation(async (_, kind) =>
+        kind === 'escalation' ? { ok: false, scope: 'escalation' } : { ok: true, id: 'reserva' }
+      );
       provider.generate.mockResolvedValueOnce(answer([bad[0], good[0], bad[1]]));
 
       const result = await aiService.suggest(projectId, userId, 'context', { diagram });
@@ -190,7 +205,9 @@ describe('AiService (RF16)', () => {
     });
 
     it('não deve escalar se o teto do sistema estourar com o gasto do Haiku', async () => {
-      aiUsageRepository.costToday.mockResolvedValue(AI_LIMITS.dailyBudgetUsd - 0.0005);
+      aiUsageRepository.reserve.mockImplementation(async (_, kind) =>
+        kind === 'escalation' ? { ok: false, scope: 'system' } : { ok: true, id: 'reserva' }
+      );
       provider.generate.mockResolvedValueOnce(answer([bad[0], good[0], bad[1]], 0.001));
 
       await aiService.suggest(projectId, userId, 'context', { diagram });
@@ -208,17 +225,18 @@ describe('AiService (RF16)', () => {
 
     it('deve ir direto ao Opus na análise aprofundada, sem escalada', async () => {
       provider.generate.mockResolvedValueOnce(answer([bad[0], good[0], bad[1]], 0.11, 'claude-opus-5-5'));
+      aiUsageRepository.countToday.mockResolvedValue({ suggestion: 0, deep: 1, escalation: 0 });
 
       const result = await aiService.suggest(projectId, userId, 'context', { diagram, depth: 'deep' });
 
       expect(provider.generate).toHaveBeenCalledTimes(1);
       expect(provider.generate).toHaveBeenCalledWith(expect.objectContaining({ tier: 'deep' }));
-      expect(aiUsageRepository.record).toHaveBeenCalledWith(userId, 'deep', 0.11);
+      expect(aiUsageRepository.settle).toHaveBeenCalledWith('reserva-deep', 0.11);
       expect(result.remaining).toEqual({ suggestion: AI_LIMITS.suggestion, deep: AI_LIMITS.deep - 1 });
     });
 
     it('deve recusar além do limite diário do usuário, sem chamar a IA', async () => {
-      aiUsageRepository.countToday.mockResolvedValue({ suggestion: 0, deep: AI_LIMITS.deep, escalation: 0 });
+      aiUsageRepository.reserve.mockResolvedValue({ ok: false, scope: 'deep' });
 
       await expect(aiService.suggest(projectId, userId, 'context', { diagram, depth: 'deep' })).rejects.toThrow(
         expect.objectContaining({ name: 'AiDailyLimitError', scope: 'deep' })
@@ -227,7 +245,7 @@ describe('AiService (RF16)', () => {
     });
 
     it('deve pausar a IA de todos ao atingir o teto diário do sistema', async () => {
-      aiUsageRepository.costToday.mockResolvedValue(AI_LIMITS.dailyBudgetUsd);
+      aiUsageRepository.reserve.mockResolvedValue({ ok: false, scope: 'system' });
 
       await expect(aiService.suggest(projectId, userId, 'context', { diagram })).rejects.toThrow(
         expect.objectContaining({ name: 'AiDailyLimitError', scope: 'system' })
@@ -235,11 +253,12 @@ describe('AiService (RF16)', () => {
       expect(provider.generate).not.toHaveBeenCalled();
     });
 
-    it('deve repassar quando a IA estiver indisponível (chave ou créditos), sem registrar uso', async () => {
+    it('deve desfazer a reserva e repassar quando a IA estiver indisponível (chave ou créditos)', async () => {
       provider.generate.mockRejectedValue(new AiUnavailableError());
 
       await expect(aiService.suggest(projectId, userId, 'context', { diagram })).rejects.toThrow(AiUnavailableError);
-      expect(aiUsageRepository.record).not.toHaveBeenCalled();
+      expect(aiUsageRepository.release).toHaveBeenCalledWith('reserva-suggestion');
+      expect(aiUsageRepository.settle).not.toHaveBeenCalled();
     });
 
     it('deve recusar com IA desligada (sem chave), antes de qualquer consulta', async () => {
@@ -276,7 +295,7 @@ describe('AiService (RF16)', () => {
     });
 
     it('deve recusar além do limite de sugestões do usuário', async () => {
-      aiUsageRepository.countToday.mockResolvedValue({ suggestion: AI_LIMITS.suggestion, deep: 0, escalation: 0 });
+      aiUsageRepository.reserve.mockResolvedValue({ ok: false, scope: 'suggestion' });
 
       await expect(aiService.suggest(projectId, userId, 'context', { diagram })).rejects.toThrow(AiDailyLimitError);
     });
