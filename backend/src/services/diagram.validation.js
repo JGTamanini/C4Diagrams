@@ -89,6 +89,15 @@ function normalizeEdge(rawEdge, nodeIds, seenIds) {
   return normalizedEdge;
 }
 
+// RF22: o foco do nível é o id do elemento que ele detalha no nível acima (o Sistema que o nível de Containers
+// detalha; o Container que o de Componentes detalha). Ausente, vale o único candidato do nível acima, se houver
+function normalizeScope(scope) {
+  if (scope === undefined || scope === null) return undefined;
+  const nodeId = typeof scope === 'object' ? trimmed(scope.nodeId) : '';
+  if (!nodeId) fail('O foco do nível é inválido.');
+  return { nodeId };
+}
+
 // Nota: valida só a estrutura do documento; a compatibilidade tipo × nível (RN08) é do motor de validação C4
 // (c4.validation.js), aplicado em seguida pelo diagram.service
 function normalizeDiagramData(data) {
@@ -104,7 +113,8 @@ function normalizeDiagramData(data) {
   const seenEdgeIds = new Set();
   const edges = data.edges.map((rawEdge) => normalizeEdge(rawEdge, seenNodeIds, seenEdgeIds));
 
-  return { nodes, edges };
+  const scope = normalizeScope(data.scope);
+  return scope ? { nodes, edges, scope } : { nodes, edges };
 }
 
 module.exports = { normalizeDiagramData };

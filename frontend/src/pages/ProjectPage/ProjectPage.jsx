@@ -30,6 +30,8 @@ import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
+import { INNER_TYPES, SCOPE_TYPE_LABEL, detailLevelOf, isInnerType, resolveScope } from '../../constants/levelScope';
+import ScopePicker from '../../components/ScopePicker/ScopePicker';
 
 const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
@@ -149,6 +151,8 @@ function EditorBody({
   focusRequest,
   onSelectTreeElement,
   onOpenShortcuts,
+  scopeLabels,
+  boundary,
 }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
@@ -178,6 +182,8 @@ function EditorBody({
       issues={issues}
       focusRequest={focusRequest}
       nodesByLevel={editor.nodesByLevel}
+      scopeLabels={scopeLabels}
+      boundary={boundary}
       onOpenShortcuts={onOpenShortcuts}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
@@ -188,6 +194,52 @@ function EditorBody({
       onEditEdge={(id) => onEdit({ kind: 'edge', id })}
     />
   );
+}
+
+// RF22: o foco de cada nível de detalhe (o que ele detalha do nível de cima)
+function scopesOf(editor) {
+  return {
+    container: resolveScope('container', editor.nodesByLevel, editor.scopeByLevel),
+    component: resolveScope('component', editor.nodesByLevel, editor.scopeByLevel),
+  };
+}
+
+const levelName = (levelId) => LEVELS.find((level) => level.id === levelId).label;
+
+// RF22: as relações do elemento no nível aberto, para o modal
+function relationsOf(editor, nodeId) {
+  const labels = new Map(editor.nodes.map((node) => [node.id, node.data.label]));
+  return editor.edges
+    .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+    .map((edge) => {
+      const outgoing = edge.source === nodeId;
+      return {
+        id: edge.id,
+        direction: outgoing ? 'out' : 'in',
+        otherLabel: labels.get(outgoing ? edge.target : edge.source),
+        label: edge.label,
+        technology: edge.data?.technology ?? '',
+      };
+    });
+}
+
+// RF22: de que elemento do nível de cima o elemento faz parte, e em qual nível ele é detalhado
+function levelInfoOf(editor, node) {
+  const scopes = scopesOf(editor);
+  const focus = scopes[editor.activeLevel]?.focus;
+  const partOf =
+    focus && isInnerType(editor.activeLevel, node.type)
+      ? { label: focus.data.label, type: SCOPE_TYPE_LABEL[editor.activeLevel] }
+      : null;
+
+  const childLevel = detailLevelOf(editor.activeLevel, node.type);
+  const detail = childLevel && {
+    level: childLevel,
+    levelName: levelName(childLevel),
+    count: editor.nodesByLevel[childLevel].filter((child) => isInnerType(childLevel, child.type)).length,
+    isFocus: scopes[childLevel].focus?.id === node.id,
+  };
+  return { partOf, detail };
 }
 
 // Nota: o alvo do modal é procurado no nível ativo a cada render — se ele deixar de existir, o modal some
@@ -205,9 +257,20 @@ function ElementEditor({ editor, editing, onClose }) {
   const target = findEditTarget(editor, editing);
   const isNode = editing?.kind === 'node';
 
-  function handleSave(values) {
-    if (isNode) editor.updateNode(editing.id, values);
+  function handleSave(values, relationChanges) {
+    if (isNode) editor.updateNode(editing.id, values, relationChanges);
     else editor.updateEdge(editing.id, values);
+    onClose();
+  }
+
+  const node = isNode && target ? editor.nodes.find((candidate) => candidate.id === editing.id) : null;
+  const levelInfo = node ? levelInfoOf(editor, node) : null;
+
+  // "Detalhar" escolhe este elemento como foco do nível de baixo (se ainda não for) e abre esse nível
+  function handleDetail() {
+    const { detail } = levelInfo;
+    if (!detail.isFocus) editor.setScope(detail.level, editing.id);
+    editor.selectLevel(detail.level);
     onClose();
   }
 
@@ -224,6 +287,9 @@ function ElementEditor({ editor, editing, onClose }) {
         <ElementFormModal
           key={`${editing.kind}-${editing.id}`}
           target={target}
+          relations={node ? relationsOf(editor, editing.id) : undefined}
+          levelInfo={levelInfo}
+          onDetail={handleDetail}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={onClose}
@@ -251,6 +317,12 @@ function ProjectPage() {
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
+  // RF22: o que o nível aberto detalha do nível de cima, e a fronteira tracejada em volta dos elementos de dentro
+  const scopes = scopesOf(editor);
+  const activeScope = scopes[editor.activeLevel] ?? null;
+  const boundary = activeScope?.focus
+    ? { label: activeScope.focus.data.label, type: SCOPE_TYPE_LABEL[editor.activeLevel], innerTypes: INNER_TYPES[editor.activeLevel] }
+    : null;
 
   // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
   // quando o mesmo problema é clicado de novo)
@@ -354,8 +426,14 @@ function ProjectPage() {
           focusRequest={focusRequest}
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
+          scopeLabels={{ container: scopes.container.focus?.data.label ?? null, component: scopes.component.focus?.data.label ?? null }}
+          boundary={boundary}
         />
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
+        {/* Com um candidato só, ele é o foco e não há o que escolher; mas, se o foco escolhido foi apagado, é aqui que se corrige */}
+        {editor.loadStatus === 'ready' && activeScope && (activeScope.candidates.length > 1 || (activeScope.status === 'missing' && activeScope.candidates.length > 0)) && (
+          <ScopePicker scope={activeScope} onChange={(nodeId) => editor.setScope(editor.activeLevel, nodeId)} />
+        )}
         {editor.loadStatus === 'ready' && (
           // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
           // é ele que encolhe e rola por dentro; a legenda não se mexe. A coluna deixa passar os cliques para o canvas:

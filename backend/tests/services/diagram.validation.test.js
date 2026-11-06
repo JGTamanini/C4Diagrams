@@ -126,4 +126,25 @@ describe('normalizeDiagramData', () => {
       expectInvalid({ nodes: twoNodes, edges }, 'O diagrama pode ter no máximo 400 conexões.');
     });
   });
+
+  describe('foco do nível (RF22)', () => {
+    const data = { nodes: [], edges: [] };
+
+    it('deve guardar o id do elemento que o nível detalha, sem espaços', () => {
+      expect(normalizeDiagramData({ ...data, scope: { nodeId: '  s1 ', extra: true } })).toEqual({ ...data, scope: { nodeId: 's1' } });
+    });
+
+    it('deve omitir o foco ausente', () => {
+      expect(normalizeDiagramData({ ...data, scope: null })).toEqual(data);
+    });
+
+    it.each([
+      ['um texto', 's1'],
+      ['sem id', {}],
+      ['com id vazio', { nodeId: '   ' }],
+      ['com id que não é texto', { nodeId: 42 }],
+    ])('deve recusar o foco %s', (_, scope) => {
+      expect(() => normalizeDiagramData({ ...data, scope })).toThrow('O foco do nível é inválido.');
+    });
+  });
 });
