@@ -265,9 +265,21 @@
 }
 
 /* RF18: exportação da imagem — classes que só existem durante a captura (saem logo depois). Os marcadores da
-   validação não vão para a imagem; no fundo claro, as relações (claras no editor) escurecem para aparecer no branco */
+   validação, o anel de seleção e os pontos de conexão não vão para a imagem (sem transição: a captura é imediata, e o
+   elemento continua selecionado no editor); no fundo claro, as relações (claras no editor) escurecem para aparecer
+   no branco */
 .c4-exporting .c4-issue-marker {
   display: none;
+}
+
+.c4-exporting .react-flow__handle {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+.c4-exporting .c4-node-body {
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.7) !important;
+  transition: none !important;
 }
 
 .react-flow.c4-export-light {

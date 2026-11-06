@@ -1,5 +1,3 @@
-import { toPng } from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { C4_ELEMENTS, RELATIONSHIP_COLOR } from '../constants/c4Notation';
 
@@ -147,7 +145,8 @@ async function composeWithTitleAndLegend(diagramUrl, { title, legend, theme }) {
 
 // Nota: RF18 — imagem do nível aberto em PNG ou PDF. O diagrama é capturado do próprio canvas (html-to-image, como
 // recomenda o React Flow), no enquadramento escolhido, e ganha título e legenda. Fundo escuro (como no editor) ou
-// claro (documentos e impressão). Tudo no navegador: nada vai para o servidor.
+// claro (documentos e impressão). Tudo no navegador: nada vai para o servidor. As bibliotecas de captura e de PDF só são
+// carregadas ao exportar: são pesadas e entrariam no pacote de todo mundo, inclusive de quem só abre a home.
 export async function exportDiagramImage({ flowElement, nodes, edges, viewport, area, background, format, projectName, levelLabel }) {
   if (nodes.length === 0) throw new Error('Este nível ainda não tem elementos para exportar.');
 
@@ -155,6 +154,7 @@ export async function exportDiagramImage({ flowElement, nodes, edges, viewport, 
   const frame = frameFor({ flowElement, nodes, viewport, area });
   const { x, y, zoom } = frame.transform;
   const classes = [EXPORTING_CLASS, theme.className].filter(Boolean);
+  const { toPng } = await import('html-to-image');
 
   flowElement.classList.add(...classes);
   let diagramUrl;
@@ -178,6 +178,7 @@ export async function exportDiagramImage({ flowElement, nodes, edges, viewport, 
   const fileName = exportFileName(projectName, levelLabel, format);
 
   if (format === 'pdf') {
+    const { jsPDF } = await import('jspdf');
     const image = await loadImage(imageUrl);
     const width = image.width / PIXEL_RATIO;
     const height = image.height / PIXEL_RATIO;

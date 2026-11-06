@@ -54,7 +54,7 @@ function C4Node({ id, type, data, selected = false }) {
 
       <div
         data-testid="c4-node-body"
-        className={`relative w-full border-2 px-3 py-4 text-center wrap-break-word transition-[box-shadow,filter] duration-150 group-hover:brightness-110 ${BODY_SHAPE_CLASSES[element.shape]}`}
+        className={`c4-node-body relative w-full border-2 px-3 py-4 text-center wrap-break-word transition-[box-shadow,filter] duration-150 group-hover:brightness-110 ${BODY_SHAPE_CLASSES[element.shape]}`}
         style={{ ...colors, boxShadow: selected ? SELECTED_RING : RESTING_SHADOW }}
       >
         {element.shape === 'database' && (
