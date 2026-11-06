@@ -6,7 +6,7 @@ const c4Validation = require('./c4.validation');
 const { normalizeDiagramData } = require('./diagram.validation');
 const { checkSuggestions } = require('./ai.suggestionCheck');
 const { SYSTEM_PROMPT, buildUserMessage } = require('./ai.prompt');
-const { AI_LIMITS, resolveAiMode } = require('../config/ai');
+const { AI_LIMITS, AI_TIERS, resolveAiMode } = require('../config/ai');
 const { LEVELS } = require('../domain/c4');
 const { InvalidDiagramLevelError } = require('../errors/diagram.errors');
 const {
@@ -78,8 +78,30 @@ function isWeak(result) {
   return result.kept.length === 0 || result.discarded.length > total / 2;
 }
 
+// Reserva o pedido antes de chamar a IA (pedidos simultâneos não furam o limite)
+function reserveRequest(userId, kind, tier) {
+  return aiUsageRepository.reserve(userId, kind, {
+    limit: AI_LIMITS[kind],
+    budgetUsd: AI_LIMITS.dailyBudgetUsd,
+    estimatedCost: AI_TIERS[tier].reservedUsd,
+  });
+}
+
+// Chama a IA com o pedido já reservado: acerta o custo real ou, se a chamada falhar de vez (IA indisponível), desfaz
+async function generateReserved(provider, reservationId, request) {
+  let result;
+  try {
+    result = await provider.generate(request);
+  } catch (err) {
+    await aiUsageRepository.release(reservationId);
+    throw err;
+  }
+  await aiUsageRepository.settle(reservationId, result.cost);
+  return result;
+}
+
 // Nota: RF16 — sugestões sob pedido (nunca automáticas; RN12: só orientam, nada é aplicado no diagrama).
-// 1. Limites: do usuário (por tipo de pedido) e o teto de gasto do sistema no dia.
+// 1. Limites: do usuário (por tipo de pedido) e o teto de gasto do sistema no dia, reservados antes da chamada.
 // 2. Haiku (ou Opus direto na "Análise aprofundada"); o motor do RF17 confere cada sugestão.
 // 3. Resposta fraca do Haiku → uma única escalada para o Opus, com o que foi descartado; se ela também falhar,
 //    fica o que o Haiku tinha de válido. Cada chamada é registrada com o custo informado pela API.
@@ -91,9 +113,7 @@ async function suggest(projectId, userId, level, body) {
   const project = await projectService.getProject(projectId, userId);
 
   const kind = depth === 'deep' ? 'deep' : 'suggestion';
-  const [counts, spent] = await Promise.all([aiUsageRepository.countToday(userId), aiUsageRepository.costToday()]);
-  if (counts[kind] >= AI_LIMITS[kind]) throw new AiDailyLimitError(kind);
-  if (spent >= AI_LIMITS.dailyBudgetUsd) throw new AiDailyLimitError('system');
+  const tier = kind === 'deep' ? 'deep' : 'fast';
 
   // Os outros níveis salvos dão o contexto entre níveis; o validador conta o que já apontou, para a IA não repetir
   const saved = await diagramRepository.findAllByProject(projectId, userId);
@@ -104,23 +124,21 @@ async function suggest(projectId, userId, level, body) {
   const context = { level, data, project, description };
   const provider = providerFor(mode);
 
-  const first = await provider.generate({ tier: kind === 'deep' ? 'deep' : 'fast', system: SYSTEM_PROMPT, user: buildUserMessage(promptInput), context });
-  await aiUsageRepository.record(userId, kind, first.cost);
+  const reservation = await reserveRequest(userId, kind, tier);
+  if (!reservation.ok) throw new AiDailyLimitError(reservation.scope);
+
+  const first = await generateReserved(provider, reservation.id, { tier, system: SYSTEM_PROMPT, user: buildUserMessage(promptInput), context });
   let best = first.ok ? { ...checkSuggestions(level, data, first.suggestions), source: first.model, escalated: false } : null;
 
-  const canEscalate =
-    kind === 'suggestion' &&
-    isWeak(best) &&
-    counts.escalation < AI_LIMITS.escalation &&
-    spent + first.cost < AI_LIMITS.dailyBudgetUsd;
-  if (canEscalate) {
-    const second = await provider.generate({
+  // Sem reserva para a escalada (limite de escaladas ou teto do sistema), fica o que o Haiku tiver
+  const escalation = kind === 'suggestion' && isWeak(best) ? await reserveRequest(userId, 'escalation', 'escalation') : null;
+  if (escalation?.ok) {
+    const second = await generateReserved(provider, escalation.id, {
       tier: 'escalation',
       system: SYSTEM_PROMPT,
       user: buildUserMessage({ ...promptInput, discarded: best?.discarded ?? [] }),
       context,
     });
-    await aiUsageRepository.record(userId, 'escalation', second.cost);
 
     if (second.ok) {
       const checked = checkSuggestions(level, data, second.suggestions);
@@ -134,7 +152,7 @@ async function suggest(projectId, userId, level, body) {
     suggestions: best.kept,
     source: best.source,
     escalated: best.escalated,
-    remaining: remainingFrom({ ...counts, [kind]: counts[kind] + 1 }),
+    remaining: remainingFrom(await aiUsageRepository.countToday(userId)),
   };
 }
 

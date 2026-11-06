@@ -130,7 +130,8 @@ jobs:
             DATABASE_URL="$DATABASE_URL" \
             JWT_SECRET="$JWT_SECRET" \
             RESEND_API_KEY="$RESEND_API_KEY" \
-            NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \n            ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+            NEW_RELIC_LICENSE_KEY="$NEW_RELIC_LICENSE_KEY" \
+            ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
 
       - name: Apontar o Web App para a nova imagem
         run: az webapp config set -g $RESOURCE_GROUP -n $WEB_APP --linux-fx-version "DOCKER|$IMAGE:${{ github.sha }}" --output none
