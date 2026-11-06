@@ -122,6 +122,13 @@ describe('modo textual (RF19)', () => {
       expect(result.addNodes).toEqual([]);
     });
 
+    it('deve inverter a relação quando o sentido foi trocado no texto', () => {
+      const result = plan(text.replace('Rel(cliente, loja_online, "Compra em")', 'Rel(loja_online, cliente, "Compra em")'));
+
+      expect(result.updateEdges).toEqual([{ id: 'e1', label: 'Compra em', technology: '', source: 'n2', target: 'n1' }]);
+      expect(result.addEdges).toEqual([]);
+    });
+
     it('deve adicionar elementos e relações novos, posicionados ao lado do que já existe', () => {
       const result = plan(`${text}\nSistemaExterno(email, "Serviço de E-mail", "Envia avisos")\nRel(loja_online, email, "Envia e-mails por")`);
 

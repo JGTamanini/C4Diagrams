@@ -827,5 +827,17 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodes.map((n) => n.data.label)).toEqual(['Cliente', 'Loja']);
       expect(result.current.edges.map((e) => e.label)).toEqual(['Compra em']);
     });
+
+    it('deve inverter o sentido da relação quando o texto pedir', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() =>
+        result.current.applyTextChanges({
+          updateEdges: [{ id: 'e1', label: 'Compra em', technology: 'HTTPS', source: 'n2', target: 'n1' }],
+        })
+      );
+
+      expect(result.current.edges[0]).toMatchObject({ id: 'e1', source: 'n2', target: 'n1', label: 'Compra em' });
+    });
   });
 });

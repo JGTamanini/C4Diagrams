@@ -357,7 +357,12 @@ export function useDiagramEditor(projectId) {
           ...diagram.edges.map((edge) => {
             const change = edgeChanges.get(edge.id);
             if (!change) return edge;
-            return { ...edge, label: change.label, data: change.technology ? { technology: change.technology } : {} };
+            return {
+              ...edge,
+              ...(change.source ? { source: change.source, target: change.target } : {}),
+              label: change.label,
+              data: change.technology ? { technology: change.technology } : {},
+            };
           }),
           ...addEdges,
         ],

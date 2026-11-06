@@ -346,8 +346,14 @@ export function planTextChanges({ level, text, aliases, nodes, edges }) {
 
     const existing = edgesByPair.get(key);
     if (existing) {
-      if (existing.label !== relation.label || (existing.data?.technology ?? null) !== relation.technology) {
-        updateEdges.push({ id: existing.id, label: relation.label, technology: relation.technology ?? '' });
+      const reversed = existing.source !== source;
+      if (reversed || existing.label !== relation.label || (existing.data?.technology ?? null) !== relation.technology) {
+        updateEdges.push({
+          id: existing.id,
+          label: relation.label,
+          technology: relation.technology ?? '',
+          ...(reversed ? { source, target } : {}),
+        });
       }
       continue;
     }
