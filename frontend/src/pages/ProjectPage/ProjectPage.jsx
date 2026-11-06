@@ -430,7 +430,8 @@ function ProjectPage() {
           boundary={boundary}
         />
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
-        {editor.loadStatus === 'ready' && activeScope?.candidates.length > 1 && (
+        {/* Com um candidato só, ele é o foco e não há o que escolher; mas, se o foco escolhido foi apagado, é aqui que se corrige */}
+        {editor.loadStatus === 'ready' && activeScope && (activeScope.candidates.length > 1 || (activeScope.status === 'missing' && activeScope.candidates.length > 0)) && (
           <ScopePicker scope={activeScope} onChange={(nodeId) => editor.setScope(editor.activeLevel, nodeId)} />
         )}
         {editor.loadStatus === 'ready' && (

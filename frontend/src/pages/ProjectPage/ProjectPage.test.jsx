@@ -688,6 +688,35 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
     });
 
+    it('deve mostrar a escolha quando o foco se perdeu, mesmo com um candidato só, para o usuário corrigir ali', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({
+        activeLevel: 'container',
+        nodes: containerNodes,
+        edges: [],
+        nodesByLevel,
+        scopeByLevel: { context: null, container: { nodeId: 'apagado' }, component: null },
+      });
+
+      const picker = screen.getByLabelText('Elemento que este nível detalha');
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-boundary', '');
+      await user.selectOptions(picker, 'n2');
+
+      expect(editor.setScope).toHaveBeenCalledWith('container', 'n2');
+    });
+
+    it('não deve mostrar a escolha quando o foco se perdeu e não há candidato', async () => {
+      await renderLoaded({
+        activeLevel: 'container',
+        nodes: containerNodes,
+        edges: [],
+        nodesByLevel: { ...nodesByLevel, context: [contextNodes[0]] },
+        scopeByLevel: { context: null, container: { nodeId: 'apagado' }, component: null },
+      });
+
+      expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
+    });
+
     it('deve mostrar no modal as relações do elemento', async () => {
       const user = userEvent.setup();
       await renderLoaded({ nodes: contextNodes, nodesByLevel });
