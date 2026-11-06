@@ -62,10 +62,14 @@ export function useAiSuggestions(projectId, level, nodes, edges) {
     }
   }
 
+  // O servidor já pode ter contado o pedido cancelado: busca de novo quantos restam, para a tela não prometer a mais
   function cancel() {
     controllerRef.current?.abort();
     controllerRef.current = null;
     setPending(null);
+    getAiStatus()
+      .then(setStatus)
+      .catch(() => {});
   }
 
   function dismiss(id) {
@@ -82,6 +86,7 @@ export function useAiSuggestions(projectId, level, nodes, edges) {
     remaining: status?.remaining ?? null,
     loading: pending?.level === level ? pending.depth : null,
     busy: Boolean(pending),
+    pendingElsewhere: pending && pending.level !== level ? pending.level : null,
     error: error?.level === level ? error.message : null,
     result: current
       ? { ...current, suggestions: current.suggestions.filter((item) => !current.dismissed.includes(item.id)) }

@@ -84,8 +84,10 @@ describe('useAiSuggestions (RF16)', () => {
     rerender({ level: 'container' });
     expect(hook.current.loading).toBeNull();
     expect(hook.current.busy).toBe(true);
+    expect(hook.current.pendingElsewhere).toBe('context');
 
     await act(async () => resolve(result));
+    expect(hook.current.pendingElsewhere).toBeNull();
     expect(hook.current.result).toBeNull();
     rerender({ level: 'context' });
     expect(hook.current.result.suggestions).toHaveLength(2);
@@ -151,6 +153,35 @@ describe('useAiSuggestions (RF16)', () => {
     expect(hook.current.loading).toBeNull();
     expect(hook.current.busy).toBe(false);
     expect(hook.current.error).toBeNull();
+  });
+
+  it('deve buscar de novo quantos pedidos restam depois de cancelar (o servidor já pode ter contado o pedido)', async () => {
+    requestSuggestions.mockReturnValue(new Promise(() => {}));
+    const { result: hook } = renderSuggestions();
+    await waitFor(() => expect(hook.current.mode).toBe('anthropic'));
+    act(() => {
+      void hook.current.generate('deep');
+    });
+    getAiStatus.mockResolvedValue({ ...status, remaining: { suggestion: 20, deep: 2 } });
+
+    act(() => hook.current.cancel());
+
+    await waitFor(() => expect(hook.current.remaining).toEqual({ suggestion: 20, deep: 2 }));
+  });
+
+  it('deve manter o que resta se a nova consulta depois de cancelar falhar', async () => {
+    requestSuggestions.mockReturnValue(new Promise(() => {}));
+    const { result: hook } = renderSuggestions();
+    await waitFor(() => expect(hook.current.mode).toBe('anthropic'));
+    act(() => {
+      void hook.current.generate('deep');
+    });
+    getAiStatus.mockRejectedValue(new Error('rede'));
+
+    await act(async () => hook.current.cancel());
+
+    expect(hook.current.mode).toBe('anthropic');
+    expect(hook.current.remaining).toEqual({ suggestion: 20, deep: 3 });
   });
 
   it('deve esconder uma sugestão ignorada', async () => {

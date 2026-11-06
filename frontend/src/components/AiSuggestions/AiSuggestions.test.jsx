@@ -137,6 +137,17 @@ describe('AiSuggestions (aba Sugestões do Assistente, RF16)', () => {
       expect(ai.cancel).toHaveBeenCalled();
     });
 
+    it('deve explicar os botões desativados quando o pedido está em andamento em outro nível, com a opção de cancelar', async () => {
+      const user = userEvent.setup();
+      const { ai } = renderTab({ ai: aiState({ busy: true, pendingElsewhere: 'container' }) });
+
+      expect(screen.getByRole('status')).toHaveTextContent('Há um pedido em andamento no nível Container.');
+      expect(screen.getByRole('button', { name: 'Sugerir melhorias' })).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      expect(ai.cancel).toHaveBeenCalled();
+    });
+
     it('deve mostrar o erro do pedido', () => {
       renderTab({ ai: aiState({ error: 'Você usou os 20 pedidos de sugestões de hoje. Volte amanhã.' }) });
 

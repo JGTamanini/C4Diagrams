@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, Lightbulb, Link2, PencilLine, Plus } from 'lucide-react';
 import Button from '../Button/Button';
 import FormInput from '../FormInput/FormInput';
-import { C4_ELEMENTS, elementMatchKey } from '../../constants/c4Notation';
+import { C4_ELEMENTS, LEVELS, elementMatchKey } from '../../constants/c4Notation';
 
 // Descrição do sistema para o ponto de partida (a do projeto tem só 150 caracteres)
 const DESCRIPTION_MAX_LENGTH = 1000;
@@ -172,6 +172,16 @@ function AiSuggestions({ ai, nodes, edges, projectDescription, onSelectElement }
       {ai.loading && (
         <div role="status" className="flex items-center justify-between gap-2 text-xs text-text-secondary">
           <span>{ai.loading === 'deep' ? 'Analisando com o modelo avançado… pode levar até 1 minuto.' : 'Gerando sugestões…'}</span>
+          <Button size="sm" variant="ghost" onClick={ai.cancel}>
+            Cancelar
+          </Button>
+        </div>
+      )}
+
+      {/* Um pedido por vez: em outro nível, explica por que os botões estão desativados */}
+      {ai.pendingElsewhere && (
+        <div role="status" className="flex items-center justify-between gap-2 text-xs text-text-secondary">
+          <span>Há um pedido em andamento no nível {LEVELS.find((level) => level.id === ai.pendingElsewhere).label}.</span>
           <Button size="sm" variant="ghost" onClick={ai.cancel}>
             Cancelar
           </Button>
