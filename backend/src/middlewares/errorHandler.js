@@ -13,6 +13,12 @@ const {
   InvalidImportFileError,
 } = require('../errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
+const {
+  AiUnavailableError,
+  AiDailyLimitError,
+  AiGenerationError,
+  InvalidSuggestionRequestError,
+} = require('../errors/ai.errors');
 
 // Nota: valores vindos da requisição entram no log só com caracteres permitidos — evita forjar linhas (log injection)
 function toLogSafe(value) {
@@ -28,7 +34,8 @@ function errorHandler(err, req, res, next) {
     err instanceof NoFieldsToUpdateError ||
     err instanceof InvalidDiagramLevelError ||
     err instanceof InvalidDiagramDataError ||
-    err instanceof InvalidImportFileError
+    err instanceof InvalidImportFileError ||
+    err instanceof InvalidSuggestionRequestError
   ) {
     return res.status(400).json({ message: err.message });
   }
@@ -55,6 +62,19 @@ function errorHandler(err, req, res, next) {
 
   if (err instanceof EmailAlreadyExistsError) {
     return res.status(409).json({ message: err.message });
+  }
+
+  // RF16: limite diário (do usuário ou do sistema), falha da IA ao gerar e IA indisponível (sem chave ou créditos)
+  if (err instanceof AiDailyLimitError) {
+    return res.status(429).json({ message: err.message, scope: err.scope });
+  }
+
+  if (err instanceof AiGenerationError) {
+    return res.status(502).json({ message: err.message });
+  }
+
+  if (err instanceof AiUnavailableError) {
+    return res.status(503).json({ message: err.message });
   }
 
   if (err instanceof AccountLockedError) {
