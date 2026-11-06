@@ -6,7 +6,12 @@ const {
   IncorrectPasswordError,
 } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
-const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../errors/project.errors');
+const {
+  ProjectNotFoundError,
+  FieldTooLongError,
+  NoFieldsToUpdateError,
+  InvalidImportFileError,
+} = require('../errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
 const {
   AiUnavailableError,
@@ -29,6 +34,7 @@ function errorHandler(err, req, res, next) {
     err instanceof NoFieldsToUpdateError ||
     err instanceof InvalidDiagramLevelError ||
     err instanceof InvalidDiagramDataError ||
+    err instanceof InvalidImportFileError ||
     err instanceof InvalidSuggestionRequestError
   ) {
     return res.status(400).json({ message: err.message });

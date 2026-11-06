@@ -6,11 +6,13 @@ import ProjectPage from './ProjectPage';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
+vi.mock('../../services/projectFile');
 vi.mock('../../hooks/useAiSuggestions');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: function MockCanvas({
@@ -83,6 +85,8 @@ const editor = {
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
   nodesByLevel: { context: [], container: [], component: [] },
+  showNotice: vi.fn(),
+  diagramsByLevel: { context: { nodes: [], edges: [] }, container: { nodes: [], edges: [] }, component: { nodes: [], edges: [] } },
   selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
@@ -128,6 +132,7 @@ describe('ProjectPage (editor de diagramas)', () => {
     vi.clearAllMocks();
     mockEditor();
     useDiagramValidation.mockReturnValue({ status: 'ready', issues: validationIssues });
+    levelsWithErrors.mockReturnValue([]);
     useAiSuggestions.mockReturnValue({
       mode: 'demo',
       limits: { suggestion: 20, deep: 3 },
@@ -462,15 +467,48 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.save).toHaveBeenCalledTimes(1);
     });
 
-    it('deve oferecer no menu de configurações Salvar, Exportar (em breve) e Atalhos', async () => {
+    it('deve oferecer no menu de configurações Salvar, Exportar projeto e Atalhos', async () => {
       const user = userEvent.setup();
       await renderLoaded();
 
       await user.click(screen.getByRole('button', { name: 'Configurações' }));
       const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
 
-      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'ExportarEm breve', 'Atalhos']);
-      expect(items[1]).toBeDisabled();
+      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Exportar projeto.json', 'Atalhos']);
+    });
+
+    it('deve baixar o projeto inteiro (os três níveis, como estão no editor) pelo menu (RF21)', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(downloadProjectFile).toHaveBeenCalledWith({ id: 'p1', name: 'Loja Online', description: null }, editor.diagramsByLevel);
+    });
+
+    it('deve avisar ao exportar um projeto com erros, que a importação recusaria', async () => {
+      const user = userEvent.setup();
+      levelsWithErrors.mockReturnValue(['Contexto', 'Container']);
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(downloadProjectFile).toHaveBeenCalled();
+      expect(editor.showNotice).toHaveBeenCalledWith(
+        'Projeto exportado, mas Contexto, Container têm erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.'
+      );
+    });
+
+    it('não deve avisar nada ao exportar um projeto sem erros', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(editor.showNotice).not.toHaveBeenCalled();
     });
 
     it('deve mostrar os atalhos do editor num modal, incluindo a seleção múltipla', async () => {
