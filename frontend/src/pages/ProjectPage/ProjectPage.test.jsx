@@ -6,7 +6,7 @@ import ProjectPage from './ProjectPage';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
-import { downloadProjectFile } from '../../services/projectFile';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
 
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
@@ -83,6 +83,7 @@ const editor = {
   removeSelected: vi.fn(),
   copy: vi.fn(() => true),
   nodesByLevel: { context: [], container: [], component: [] },
+  showNotice: vi.fn(),
   diagramsByLevel: { context: { nodes: [], edges: [] }, container: { nodes: [], edges: [] }, component: { nodes: [], edges: [] } },
   selectOnly: vi.fn(),
   paste: vi.fn(),
@@ -129,6 +130,7 @@ describe('ProjectPage (editor de diagramas)', () => {
     vi.clearAllMocks();
     mockEditor();
     useDiagramValidation.mockReturnValue({ status: 'ready', issues: validationIssues });
+    levelsWithErrors.mockReturnValue([]);
   });
 
   describe('estrutura (wireframe 7)', () => {
@@ -469,6 +471,30 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
 
       expect(downloadProjectFile).toHaveBeenCalledWith({ id: 'p1', name: 'Loja Online', description: null }, editor.diagramsByLevel);
+    });
+
+    it('deve avisar ao exportar um projeto com erros, que a importação recusaria', async () => {
+      const user = userEvent.setup();
+      levelsWithErrors.mockReturnValue(['Contexto', 'Container']);
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(downloadProjectFile).toHaveBeenCalled();
+      expect(editor.showNotice).toHaveBeenCalledWith(
+        'Projeto exportado, mas Contexto, Container têm erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.'
+      );
+    });
+
+    it('não deve avisar nada ao exportar um projeto sem erros', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(editor.showNotice).not.toHaveBeenCalled();
     });
 
     it('deve mostrar os atalhos do editor num modal, incluindo a seleção múltipla', async () => {

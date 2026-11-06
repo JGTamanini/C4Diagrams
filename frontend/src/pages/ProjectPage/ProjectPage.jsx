@@ -27,7 +27,7 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
-import { downloadProjectFile } from '../../services/projectFile';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
@@ -260,6 +260,17 @@ function ProjectPage() {
     setFocusRequest({ nodeId, edgeId });
   }
 
+  // RF21: exporta como está no editor; se a importação fosse recusar o arquivo, avisa já na exportação
+  function exportProject() {
+    downloadProjectFile(project, editor.diagramsByLevel);
+    const levels = levelsWithErrors(editor.diagramsByLevel);
+    if (levels.length > 0) {
+      editor.showNotice(
+        `Projeto exportado, mas ${levels.join(', ')} ${levels.length === 1 ? 'tem' : 'têm'} erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.`
+      );
+    }
+  }
+
   // Clique na árvore de elementos: abre o nível do elemento (se for outro), seleciona e centraliza nele
   function selectTreeElement(level, nodeId) {
     if (level !== editor.activeLevel) editor.selectLevel(level);
@@ -342,7 +353,7 @@ function ProjectPage() {
                 icon: Download,
                 hint: '.json',
                 disabled: !project,
-                onSelect: () => downloadProjectFile(project, editor.diagramsByLevel),
+                onSelect: exportProject,
               },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}

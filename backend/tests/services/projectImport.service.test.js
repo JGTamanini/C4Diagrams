@@ -4,6 +4,9 @@ const projectRepository = require('../../src/repositories/project.repository');
 const { importProject, PROJECT_FILE_FORMAT, PROJECT_FILE_VERSION } = require('../../src/services/projectImport.service');
 const { InvalidImportFileError } = require('../../src/errors/project.errors');
 const { MissingFieldError } = require('../../src/errors/user.errors');
+const c4Validation = require('../../src/services/c4.validation');
+const { normalizeDiagramData } = require('../../src/services/diagram.validation');
+const exampleProject = require('../../../frontend/src/constants/exampleProject.json');
 
 const userId = '8f14e45f-ceea-467a-9575-6f1c8e3b2a10';
 const node = (id, type, label) => ({ id, type, position: { x: 0, y: 0 }, data: { label } });
@@ -91,5 +94,24 @@ describe('importProject (RF21: projeto a partir de um arquivo; RF15: projeto de 
 
   it('deve exigir o nome do projeto, como na criação', async () => {
     await expect(importProject(userId, file({ project: { name: '   ' } }))).rejects.toThrow(MissingFieldError);
+  });
+
+  describe('projeto de exemplo que vem com o sistema (RF15)', () => {
+    it('deve ser aceito pela importação, com os três níveis', async () => {
+      await importProject(userId, exampleProject);
+
+      const diagrams = projectRepository.createWithDiagrams.mock.calls[0][2];
+      expect(diagrams.map((diagram) => diagram.level)).toEqual(['context', 'container', 'component']);
+    });
+
+    it('não deve ter nenhum problema no motor de validação, nem aviso, em nenhum nível', () => {
+      const diagramsByLevel = Object.fromEntries(
+        Object.entries(exampleProject.diagrams).map(([level, data]) => [level, normalizeDiagramData(data)])
+      );
+
+      for (const level of Object.keys(diagramsByLevel)) {
+        expect(c4Validation.validateDiagram(level, diagramsByLevel)).toEqual([]);
+      }
+    });
   });
 });

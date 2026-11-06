@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { buildProjectFile, fileNameFor, downloadProjectFile, readProjectFile } from './projectFile';
+import { buildProjectFile, fileNameFor, downloadProjectFile, readProjectFile, levelsWithErrors } from './projectFile';
 import EXAMPLE_PROJECT from '../constants/exampleProject.json';
 import { LEVEL_ELEMENTS, LEVEL_IDS } from '../constants/c4Notation';
 
@@ -75,6 +75,27 @@ describe('arquivo do projeto (RF21)', () => {
     const file = new File(['não é json'], 'loja.json');
 
     await expect(readProjectFile(file)).rejects.toThrow('O arquivo escolhido não é um projeto do C4Diagrams (JSON inválido).');
+  });
+
+  describe('levelsWithErrors (o que a importação recusaria)', () => {
+    const empty = { nodes: [], edges: [] };
+
+    it('não deve apontar nível sem erro', () => {
+      expect(levelsWithErrors(diagramsByLevel)).toEqual([]);
+    });
+
+    it('deve apontar elemento fora do nível e relação repetida em qualquer sentido', () => {
+      const wrongType = { nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }], edges: [] };
+      const repeated = {
+        nodes: diagramsByLevel.container.nodes,
+        edges: [
+          { id: 'e1', source: 'c1', target: 'd1', label: 'Lê' },
+          { id: 'e2', source: 'd1', target: 'c1', label: 'Devolve' },
+        ],
+      };
+
+      expect(levelsWithErrors({ context: wrongType, container: repeated, component: empty })).toEqual(['Contexto', 'Container']);
+    });
   });
 
   it('deve trazer um exemplo com os três níveis, só com elementos permitidos em cada um (RF15)', () => {

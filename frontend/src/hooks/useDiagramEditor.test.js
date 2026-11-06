@@ -790,6 +790,14 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodesByLevel.component).toEqual([]);
     });
 
+    it('deve mostrar um aviso pedido de fora do editor', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.showNotice('Atenção'));
+
+      expect(result.current.notice).toBe('Atenção');
+    });
+
     it('deve expor os elementos e as relações de todos os níveis (exportação do projeto)', async () => {
       const { result } = await renderLoadedEditor();
 

@@ -1,5 +1,5 @@
 import { toApi } from './diagramMapper';
-import { LEVEL_IDS } from '../constants/c4Notation';
+import { LEVELS, LEVEL_IDS, isAllowedInLevel } from '../constants/c4Notation';
 
 // Mesma identificação que o backend confere na importação (projectImport.service.js)
 export const PROJECT_FILE_FORMAT = 'c4diagrams';
@@ -40,6 +40,18 @@ export function downloadProjectFile(project, diagramsByLevel) {
   anchor.download = fileNameFor(project.name);
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function hasErrors(level, { nodes, edges }) {
+  if (nodes.some((node) => !isAllowedInLevel(level, node.type))) return true;
+  const pairs = edges.map((edge) => [edge.source, edge.target].sort((a, b) => a.localeCompare(b)).join('<->'));
+  return new Set(pairs).size < pairs.length;
+}
+
+// Níveis com os erros que a importação recusa (elemento fora do nível, relação repetida). O editor já impede criá-los,
+// mas um diagrama salvo antes dessas regras pode tê-los, e o arquivo exportado não voltaria a ser importado
+export function levelsWithErrors(diagramsByLevel) {
+  return LEVELS.filter((level) => hasErrors(level.id, diagramsByLevel[level.id])).map((level) => level.label);
 }
 
 // Conteúdo do arquivo escolhido para importar; o backend confere o formato e cada nível

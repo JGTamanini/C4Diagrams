@@ -431,6 +431,7 @@ export function useDiagramEditor(projectId) {
     hasClipboard,
     notice,
     dismissNotice,
+    showNotice: setNotice,
     hasSelection:
       diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected),
     undo,
