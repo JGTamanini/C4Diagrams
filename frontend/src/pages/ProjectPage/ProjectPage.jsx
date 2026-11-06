@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -24,6 +24,7 @@ import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
+import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
@@ -149,6 +150,7 @@ function EditorBody({
   focusRequest,
   onSelectTreeElement,
   onOpenShortcuts,
+  exporterRef,
 }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
@@ -179,6 +181,7 @@ function EditorBody({
       focusRequest={focusRequest}
       nodesByLevel={editor.nodesByLevel}
       onOpenShortcuts={onOpenShortcuts}
+      exporterRef={exporterRef}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
@@ -245,6 +248,11 @@ function ProjectPage() {
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
+  // RF18: exportar a imagem do nível aberto (o canvas preenche o exportador)
+  const [showingExport, setShowingExport] = useState(false);
+  const closeExport = useCallback(() => setShowingExport(false), []);
+  const exporterRef = useRef(null);
+  const activeLevelLabel = LEVELS.find((level) => level.id === editor.activeLevel).label;
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
@@ -267,7 +275,7 @@ function ProjectPage() {
   }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
-  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts;
+  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts || showingExport;
 
   useEffect(() => {
     let active = true;
@@ -335,7 +343,13 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true },
+              {
+                label: 'Exportar imagem',
+                icon: Download,
+                hint: 'PNG ou PDF',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: () => setShowingExport(true),
+              },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}
           />
@@ -354,6 +368,7 @@ function ProjectPage() {
           focusRequest={focusRequest}
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
+          exporterRef={exporterRef}
         />
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
         {editor.loadStatus === 'ready' && (
@@ -383,6 +398,16 @@ function ProjectPage() {
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
       <AnimatePresence>{showingShortcuts && <ShortcutsModal key="shortcuts" onClose={closeShortcuts} />}</AnimatePresence>
+      <AnimatePresence>
+        {showingExport && (
+          <ExportImageModal
+            key="export-image"
+            levelLabel={activeLevelLabel}
+            onExport={(options) => exporterRef.current({ ...options, projectName: project.name, levelLabel: activeLevelLabel })}
+            onClose={closeExport}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

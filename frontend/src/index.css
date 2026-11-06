@@ -263,3 +263,35 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-accent-text);
 }
+
+/* RF18: exportação da imagem — classes que só existem durante a captura (saem logo depois). Os marcadores da
+   validação, o anel de seleção e os pontos de conexão não vão para a imagem (sem transição: a captura é imediata, e o
+   elemento continua selecionado no editor); no fundo claro, as relações (claras no editor) escurecem para aparecer
+   no branco */
+.c4-exporting .c4-issue-marker {
+  display: none;
+}
+
+.c4-exporting .react-flow__handle {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+.c4-exporting .c4-node-body {
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.7) !important;
+  transition: none !important;
+}
+
+.react-flow.c4-export-light {
+  --xy-edge-label-background-color: #ffffff;
+  --xy-edge-label-color: #111826;
+}
+
+.c4-export-light .react-flow__edge-path {
+  stroke: #4b5563 !important;
+}
+
+.c4-export-light .react-flow__arrowhead polyline {
+  stroke: #4b5563 !important;
+  fill: #4b5563 !important;
+}
