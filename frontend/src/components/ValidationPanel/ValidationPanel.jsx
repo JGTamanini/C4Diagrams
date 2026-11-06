@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertCircle, ChevronDown, Lightbulb, PanelRightClose, PanelRightOpen, TriangleAlert } from 'lucide-react';
 import IconButton from '../Button/IconButton';
+import AiSuggestions from '../AiSuggestions/AiSuggestions';
 
 const GROUPS = [
   { severity: 'error', title: 'Erros', icon: AlertCircle, color: 'text-danger' },
@@ -48,12 +49,13 @@ function IssueGroup({ group, issues, onSelectIssue }) {
   );
 }
 
-// Sugestões (descrição e tecnologia): opcionais ao modelar, então ficam recolhidas para não esconderem os avisos
-function Suggestions({ issues, onSelectIssue }) {
+// Dicas (descrição e tecnologia): opcionais ao modelar, então ficam recolhidas para não esconderem os avisos. O nome
+// "Sugestões" fica com a aba da IA
+function Tips({ issues, onSelectIssue }) {
   const [expanded, setExpanded] = useState(false);
   if (issues.length === 0) return null;
   return (
-    <section aria-label={`Sugestões (${issues.length})`}>
+    <section aria-label={`Dicas (${issues.length})`}>
       <button
         type="button"
         aria-expanded={expanded}
@@ -62,7 +64,7 @@ function Suggestions({ issues, onSelectIssue }) {
       >
         <Lightbulb aria-hidden="true" className="h-3.5 w-3.5" />
         <span className="flex-1 text-left">
-          {expanded ? 'Ocultar sugestões' : `Mostrar ${plural(issues.length, 'sugestão', 'sugestões')}`}
+          {expanded ? 'Ocultar dicas' : `Mostrar ${plural(issues.length, 'dica', 'dicas')}`}
         </span>
         <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
       </button>
@@ -82,10 +84,17 @@ const STATUS_TEXT = {
   error: 'Não foi possível validar agora. Tentaremos de novo na próxima mudança.',
 };
 
+const TAB_CLASSES = {
+  selected: '-mb-px border-b-2 border-accent px-2 pb-2 text-xs font-medium text-text-primary',
+  idle: '-mb-px border-b-2 border-transparent px-2 pb-2 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary disabled:text-text-muted',
+};
+
 // Nota: painel "Assistente" à direita (espelha a paleta): a aba Validação mostra o resultado do motor de validação C4
-// (RF17) em ordem de importância; a aba Sugestões recebe a assistência de IA (RF16) mais adiante. Oculto, vira um
-// botão discreto com a contagem de erros e avisos.
-function ValidationPanel({ open, status, issues, onToggle, onSelectIssue }) {
+// (RF17) em ordem de importância; a aba Sugestões traz a assistência por IA sob pedido (RF16) — sem o ai, fica "em
+// breve". As duas abas continuam montadas (só a ativa aparece), para o que foi digitado não se perder ao alternar.
+// Oculto, vira um botão discreto com a contagem de erros e avisos.
+function ValidationPanel({ open, status, issues, onToggle, onSelectIssue, ai, nodes = [], edges = [], projectDescription }) {
+  const [tab, setTab] = useState('validation');
   const bySeverity = (severity) => issues.filter((issue) => issue.severity === severity);
   const errors = bySeverity('error').length;
   const warnings = bySeverity('warning').length;
@@ -134,23 +143,63 @@ function ValidationPanel({ open, status, issues, onToggle, onSelectIssue }) {
         <button
           type="button"
           role="tab"
-          aria-selected="true"
-          className="-mb-px border-b-2 border-accent px-2 pb-2 text-xs font-medium text-text-primary"
+          id="assistant-tab-validation"
+          aria-selected={tab === 'validation'}
+          aria-controls="assistant-panel-validation"
+          onClick={() => setTab('validation')}
+          className={tab === 'validation' ? TAB_CLASSES.selected : TAB_CLASSES.idle}
         >
           Validação
         </button>
-        <button type="button" role="tab" aria-selected="false" disabled className="px-2 pb-2 text-xs text-text-muted">
-          Sugestões <span className="text-[10px]">· em breve</span>
+        <button
+          type="button"
+          role="tab"
+          id="assistant-tab-suggestions"
+          aria-selected={tab === 'suggestions'}
+          aria-controls="assistant-panel-suggestions"
+          disabled={!ai}
+          onClick={() => setTab('suggestions')}
+          className={tab === 'suggestions' ? TAB_CLASSES.selected : TAB_CLASSES.idle}
+        >
+          Sugestões{!ai && <span className="text-[10px]"> · em breve</span>}
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-2">
-        {statusText && <p className="px-2 pt-1 text-xs text-text-muted">{statusText}</p>}
-        {GROUPS.map((group) => (
-          <IssueGroup key={group.severity} group={group} issues={bySeverity(group.severity)} onSelectIssue={onSelectIssue} />
-        ))}
-        <Suggestions issues={bySeverity('info')} onSelectIssue={onSelectIssue} />
+      <div
+        role="tabpanel"
+        id="assistant-panel-validation"
+        aria-labelledby="assistant-tab-validation"
+        hidden={tab !== 'validation'}
+        className="min-h-0 overflow-y-auto p-2"
+      >
+        <div className="flex flex-col gap-3">
+          {statusText && <p className="px-2 pt-1 text-xs text-text-muted">{statusText}</p>}
+          {GROUPS.map((group) => (
+            <IssueGroup key={group.severity} group={group} issues={bySeverity(group.severity)} onSelectIssue={onSelectIssue} />
+          ))}
+          <Tips issues={bySeverity('info')} onSelectIssue={onSelectIssue} />
+        </div>
       </div>
+
+      {ai && (
+        <div
+          role="tabpanel"
+          id="assistant-panel-suggestions"
+          aria-labelledby="assistant-tab-suggestions"
+          hidden={tab !== 'suggestions'}
+          className="min-h-0 overflow-y-auto p-2"
+        >
+          {/* A descrição do projeto chega depois do painel: a chave recria o campo com ela */}
+          <AiSuggestions
+            key={projectDescription ?? ''}
+            ai={ai}
+            nodes={nodes}
+            edges={edges}
+            projectDescription={projectDescription}
+            onSelectElement={onSelectIssue}
+          />
+        </div>
+      )}
     </aside>
   );
 }
