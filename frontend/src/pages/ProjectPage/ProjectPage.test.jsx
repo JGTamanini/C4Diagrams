@@ -6,10 +6,12 @@ import ProjectPage from './ProjectPage';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
+vi.mock('../../hooks/useAiSuggestions');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: function MockCanvas({
     level,
@@ -126,6 +128,18 @@ describe('ProjectPage (editor de diagramas)', () => {
     vi.clearAllMocks();
     mockEditor();
     useDiagramValidation.mockReturnValue({ status: 'ready', issues: validationIssues });
+    useAiSuggestions.mockReturnValue({
+      mode: 'demo',
+      limits: { suggestion: 20, deep: 3 },
+      remaining: { suggestion: 20, deep: 3 },
+      loading: null,
+      busy: false,
+      error: null,
+      result: null,
+      generate: vi.fn(),
+      cancel: vi.fn(),
+      dismiss: vi.fn(),
+    });
   });
 
   describe('estrutura (wireframe 7)', () => {
@@ -642,6 +656,19 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       expect(editor.selectLevel).not.toHaveBeenCalled();
       expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', level: 'context' });
+    });
+  });
+
+  describe('sugestões da IA (RF16)', () => {
+    it('deve ligar as sugestões ao nível aberto, na aba Sugestões do assistente', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      expect(useAiSuggestions).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges);
+      await user.click(screen.getByRole('tab', { name: 'Sugestões' }));
+
+      expect(screen.getByText(/Modo demonstração/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sugerir melhorias' })).toBeInTheDocument();
     });
   });
 });
