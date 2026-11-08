@@ -93,4 +93,11 @@ describe('ElementTree', () => {
       expect(screen.getByRole('button', { name: 'Expandir estrutura' })).toHaveAttribute('aria-expanded', 'false');
     });
   });
+
+  it('deve mostrar o que cada nível detalha do nível acima (RF22)', () => {
+    renderTree({ scopeLabels: { container: 'Loja Online', component: null } });
+
+    expect(screen.getByText('detalha: Loja Online')).toBeInTheDocument();
+    expect(screen.getAllByText(/^detalha:/)).toHaveLength(1);
+  });
 });

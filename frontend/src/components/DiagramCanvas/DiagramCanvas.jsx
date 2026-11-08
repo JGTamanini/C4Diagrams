@@ -33,6 +33,8 @@ import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPal
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ElementTree from '../ElementTree/ElementTree';
+import { exportDiagramImage } from '../../services/diagramImage';
+import ScopeBoundary from '../ScopeBoundary/ScopeBoundary';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
@@ -166,7 +168,10 @@ function DiagramWorkspace({
   focusRequest = null,
   onOpenShortcuts,
   onOpenText,
+  exporterRef,
   nodesByLevel = null,
+  scopeLabels,
+  boundary = null,
   onSelectTreeElement,
   onTogglePalette,
   onCopyNodes,
@@ -180,7 +185,23 @@ function DiagramWorkspace({
   onEditNode,
   onEditEdge,
 }) {
-  const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNodes, getInternalNode, getViewport } = useReactFlow();
+
+  // RF18: a página exporta a imagem do nível por aqui — precisa do canvas (elementos medidos e enquadramento atual)
+  useEffect(() => {
+    if (!exporterRef) return undefined;
+    exporterRef.current = (options) =>
+      exportDiagramImage({
+        ...options,
+        flowElement: dropAreaRef.current.querySelector('.react-flow'),
+        nodes: getNodes(),
+        edges,
+        viewport: getViewport(),
+      });
+    return () => {
+      exporterRef.current = null;
+    };
+  }, [exporterRef, getNodes, getViewport, edges]);
   const dropAreaRef = useRef(null);
   const paletteRef = useRef(null);
   const fittedLevelRef = useRef(null);
@@ -389,6 +410,7 @@ function DiagramWorkspace({
           colorMode="dark"
         >
           <Background gap={GRID_GAP} size={2} />
+          <ScopeBoundary boundary={boundary} />
           <CanvasControls
             locked={locked}
             onToggleLock={() => setLocked((current) => !current)}
@@ -464,6 +486,7 @@ function DiagramWorkspace({
                   <div className="pointer-events-none flex min-h-0 flex-1 flex-col">
                     <ElementTree
                       nodesByLevel={nodesByLevel}
+                      scopeLabels={scopeLabels}
                       activeLevel={level}
                       onSelectElement={onSelectTreeElement}
                       collapsed={treeCollapsed}

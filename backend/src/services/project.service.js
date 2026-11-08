@@ -73,4 +73,4 @@ async function deleteProject(id, userId) {
   if (!removed) throw new ProjectNotFoundError();
 }
 
-module.exports = { createProject, listProjects, getProject, updateProject, deleteProject };
+module.exports = { createProject, listProjects, getProject, updateProject, deleteProject, normalizeName, normalizeDescription };

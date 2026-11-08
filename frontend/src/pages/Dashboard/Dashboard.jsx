@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { FolderPlus, Plus, RotateCw } from 'lucide-react';
+import { BookOpen, FolderPlus, Plus, RotateCw, Upload } from 'lucide-react';
 import AppHeader from '../../components/AppHeader/AppHeader';
 import DiagramIllustration from '../../components/DiagramIllustration/DiagramIllustration';
 import ProjectCard from '../../components/ProjectCard/ProjectCard';
@@ -9,8 +9,11 @@ import ProjectFormModal from '../../components/ProjectFormModal/ProjectFormModal
 import ProjectDetailsModal from '../../components/ProjectDetailsModal/ProjectDetailsModal';
 import ConfirmDialog from '../../components/ConfirmDialog/ConfirmDialog';
 import Button from '../../components/Button/Button';
+import { buttonClasses } from '../../components/Button/buttonStyles';
 import { NODE_TYPES } from '../../constants/diagramNodeTypes';
-import { listProjects, createProject, updateProject, deleteProject } from '../../services/projects';
+import { listProjects, createProject, updateProject, deleteProject, importProject } from '../../services/projects';
+import { readProjectFile } from '../../services/projectFile';
+import EXAMPLE_PROJECT from '../../constants/exampleProject.json';
 
 const bannerNodes = [
   { x: 0, y: 40, label: 'Usuário', sublabel: '[Pessoa]', ...NODE_TYPES.person },
@@ -50,7 +53,7 @@ function LoadingCards() {
   );
 }
 
-function EmptyState({ onCreate }) {
+function EmptyState({ onCreate, onExample, busy }) {
   return (
     <div
       data-testid="empty-state"
@@ -63,9 +66,15 @@ function EmptyState({ onCreate }) {
       <p className="mb-6 max-w-sm text-sm text-text-secondary">
         Crie um projeto para começar pelo diagrama de Contexto e detalhar o sistema nível a nível.
       </p>
-      <Button icon={Plus} onClick={onCreate}>
-        Criar meu primeiro projeto
-      </Button>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button icon={Plus} onClick={onCreate}>
+          Criar meu primeiro projeto
+        </Button>
+        {/* RF15: um projeto completo (três níveis) para ver como um diagrama C4 fica pronto */}
+        <Button variant="secondary" icon={BookOpen} onClick={onExample} disabled={busy}>
+          Ver um projeto de exemplo
+        </Button>
+      </div>
     </div>
   );
 }
@@ -78,6 +87,7 @@ function Dashboard() {
   const [openProject, setOpenProject] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -112,6 +122,41 @@ function Dashboard() {
     const created = await createProject(values);
     setCreating(false);
     void navigate(`/projetos/${created.id}`);
+  }
+
+  // Nota: RF21/RF15 — importar sempre cria um projeto novo e leva ao editor dele; o motivo da recusa (formato, nível
+  // com problema) vem do servidor
+  async function importAndOpen(content, fallbackMessage) {
+    setActionError('');
+    setImporting(true);
+    try {
+      const created = await importProject(content);
+      void navigate(`/projetos/${created.id}`);
+    } catch (err) {
+      setActionError(err.response?.data?.message ?? fallbackMessage);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function handleImportFile(event) {
+    const [file] = event.target.files;
+    // Limpa a escolha: o mesmo arquivo pode ser escolhido de novo depois de corrigido
+    event.target.value = '';
+    if (!file) return;
+
+    let content;
+    try {
+      content = await readProjectFile(file);
+    } catch (err) {
+      setActionError(err.message);
+      return;
+    }
+    await importAndOpen(content, 'Não foi possível importar o projeto. Tente novamente.');
+  }
+
+  function createExample() {
+    void importAndOpen(EXAMPLE_PROJECT, 'Não foi possível criar o projeto de exemplo. Tente novamente.');
   }
 
   async function handleSaveDetails(values) {
@@ -152,9 +197,27 @@ function Dashboard() {
         <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 pt-8 pb-10">
           <div className="mb-8 flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-text-primary">Meus projetos</h1>
-            <Button icon={Plus} onClick={openCreate}>
-              Novo projeto
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button variant="ghost" icon={BookOpen} onClick={createExample} disabled={importing}>
+                Criar projeto de exemplo
+              </Button>
+              {/* RF21: o rótulo funciona como botão e abre a escolha do arquivo exportado */}
+              <label htmlFor="import-project-file" className={buttonClasses({ variant: 'secondary', className: 'cursor-pointer' })}>
+                <Upload aria-hidden="true" className="h-4 w-4" />
+                Importar projeto
+              </label>
+              <input
+                id="import-project-file"
+                type="file"
+                accept=".json,application/json"
+                disabled={importing}
+                onChange={handleImportFile}
+                className="sr-only"
+              />
+              <Button icon={Plus} onClick={openCreate}>
+                Novo projeto
+              </Button>
+            </div>
           </div>
 
           {actionError && (
@@ -176,7 +239,7 @@ function Dashboard() {
             </div>
           )}
 
-          {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} />}
+          {status === 'ready' && projects.length === 0 && <EmptyState onCreate={openCreate} onExample={createExample} busy={importing} />}
 
           {status === 'ready' && projects.length > 0 && (
             <ul aria-label="Meus projetos" className={GRID}>

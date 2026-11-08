@@ -54,7 +54,7 @@ function C4Node({ id, type, data, selected = false }) {
 
       <div
         data-testid="c4-node-body"
-        className={`relative w-full border-2 px-3 py-4 text-center wrap-break-word transition-[box-shadow,filter] duration-150 group-hover:brightness-110 ${BODY_SHAPE_CLASSES[element.shape]}`}
+        className={`c4-node-body relative w-full border-2 px-3 py-4 text-center wrap-break-word transition-[box-shadow,filter] duration-150 group-hover:brightness-110 ${BODY_SHAPE_CLASSES[element.shape]}`}
         style={{ ...colors, boxShadow: selected ? SELECTED_RING : RESTING_SHADOW }}
       >
         {element.shape === 'database' && (
@@ -65,7 +65,7 @@ function C4Node({ id, type, data, selected = false }) {
             data-testid="issue-marker"
             data-severity={data.issueSeverity}
             title={ISSUE_MARKER[data.issueSeverity].label}
-            className={`absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-canvas ${ISSUE_MARKER[data.issueSeverity].color}`}
+            className={`c4-issue-marker absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-canvas ${ISSUE_MARKER[data.issueSeverity].color}`}
           />
         )}
         <strong className="block text-sm font-semibold">{data.label}</strong>

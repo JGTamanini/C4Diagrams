@@ -15,7 +15,7 @@ function renderModal(target, handlers = {}) {
   return props;
 }
 
-describe('ElementFormModal (RF22 - versão mínima)', () => {
+describe('ElementFormModal (RF22)', () => {
   describe('elemento', () => {
     it('deve abrir com os valores atuais e o tipo do elemento, focando o título', () => {
       renderModal(containerTarget);
@@ -129,6 +129,103 @@ describe('ElementFormModal (RF22 - versão mínima)', () => {
 
       expect(onClose).toHaveBeenCalled();
       expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('relações do elemento', () => {
+    const relations = [
+      { id: 'e1', direction: 'out', otherLabel: 'Banco', label: 'Lê e grava', technology: 'SQL' },
+      { id: 'e2', direction: 'in', otherLabel: 'Aplicação Web', label: 'Faz chamadas para', technology: '' },
+    ];
+
+    it('deve listar as relações com o sentido, o outro elemento, o rótulo e a tecnologia', () => {
+      renderModal(containerTarget, { relations });
+
+      expect(screen.getByRole('heading', { name: 'Relações (2)' })).toBeInTheDocument();
+      expect(screen.getByText('para Banco')).toBeInTheDocument();
+      expect(screen.getByText('de Aplicação Web')).toBeInTheDocument();
+      expect(screen.getByLabelText('Rótulo da relação com Banco')).toHaveValue('Lê e grava');
+      expect(screen.getByLabelText('Tecnologia da relação com Banco')).toHaveValue('SQL');
+    });
+
+    it('deve salvar o elemento junto com as relações alteradas ou removidas', async () => {
+      const user = userEvent.setup();
+      const { onSave } = renderModal(containerTarget, { relations });
+
+      await user.clear(screen.getByLabelText('Rótulo da relação com Banco'));
+      await user.type(screen.getByLabelText('Rótulo da relação com Banco'), '  Grava pedidos em ');
+      await user.click(screen.getByRole('button', { name: 'Remover relação com Aplicação Web' }));
+      expect(screen.getByText('Será removida ao salvar')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      expect(onSave).toHaveBeenCalledWith(
+        { label: 'API', description: 'Regras de negócio', technology: 'Node.js' },
+        { updated: [{ id: 'e1', label: 'Grava pedidos em', technology: 'SQL' }], removed: ['e2'] }
+      );
+    });
+
+    it('deve permitir desistir da remoção antes de salvar', async () => {
+      const user = userEvent.setup();
+      const { onSave } = renderModal(containerTarget, { relations });
+
+      await user.click(screen.getByRole('button', { name: 'Remover relação com Banco' }));
+      await user.click(screen.getByRole('button', { name: 'Manter relação com Banco' }));
+      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      expect(onSave).toHaveBeenCalledWith(expect.any(Object), { updated: [], removed: [] });
+    });
+
+    it('deve exigir o rótulo das relações que ficam', async () => {
+      const user = userEvent.setup();
+      const { onSave } = renderModal(containerTarget, { relations });
+
+      await user.clear(screen.getByLabelText('Rótulo da relação com Banco'));
+      await user.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Toda relação precisa de um rótulo.');
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('deve ensinar a criar relação quando o elemento não tem nenhuma', () => {
+      renderModal(containerTarget, { relations: [] });
+
+      expect(screen.getByRole('heading', { name: 'Relações (0)' })).toBeInTheDocument();
+      expect(screen.getByText(/arraste de um ponto de conexão/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('ligação entre níveis', () => {
+    it('deve mostrar de qual elemento do nível acima ele faz parte', () => {
+      renderModal(containerTarget, { levelInfo: { partOf: { label: 'Loja Online', type: 'Software System' }, detail: null } });
+
+      expect(screen.getByText('Parte de:').closest('p')).toHaveTextContent('Parte de: Loja Online [Software System]');
+    });
+
+    it('deve levar ao nível que detalha o elemento em foco', async () => {
+      const user = userEvent.setup();
+      const onDetail = vi.fn();
+      renderModal(
+        { kind: 'node', type: 'c4-system', data: { label: 'Loja Online' } },
+        { levelInfo: { partOf: null, detail: { levelName: 'Container', count: 4, isFocus: true } }, onDetail }
+      );
+
+      expect(screen.getByText('Detalhado no nível Container (4 elementos)')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Abrir nível Container' }));
+
+      expect(onDetail).toHaveBeenCalled();
+    });
+
+    it('deve oferecer detalhar um elemento que ainda não é o foco do nível de baixo', async () => {
+      const user = userEvent.setup();
+      const onDetail = vi.fn();
+      renderModal(
+        { kind: 'node', type: 'c4-system', data: { label: 'ERP' } },
+        { levelInfo: { partOf: null, detail: { levelName: 'Container', count: 0, isFocus: false } }, onDetail }
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Detalhar no nível Container' }));
+
+      expect(onDetail).toHaveBeenCalled();
     });
   });
 });

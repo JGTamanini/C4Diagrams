@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import Dashboard from './Dashboard';
-import { listProjects, createProject, updateProject, deleteProject } from '../../services/projects';
+import { listProjects, createProject, updateProject, deleteProject, importProject } from '../../services/projects';
+import EXAMPLE_PROJECT from '../../constants/exampleProject.json';
 import { listDiagrams } from '../../services/diagrams';
 
 vi.mock('../../services/projects');
@@ -240,6 +241,89 @@ describe('Dashboard', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível excluir o projeto. Tente novamente.');
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(screen.getByText('Loja Online')).toBeInTheDocument();
+    });
+  });
+
+  describe('importar e exemplo (RF21 e RF15)', () => {
+    function projectFile(content) {
+      return new File([typeof content === 'string' ? content : JSON.stringify(content)], 'loja.c4diagrams.json', {
+        type: 'application/json',
+      });
+    }
+
+    it('deve importar um projeto de um arquivo e abrir o editor nele', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+      importProject.mockResolvedValue({ id: 'p9', name: 'Importado' });
+      renderDashboard();
+      await screen.findByRole('list', { name: 'Meus projetos' });
+
+      await user.upload(screen.getByLabelText('Importar projeto'), projectFile({ format: 'c4diagrams', version: 1 }));
+
+      await waitFor(() => expect(importProject).toHaveBeenCalledWith({ format: 'c4diagrams', version: 1 }));
+      expect(mockNavigate).toHaveBeenCalledWith('/projetos/p9');
+    });
+
+    it('deve mostrar o motivo quando o arquivo não puder ser importado', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+      importProject.mockRejectedValue({ response: { data: { message: 'Nível Contexto: elemento sem título.' } } });
+      renderDashboard();
+      await screen.findByRole('list', { name: 'Meus projetos' });
+
+      await user.upload(screen.getByLabelText('Importar projeto'), projectFile({ format: 'c4diagrams', version: 1 }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Nível Contexto: elemento sem título.');
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('deve avisar quando o arquivo nem é JSON, sem chamar o servidor', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+      renderDashboard();
+      await screen.findByRole('list', { name: 'Meus projetos' });
+
+      await user.upload(screen.getByLabelText('Importar projeto'), projectFile('texto qualquer'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('JSON inválido');
+      expect(importProject).not.toHaveBeenCalled();
+    });
+
+    it('deve criar o projeto de exemplo e abrir o editor nele', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+      importProject.mockResolvedValue({ id: 'p10', name: 'Loja Online (exemplo)' });
+      renderDashboard();
+      await screen.findByRole('list', { name: 'Meus projetos' });
+
+      await user.click(screen.getByRole('button', { name: 'Criar projeto de exemplo' }));
+
+      expect(importProject).toHaveBeenCalledWith(EXAMPLE_PROJECT);
+      expect(mockNavigate).toHaveBeenCalledWith('/projetos/p10');
+    });
+
+    it('deve oferecer o exemplo também para quem ainda não tem projetos', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([]);
+      importProject.mockResolvedValue({ id: 'p10' });
+      renderDashboard();
+
+      const empty = await screen.findByTestId('empty-state');
+      await user.click(within(empty).getByRole('button', { name: 'Ver um projeto de exemplo' }));
+
+      expect(importProject).toHaveBeenCalledWith(EXAMPLE_PROJECT);
+    });
+
+    it('deve avisar se o exemplo não puder ser criado', async () => {
+      const user = userEvent.setup();
+      listProjects.mockResolvedValue([loja]);
+      importProject.mockRejectedValue(new Error('Network Error'));
+      renderDashboard();
+      await screen.findByRole('list', { name: 'Meus projetos' });
+
+      await user.click(screen.getByRole('button', { name: 'Criar projeto de exemplo' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível criar o projeto de exemplo.');
     });
   });
 });

@@ -191,4 +191,39 @@ describe('ProjectRepository', () => {
       expect(result.rows).toHaveLength(0);
     });
   });
+
+  describe('createWithDiagrams (importação)', () => {
+    const contextData = {
+      nodes: [{ id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } }],
+      edges: [],
+    };
+
+    it('deve criar o projeto e os níveis juntos, do usuário', async () => {
+      const project = await projectRepository.createWithDiagrams(ownerId, { name: 'Importado', description: null }, [
+        { level: 'context', data: contextData },
+        { level: 'container', data: { nodes: [], edges: [] } },
+      ]);
+
+      expect(project).toEqual(expect.objectContaining({ name: 'Importado', description: null }));
+      expect(project.user_id).toBeUndefined();
+      const { rows } = await pool.query('SELECT level, data FROM diagrams WHERE project_id = $1 ORDER BY level', [project.id]);
+      expect(rows).toEqual([
+        { level: 'container', data: { nodes: [], edges: [] } },
+        { level: 'context', data: contextData },
+      ]);
+      expect((await findRawProject(project.id)).user_id).toBe(ownerId);
+    });
+
+    it('não deve deixar projeto pela metade quando um nível falha ao gravar', async () => {
+      await expect(
+        projectRepository.createWithDiagrams(ownerId, { name: 'Pela metade', description: null }, [
+          { level: 'context', data: contextData },
+          { level: 'x'.repeat(60), data: contextData },
+        ])
+      ).rejects.toThrow();
+
+      const { rows } = await pool.query('SELECT id FROM projects WHERE user_id = $1 AND name = $2', [ownerId, 'Pela metade']);
+      expect(rows).toEqual([]);
+    });
+  });
 });

@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
   ArrowLeft,
   Check,
-  Download,
+  FileBraces,
+  ImageDown,
   Keyboard,
   LoaderCircle,
   RotateCw,
@@ -25,12 +26,17 @@ import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import TextModePanel from '../../components/TextModePanel/TextModePanel';
+import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
+import { INNER_TYPES, SCOPE_TYPE_LABEL, detailLevelOf, isInnerType, resolveScope } from '../../constants/levelScope';
+import ScopePicker from '../../components/ScopePicker/ScopePicker';
 
 const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
@@ -151,6 +157,9 @@ function EditorBody({
   onSelectTreeElement,
   onOpenShortcuts,
   onOpenText,
+  exporterRef,
+  scopeLabels,
+  boundary,
 }) {
   if (editor.loadStatus === 'loading') {
     return <output className="block p-6 text-sm text-text-secondary">Carregando diagramas...</output>;
@@ -180,8 +189,11 @@ function EditorBody({
       issues={issues}
       focusRequest={focusRequest}
       nodesByLevel={editor.nodesByLevel}
+      scopeLabels={scopeLabels}
+      boundary={boundary}
       onOpenShortcuts={onOpenShortcuts}
       onOpenText={onOpenText}
+      exporterRef={exporterRef}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
@@ -191,6 +203,52 @@ function EditorBody({
       onEditEdge={(id) => onEdit({ kind: 'edge', id })}
     />
   );
+}
+
+// RF22: o foco de cada nível de detalhe (o que ele detalha do nível de cima)
+function scopesOf(editor) {
+  return {
+    container: resolveScope('container', editor.nodesByLevel, editor.scopeByLevel),
+    component: resolveScope('component', editor.nodesByLevel, editor.scopeByLevel),
+  };
+}
+
+const levelName = (levelId) => LEVELS.find((level) => level.id === levelId).label;
+
+// RF22: as relações do elemento no nível aberto, para o modal
+function relationsOf(editor, nodeId) {
+  const labels = new Map(editor.nodes.map((node) => [node.id, node.data.label]));
+  return editor.edges
+    .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+    .map((edge) => {
+      const outgoing = edge.source === nodeId;
+      return {
+        id: edge.id,
+        direction: outgoing ? 'out' : 'in',
+        otherLabel: labels.get(outgoing ? edge.target : edge.source),
+        label: edge.label,
+        technology: edge.data?.technology ?? '',
+      };
+    });
+}
+
+// RF22: de que elemento do nível de cima o elemento faz parte, e em qual nível ele é detalhado
+function levelInfoOf(editor, node) {
+  const scopes = scopesOf(editor);
+  const focus = scopes[editor.activeLevel]?.focus;
+  const partOf =
+    focus && isInnerType(editor.activeLevel, node.type)
+      ? { label: focus.data.label, type: SCOPE_TYPE_LABEL[editor.activeLevel] }
+      : null;
+
+  const childLevel = detailLevelOf(editor.activeLevel, node.type);
+  const detail = childLevel && {
+    level: childLevel,
+    levelName: levelName(childLevel),
+    count: editor.nodesByLevel[childLevel].filter((child) => isInnerType(childLevel, child.type)).length,
+    isFocus: scopes[childLevel].focus?.id === node.id,
+  };
+  return { partOf, detail };
 }
 
 // Nota: o alvo do modal é procurado no nível ativo a cada render — se ele deixar de existir, o modal some
@@ -208,9 +266,20 @@ function ElementEditor({ editor, editing, onClose }) {
   const target = findEditTarget(editor, editing);
   const isNode = editing?.kind === 'node';
 
-  function handleSave(values) {
-    if (isNode) editor.updateNode(editing.id, values);
+  function handleSave(values, relationChanges) {
+    if (isNode) editor.updateNode(editing.id, values, relationChanges);
     else editor.updateEdge(editing.id, values);
+    onClose();
+  }
+
+  const node = isNode && target ? editor.nodes.find((candidate) => candidate.id === editing.id) : null;
+  const levelInfo = node ? levelInfoOf(editor, node) : null;
+
+  // "Detalhar" escolhe este elemento como foco do nível de baixo (se ainda não for) e abre esse nível
+  function handleDetail() {
+    const { detail } = levelInfo;
+    if (!detail.isFocus) editor.setScope(detail.level, editing.id);
+    editor.selectLevel(detail.level);
     onClose();
   }
 
@@ -227,6 +296,9 @@ function ElementEditor({ editor, editing, onClose }) {
         <ElementFormModal
           key={`${editing.kind}-${editing.id}`}
           target={target}
+          relations={node ? relationsOf(editor, editing.id) : undefined}
+          levelInfo={levelInfo}
+          onDetail={handleDetail}
           onSave={handleSave}
           onDelete={handleDelete}
           onClose={onClose}
@@ -251,18 +323,46 @@ function ProjectPage() {
   // RF19: painel do modo textual (sobre a coluna da direita), aberto pela barra de controles do canvas
   const [textMode, setTextMode] = useState(false);
   const openText = useCallback(() => setTextMode(true), []);
+
+  // RF18: exportar a imagem do nível aberto (o canvas preenche o exportador)
+  const [showingExport, setShowingExport] = useState(false);
+  const closeExport = useCallback(() => setShowingExport(false), []);
+  const exporterRef = useRef(null);
+  const activeLevelLabel = LEVELS.find((level) => level.id === editor.activeLevel).label;
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
-  const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
+  // O foco escolhido para o nível vai junto (RF22): sem ele, as regras entre níveis continuariam pedindo a escolha, e
+  // a IA não saberia o que o nível detalha
+  const activeScopeChoice = editor.scopeByLevel[editor.activeLevel] ?? null;
+  const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges, activeScopeChoice);
+  // RF16: sugestões da IA sob pedido, na aba Sugestões do mesmo painel
+  const ai = useAiSuggestions(id, editor.activeLevel, editor.nodes, editor.edges, activeScopeChoice);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
+  // RF22: o que o nível aberto detalha do nível de cima, e a fronteira tracejada em volta dos elementos de dentro
+  const scopes = scopesOf(editor);
+  const activeScope = scopes[editor.activeLevel] ?? null;
+  const boundary = activeScope?.focus
+    ? { label: activeScope.focus.data.label, type: SCOPE_TYPE_LABEL[editor.activeLevel], innerTypes: INNER_TYPES[editor.activeLevel] }
+    : null;
 
   // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
   // quando o mesmo problema é clicado de novo)
   function selectIssue({ nodeId, edgeId }) {
     editor.selectOnly({ nodeId, edgeId });
     setFocusRequest({ nodeId, edgeId });
+  }
+
+  // RF21: exporta como está no editor; se a importação fosse recusar o arquivo, avisa já na exportação
+  function exportProject() {
+    downloadProjectFile(project, editor.diagramsByLevel);
+    const levels = levelsWithErrors(editor.diagramsByLevel);
+    if (levels.length > 0) {
+      editor.showNotice(
+        `Projeto exportado, mas ${levels.join(', ')} ${levels.length === 1 ? 'tem' : 'têm'} erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.`
+      );
+    }
   }
 
   // Clique na árvore de elementos: abre o nível do elemento (se for outro), seleciona e centraliza nele
@@ -273,7 +373,7 @@ function ProjectPage() {
   }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
-  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts;
+  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts || showingExport;
 
   useEffect(() => {
     let active = true;
@@ -341,7 +441,22 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true },
+              {
+                label: 'Exportar imagem',
+                icon: ImageDown,
+                hint: 'PNG ou PDF',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: () => setShowingExport(true),
+              },
+              // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json. Só depois de os
+              // diagramas chegarem: antes disso (ou se a carga falhar), o arquivo sairia sem eles
+              {
+                label: 'Exportar projeto',
+                icon: FileBraces,
+                hint: '.json',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: exportProject,
+              },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}
           />
@@ -361,6 +476,9 @@ function ProjectPage() {
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
           onOpenText={openText}
+          exporterRef={exporterRef}
+          scopeLabels={{ container: scopes.container.focus?.data.label ?? null, component: scopes.component.focus?.data.label ?? null }}
+          boundary={boundary}
         />
         {textMode && editor.loadStatus === 'ready' && (
           // Trocar de nível gera o texto do novo nível (a chave recria o painel)
@@ -377,6 +495,10 @@ function ProjectPage() {
           </div>
         )}
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
+        {/* Com um candidato só, ele é o foco e não há o que escolher; mas, se o foco escolhido foi apagado, é aqui que se corrige */}
+        {editor.loadStatus === 'ready' && activeScope && (activeScope.candidates.length > 1 || (activeScope.status === 'missing' && activeScope.candidates.length > 0)) && (
+          <ScopePicker scope={activeScope} onChange={(nodeId) => editor.setScope(editor.activeLevel, nodeId)} />
+        )}
         {editor.loadStatus === 'ready' && (
           // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
           // é ele que encolhe e rola por dentro; a legenda não se mexe. A coluna deixa passar os cliques para o canvas:
@@ -389,6 +511,10 @@ function ProjectPage() {
                 issues={validation.issues}
                 onToggle={toggleAssistant}
                 onSelectIssue={selectIssue}
+                ai={ai}
+                nodes={editor.nodes}
+                edges={editor.edges}
+                projectDescription={project?.description}
               />
             </div>
             <div className="pointer-events-none mt-auto shrink-0">
@@ -404,6 +530,16 @@ function ProjectPage() {
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
       <AnimatePresence>{showingShortcuts && <ShortcutsModal key="shortcuts" onClose={closeShortcuts} />}</AnimatePresence>
+      <AnimatePresence>
+        {showingExport && (
+          <ExportImageModal
+            key="export-image"
+            levelLabel={activeLevelLabel}
+            onExport={(options) => exporterRef.current({ ...options, projectName: project.name, levelLabel: activeLevelLabel })}
+            onClose={closeExport}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

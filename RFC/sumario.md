@@ -62,7 +62,7 @@
 |-------|-----------|
 | [6.1 OWASP Top 10](capitulo-6/6.1-seguranca-e-privacidade.md#61-owasp-top-10) | Categorias do OWASP Top 10 aplicáveis ao sistema, com tabela de contramedidas e detalhamento das vulnerabilidades de maior risco: Broken Access Control, Cryptographic Failures e Injection. |
 | [6.2 Autenticação e Autorização](capitulo-6/6.1-seguranca-e-privacidade.md#62-autenticação-e-autorização) | Fluxo de autenticação baseado em JWT, justificativa para não adoção de OAuth2 no MVP e estratégia de autorização por isolamento de tenant na camada de repositório. |
-| [6.3 Criptografia de Dados em Repouso](capitulo-6/6.1-seguranca-e-privacidade.md#63-criptografia-de-dados-em-repouso) | Implementação de encryption at rest via Railway (AES-256) e encryption in transit via HTTPS/TLS, com distinção entre as duas camadas de proteção. |
+| [6.3 Criptografia de Dados em Repouso](capitulo-6/6.1-seguranca-e-privacidade.md#63-criptografia-de-dados-em-repouso) | Implementação de encryption at rest via Azure Database for PostgreSQL (AES-256) e encryption in transit via HTTPS/TLS, com distinção entre as duas camadas de proteção. |
 | [6.4 Privacidade e LGPD](capitulo-6/6.1-seguranca-e-privacidade.md#64-privacidade-e-lgpd) | Dados coletados, finalidades, política de retenção e direitos do usuário conforme a Lei nº 13.709/2018, com nota sobre o contexto acadêmico do projeto. |
 
 ---

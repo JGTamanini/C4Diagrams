@@ -497,4 +497,44 @@ describe('DiagramCanvas', () => {
 
     expect(onOpenText).toHaveBeenCalled();
   });
+
+  it('deve oferecer à página a exportação da imagem do nível (RF18)', async () => {
+    const exporterRef = { current: null };
+    renderCanvas({ exporterRef });
+
+    await screen.findByText('Cliente');
+    expect(exporterRef.current).toEqual(expect.any(Function));
+  });
+
+  describe('fronteira do elemento detalhado (RF22)', () => {
+    const containerNodes = [
+      { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },
+      { id: 'c1', type: 'c4-container', position: { x: 0, y: 200 }, data: { label: 'API' } },
+      { id: 'd1', type: 'c4-container-db', position: { x: 0, y: 400 }, data: { label: 'Banco' } },
+    ];
+
+    it('deve desenhar a fronteira tracejada com o nome e o tipo do elemento detalhado', async () => {
+      renderCanvas({
+        level: 'container',
+        nodes: containerNodes,
+        boundary: { label: 'Loja Online', type: 'Software System', innerTypes: ['c4-container', 'c4-container-db'] },
+      });
+
+      const boundary = await screen.findByRole('group', { name: 'Fronteira: Loja Online [Software System]' });
+      expect(within(boundary).getByText('Loja Online')).toBeInTheDocument();
+      expect(within(boundary).getByText('[Software System]')).toBeInTheDocument();
+    });
+
+    it('não deve desenhar a fronteira sem elemento detalhado ou sem elementos de dentro', async () => {
+      renderCanvas({ level: 'container', nodes: containerNodes });
+      renderCanvas({
+        level: 'container',
+        nodes: [containerNodes[0]],
+        boundary: { label: 'Loja Online', type: 'Software System', innerTypes: ['c4-container', 'c4-container-db'] },
+      });
+
+      await screen.findAllByText('Cliente');
+      expect(screen.queryByRole('group', { name: /Fronteira/ })).not.toBeInTheDocument();
+    });
+  });
 });

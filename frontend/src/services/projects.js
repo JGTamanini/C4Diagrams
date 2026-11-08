@@ -29,6 +29,12 @@ export async function getProject(id) {
   return response.data;
 }
 
+// Nota: RF21/RF15 — cria um projeto novo a partir do conteúdo de um arquivo exportado (ou do exemplo)
+export async function importProject(content) {
+  const response = await api.post('/projects/import', content);
+  return response.data;
+}
+
 export async function createProject(project) {
   const response = await api.post('/projects', project);
   return response.data;

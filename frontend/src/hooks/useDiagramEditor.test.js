@@ -790,6 +790,32 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodesByLevel.component).toEqual([]);
     });
 
+    it('deve mostrar um aviso pedido de fora do editor', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.showNotice('Atenção'));
+
+      expect(result.current.notice).toBe('Atenção');
+    });
+
+    it('deve expor os elementos e as relações de todos os níveis (exportação do projeto)', async () => {
+      const { result } = await renderLoadedEditor();
+
+      expect(Object.keys(result.current.diagramsByLevel)).toEqual(['context', 'container', 'component']);
+      expect(result.current.diagramsByLevel.context.nodes).toBe(result.current.nodesByLevel.context);
+      expect(result.current.diagramsByLevel.context.edges).toEqual(expect.any(Array));
+    });
+
+    // RF22: sem o foco, o projeto importado de volta perderia a ligação entre os níveis
+    it('deve levar o foco de cada nível na exportação, só nos níveis que têm um', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.setScope('container', 'n2'));
+
+      expect(result.current.diagramsByLevel.container.scope).toEqual({ nodeId: 'n2' });
+      expect(result.current.diagramsByLevel.context).not.toHaveProperty('scope');
+    });
+
     it('deve selecionar um elemento de outro nível (o clique na árvore troca de nível e seleciona)', async () => {
       listDiagrams.mockResolvedValue([
         savedContext,
@@ -838,6 +864,90 @@ describe('useDiagramEditor', () => {
       );
 
       expect(result.current.edges[0]).toMatchObject({ id: 'e1', source: 'n2', target: 'n1', label: 'Compra em' });
+    });
+  });
+
+  describe('ligação entre níveis e relações no modal (RF22)', () => {
+    it('deve definir o foco de um nível (mesmo não sendo o aberto), salvá-lo e permitir desfazer', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.setScope('container', 'n2'));
+      expect(result.current.scopeByLevel).toEqual({ context: null, container: { nodeId: 'n2' }, component: null });
+
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', { nodes: [], edges: [], scope: { nodeId: 'n2' } });
+
+      act(() => result.current.selectLevel('container'));
+      act(() => result.current.undo());
+      expect(result.current.scopeByLevel.container).toBeNull();
+    });
+
+    // "Detalhar" no modal escolhe o foco e abre o nível na mesma ação: trocar de nível salva na hora, e esse
+    // salvamento precisa levar o foco novo (antes levava o anterior e ainda marcava "salvo")
+    it('deve salvar o foco novo quando ele é escolhido e o nível é trocado na mesma ação', async () => {
+      listDiagrams.mockResolvedValue([
+        savedContext,
+        {
+          level: 'container',
+          data: {
+            nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }],
+            edges: [],
+            scope: { nodeId: 'n2' },
+          },
+        },
+      ]);
+      const { result } = await renderLoadedEditor();
+
+      act(() => {
+        result.current.setScope('container', 'n3');
+        result.current.selectLevel('container');
+      });
+
+      await waitFor(() => expect(saveDiagram).toHaveBeenCalledTimes(1));
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n3' } }));
+      await waitFor(() => expect(result.current.saveStatus).toBe('saved'));
+    });
+
+    it('deve carregar o foco salvo e mantê-lo ao excluir elementos', async () => {
+      listDiagrams.mockResolvedValue([
+        savedContext,
+        {
+          level: 'container',
+          data: {
+            nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }],
+            edges: [],
+            scope: { nodeId: 'n2' },
+          },
+        },
+      ]);
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.selectLevel('container'));
+
+      act(() => result.current.removeNode('c1'));
+
+      expect(result.current.scopeByLevel.container).toEqual({ nodeId: 'n2' });
+    });
+
+    it('deve salvar o elemento e as relações editadas no modal num passo só do desfazer', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() =>
+        result.current.updateNode('n1', { label: 'Cliente VIP' }, { updated: [{ id: 'e1', label: 'Compra livros em', technology: '' }], removed: [] })
+      );
+      expect(result.current.nodes[0].data.label).toBe('Cliente VIP');
+      expect(result.current.edges[0]).toMatchObject({ id: 'e1', label: 'Compra livros em', data: {} });
+
+      act(() => result.current.undo());
+      expect(result.current.nodes[0].data.label).toBe('Cliente');
+      expect(result.current.edges[0]).toMatchObject({ label: 'Compra em', data: { technology: 'HTTPS' } });
+    });
+
+    it('deve remover as relações marcadas no modal', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.updateNode('n1', { label: 'Cliente' }, { updated: [], removed: ['e1'] }));
+
+      expect(result.current.edges).toEqual([]);
     });
   });
 });
