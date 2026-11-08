@@ -20,6 +20,7 @@
       ]
     },
     "container": {
+      "scope": { "nodeId": "ctx-loja" },
       "nodes": [
         { "id": "ctn-cliente", "type": "c4-person", "position": { "x": 300, "y": 0 }, "data": { "label": "Cliente", "description": "Compra livros pela loja" } },
         { "id": "ctn-web", "type": "c4-container", "position": { "x": 300, "y": 220 }, "data": { "label": "Aplicação Web", "description": "Interface da loja no navegador", "technology": "React" } },
@@ -37,6 +38,7 @@
       ]
     },
     "component": {
+      "scope": { "nodeId": "ctn-api" },
       "nodes": [
         { "id": "cmp-web", "type": "c4-container", "position": { "x": 300, "y": 0 }, "data": { "label": "Aplicação Web", "description": "Interface da loja no navegador", "technology": "React" } },
         { "id": "cmp-controlador", "type": "c4-component", "position": { "x": 300, "y": 220 }, "data": { "label": "Controlador de Pedidos", "description": "Recebe as requisições de pedido", "technology": "Express" } },

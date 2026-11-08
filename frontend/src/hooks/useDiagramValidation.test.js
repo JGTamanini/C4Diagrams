@@ -15,7 +15,7 @@ const edges = [{ id: 'e1', source: 'n1', target: 'n2', label: 'Usa', data: {} }]
 const issues = [{ code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n1', message: '"Cliente" não tem descrição.' }];
 
 function renderValidation(initial = { level: 'context', nodes, edges }) {
-  return renderHook((props) => useDiagramValidation(PROJECT_ID, props.level, props.nodes, props.edges), {
+  return renderHook((props) => useDiagramValidation(PROJECT_ID, props.level, props.nodes, props.edges, props.scope), {
     initialProps: initial,
   });
 }
@@ -52,6 +52,27 @@ describe('useDiagramValidation', () => {
       edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Usa' }],
     });
     expect(result.current).toEqual({ status: 'ready', issues });
+  });
+
+  // RF22: as regras entre níveis olham o foco; sem ele, o painel pediria a escolha mesmo depois de feita
+  it('deve enviar o foco do nível junto com o documento', async () => {
+    renderValidation({ level: 'container', nodes, edges, scope: { nodeId: 'n9' } });
+
+    await waitDelay();
+
+    expect(validateDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n9' } }));
+  });
+
+  it('deve validar de novo quando só o foco do nível muda', async () => {
+    const { rerender } = renderValidation({ level: 'container', nodes, edges, scope: null });
+    await waitDelay();
+    validateDiagram.mockClear();
+
+    rerender({ level: 'container', nodes, edges, scope: { nodeId: 'n9' } });
+    await waitDelay();
+
+    expect(validateDiagram).toHaveBeenCalledTimes(1);
+    expect(validateDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n9' } }));
   });
 
   it('deve esperar a edição parar (uma chamada só para mudanças seguidas)', async () => {

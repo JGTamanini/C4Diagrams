@@ -64,4 +64,18 @@ describe('diagramMapper', () => {
       expect(document.edges).toEqual([]);
     });
   });
+
+  describe('foco do nível (RF22)', () => {
+    const data = { nodes: [], edges: [] };
+
+    it('deve trazer e levar o foco do nível', () => {
+      expect(fromApi({ ...data, scope: { nodeId: 's1' } })).toEqual({ ...data, scope: { nodeId: 's1' } });
+      expect(toApi({ ...data, scope: { nodeId: 's1' } })).toEqual({ ...data, scope: { nodeId: 's1' } });
+    });
+
+    it('deve omitir o foco ausente', () => {
+      expect(fromApi(data)).toEqual(data);
+      expect(toApi({ ...data, scope: null })).toEqual(data);
+    });
+  });
 });

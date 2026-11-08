@@ -5,12 +5,14 @@ import { toApi } from '../services/diagramMapper';
 // Espera a edição parar antes de validar (RNF03: o resultado aparece em até 1 s depois da mudança)
 export const VALIDATION_DELAY_MS = 400;
 
-// Só o conteúdo que as regras olham: posição e seleção ficam de fora, então arrastar elementos não gera validação
+// Só o conteúdo que as regras olham: posição e seleção ficam de fora, então arrastar elementos não gera validação.
+// O foco do nível (RF22) entra: as regras entre níveis dependem dele
 function contentKey(level, document) {
   return JSON.stringify({
     level,
     nodes: document.nodes.map(({ id, type, data }) => ({ id, type, data })),
     edges: document.edges,
+    scope: document.scope ?? null,
   });
 }
 
@@ -29,8 +31,9 @@ function withoutRemoved(issues, nodes, edges) {
 // Nota: RF17 no editor — valida o nível aberto no backend pouco depois de cada mudança de conteúdo, sem bloquear a
 // edição (RN11). Resposta antiga que chegue depois de uma mais nova é descartada; falha mantém a última lista válida
 // e tenta de novo na próxima mudança.
-export function useDiagramValidation(projectId, level, nodes, edges) {
-  const document = useMemo(() => toApi({ nodes, edges }), [nodes, edges]);
+// scope: o foco do nível (RF22), ou null
+export function useDiagramValidation(projectId, level, nodes, edges, scope = null) {
+  const document = useMemo(() => toApi({ nodes, edges, scope }), [nodes, edges, scope]);
   const key = contentKey(level, document);
   const isEmpty = document.nodes.length === 0;
   // O documento mais recente, lido pelo timer da validação (atualizado num efeito, nunca durante a renderização)
