@@ -32,6 +32,7 @@ import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPal
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ElementTree from '../ElementTree/ElementTree';
+import ScopeBoundary from '../ScopeBoundary/ScopeBoundary';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
@@ -160,6 +161,8 @@ function DiagramWorkspace({
   focusRequest = null,
   onOpenShortcuts,
   nodesByLevel = null,
+  scopeLabels,
+  boundary = null,
   onSelectTreeElement,
   onTogglePalette,
   onCopyNodes,
@@ -382,6 +385,7 @@ function DiagramWorkspace({
           colorMode="dark"
         >
           <Background gap={GRID_GAP} size={2} />
+          <ScopeBoundary boundary={boundary} />
           <CanvasControls
             locked={locked}
             onToggleLock={() => setLocked((current) => !current)}
@@ -456,6 +460,7 @@ function DiagramWorkspace({
                   <div className="pointer-events-none flex min-h-0 flex-1 flex-col">
                     <ElementTree
                       nodesByLevel={nodesByLevel}
+                      scopeLabels={scopeLabels}
                       activeLevel={level}
                       onSelectElement={onSelectTreeElement}
                       collapsed={treeCollapsed}

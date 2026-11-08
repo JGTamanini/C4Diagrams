@@ -7,8 +7,8 @@ const LIMITED_SCOPES = new Set(['suggestion', 'deep']);
 
 // Nota: RF16 — sugestões da IA sob pedido (nunca automáticas). O resultado fica guardado por nível: trocar de aba e
 // voltar mostra o último resultado daquele nível. Um pedido por vez, que pode ser cancelado; sugestões ignoradas
-// somem só da tela.
-export function useAiSuggestions(projectId, level, nodes, edges) {
+// somem só da tela. O foco do nível (RF22) vai junto: o backend diz à IA o que o nível detalha.
+export function useAiSuggestions(projectId, level, nodes, edges, scope = null) {
   const [status, setStatus] = useState(null);
   const [resultsByLevel, setResultsByLevel] = useState({});
   const [pending, setPending] = useState(null);
@@ -40,7 +40,7 @@ export function useAiSuggestions(projectId, level, nodes, edges) {
       const result = await requestSuggestions(
         projectId,
         requestedLevel,
-        { diagram: toApi({ nodes, edges }), depth, description },
+        { diagram: toApi({ nodes, edges, scope }), depth, description },
         { signal: controller.signal }
       );
       setResultsByLevel((current) => ({ ...current, [requestedLevel]: { ...result, dismissed: [] } }));

@@ -1,4 +1,5 @@
 const { LEVEL_ELEMENTS, LEVEL_NAMES, NODE_TYPES, NODE_TYPE_NAMES } = require('../domain/c4');
+const { levelFocus } = require('./c4.validation');
 
 function allowedTypesText(level) {
   return LEVEL_ELEMENTS[level].map((type) => `${type} (${NODE_TYPE_NAMES[type]})`).join(', ');
@@ -84,6 +85,11 @@ function taskFor(level, data, depth) {
 function buildUserMessage({ project, level, data, otherLevels, knownIssues, description, depth, discarded = [] }) {
   const labels = new Map(data.nodes.map((node) => [node.id, node.data.label]));
   const parts = [taskFor(level, data, depth)];
+  // RF22: sem o foco, a IA sugeriria elementos de qualquer sistema (ou container) do nível acima
+  const focus = levelFocus(level, { ...otherLevels, [level]: data });
+  if (focus) {
+    parts.push(`Este diagrama detalha "${focus.data.label}" (${NODE_TYPE_NAMES[focus.type]}): sugira só o que existe dentro dele e o que se relaciona com ele.`);
+  }
 
   if (discarded.length > 0) {
     const list = discarded.map((item) => `- ${item.title}: ${item.problem}`).join('\n');
@@ -93,6 +99,7 @@ function buildUserMessage({ project, level, data, otherLevels, knownIssues, desc
   const payload = {
     projeto: { nome: project.name, descricao: description ?? project.description ?? null },
     nivel: level,
+    detalha: focus ? `${focus.data.label} (${focus.type})` : null,
     elementos: data.nodes.map((node) => ({
       tipo: node.type,
       nome: node.data.label,

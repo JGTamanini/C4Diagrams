@@ -20,7 +20,7 @@ function otherLevelsByKey(nodesByLevel) {
     (levelsByKey.get(elementMatchKey(node)) ?? []).filter((level) => level.id !== levelId).map((level) => level.label);
 }
 
-function LevelFolder({ level, nodes, active, expanded, onToggle, otherLevels, onSelectElement }) {
+function LevelFolder({ level, nodes, active, expanded, onToggle, otherLevels, onSelectElement, scopeLabel }) {
   return (
     <li>
       <button
@@ -37,6 +37,8 @@ function LevelFolder({ level, nodes, active, expanded, onToggle, otherLevels, on
         <span className="flex-1">{level.label}</span>
         <span className="text-text-muted">{nodes.length}</span>
       </button>
+      {/* RF22: o elemento do nível de cima que este nível detalha */}
+      {scopeLabel && <p className="ml-7 truncate pb-1 text-[10px] text-text-muted">detalha: {scopeLabel}</p>}
 
       {expanded && (
         <ul aria-label={`Elementos de ${level.label}`} className="ml-3 border-l border-line-subtle pl-1.5">
@@ -79,7 +81,7 @@ function LevelFolder({ level, nodes, active, expanded, onToggle, otherLevels, on
 // Clicar num elemento leva até ele (troca de nível se preciso). Os níveis ainda não têm ligação explícita entre si,
 // então a árvore é por nível; o mesmo elemento em outro nível aparece como "também em". Pode ser recolhida na
 // vertical, ficando só o título (collapsed + onToggleCollapsed).
-function ElementTree({ nodesByLevel, activeLevel, onSelectElement, collapsed = false, onToggleCollapsed }) {
+function ElementTree({ nodesByLevel, activeLevel, onSelectElement, collapsed = false, onToggleCollapsed, scopeLabels = {} }) {
   // Pastas de nível fechadas pelo usuário
   const [closedLevels, setClosedLevels] = useState(() => new Set());
   const otherLevels = otherLevelsByKey(nodesByLevel);
@@ -132,6 +134,7 @@ function ElementTree({ nodesByLevel, activeLevel, onSelectElement, collapsed = f
             onToggle={() => toggle(level.id)}
             otherLevels={otherLevels}
             onSelectElement={onSelectElement}
+            scopeLabel={scopeLabels[level.id]}
           />
         ))}
       </motion.ul>

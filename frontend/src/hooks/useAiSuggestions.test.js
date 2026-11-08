@@ -18,8 +18,8 @@ const result = {
   remaining: { suggestion: 19, deep: 3 },
 };
 
-function renderSuggestions(level = 'context') {
-  return renderHook((props) => useAiSuggestions(PROJECT_ID, props.level, nodes, []), { initialProps: { level } });
+function renderSuggestions(level = 'context', scope = null) {
+  return renderHook((props) => useAiSuggestions(PROJECT_ID, props.level, nodes, [], scope), { initialProps: { level } });
 }
 
 function apiError(status, data) {
@@ -39,6 +39,21 @@ describe('useAiSuggestions (RF16)', () => {
 
     await waitFor(() => expect(hook.current.mode).toBe('anthropic'));
     expect(hook.current.remaining).toEqual({ suggestion: 20, deep: 3 });
+  });
+
+  // RF22: o backend diz à IA qual elemento do nível acima este nível detalha
+  it('deve enviar o foco do nível junto com o diagrama', async () => {
+    const { result: hook } = renderSuggestions('container', { nodeId: 's2' });
+    await waitFor(() => expect(hook.current.mode).toBe('anthropic'));
+
+    await act(() => hook.current.generate('standard'));
+
+    expect(requestSuggestions).toHaveBeenCalledWith(
+      PROJECT_ID,
+      'container',
+      expect.objectContaining({ diagram: expect.objectContaining({ scope: { nodeId: 's2' } }) }),
+      expect.any(Object)
+    );
   });
 
   it('deve tratar falha na consulta como IA indisponível', async () => {

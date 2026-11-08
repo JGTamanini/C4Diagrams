@@ -36,14 +36,18 @@ const PARENT_LEVEL = {
     level: 'context',
     focus: 'c4-system',
     focusName: 'um Sistema de Software',
+    focusPlural: 'sistemas de software',
     detailedName: 'um sistema',
+    detailedNoun: 'sistema',
     mirrored: ['c4-person', 'c4-system-external'],
   },
   component: {
     level: 'container',
     focus: 'c4-container',
     focusName: 'um Container',
+    focusPlural: 'containers',
     detailedName: 'um container',
+    detailedNoun: 'container',
     mirrored: ['c4-person', 'c4-system-external', 'c4-container', 'c4-container-db'],
   },
 };
@@ -122,6 +126,37 @@ function levelWarnings(level, data) {
   return warnings;
 }
 
+// RF22: o foco do nível (o elemento do nível acima que ele detalha). Sem foco escolhido, vale o único candidato;
+// com mais de um, o usuário precisa indicar. Foco apagado (ou de outro tipo) também é avisado.
+function scopeWarnings(level, scope, candidates) {
+  const parent = PARENT_LEVEL[level];
+  const levelName = LEVEL_NAMES[level];
+  const parentName = LEVEL_NAMES[parent.level];
+
+  if (scope) {
+    if (candidates.some((node) => node.id === scope.nodeId)) return [];
+    const message = `O elemento que o diagrama de ${levelName} detalhava não existe mais no de ${parentName}: indique qual ${parent.detailedNoun} ele detalha.`;
+    return [issue('warning', 'LEVEL_SCOPE_NOT_FOUND', message)];
+  }
+  if (candidates.length > 1) {
+    const message = `O diagrama de ${parentName} tem ${candidates.length} ${parent.focusPlural}: indique qual deles o de ${levelName} detalha.`;
+    return [issue('warning', 'LEVEL_SCOPE_NOT_CHOSEN', message)];
+  }
+  return [];
+}
+
+// O elemento do nível acima que o nível detalha (RF22), pela mesma regra dos avisos: o foco escolhido ou, sem
+// escolha, o único candidato. null no Contexto, com mais de um candidato sem escolha ou com o foco apagado
+function levelFocus(level, diagramsByLevel) {
+  const parent = PARENT_LEVEL[level];
+  if (!parent) return null;
+
+  const candidates = (diagramsByLevel[parent.level]?.nodes ?? []).filter((node) => node.type === parent.focus);
+  const scope = diagramsByLevel[level]?.scope;
+  if (scope) return candidates.find((node) => node.id === scope.nodeId) ?? null;
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 // Devolve os avisos gerais e o conjunto de chaves do nível acima (ou null, quando não há o que comparar)
 function parentLevelCheck(level, diagramsByLevel) {
   const parent = PARENT_LEVEL[level];
@@ -137,10 +172,12 @@ function parentLevelCheck(level, diagramsByLevel) {
   }
 
   const warnings = [];
-  if (!parentNodes.some((node) => node.type === parent.focus)) {
+  const candidates = parentNodes.filter((node) => node.type === parent.focus);
+  if (candidates.length === 0) {
     const message = `O diagrama de ${levelName} detalha ${parent.focusName}, mas o de ${parentName} não tem nenhum.`;
     warnings.push(issue('warning', 'PARENT_LEVEL_WITHOUT_FOCUS', message));
   }
+  warnings.push(...scopeWarnings(level, diagramsByLevel[level].scope, candidates));
 
   return { warnings, parentKeys: new Set(parentNodes.map(matchKey)) };
 }
@@ -208,4 +245,4 @@ function validateDiagram(level, diagramsByLevel) {
   return issues.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
 
-module.exports = { findViolations, validateDiagram };
+module.exports = { findViolations, validateDiagram, levelFocus };

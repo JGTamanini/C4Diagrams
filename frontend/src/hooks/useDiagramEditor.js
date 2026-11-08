@@ -35,6 +35,19 @@ function emptyHistory() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { past: [], future: [] }]));
 }
 
+// RF22: rótulo e tecnologia alterados e relações removidas no modal do elemento
+function applyRelationChanges(edges, { updated = [], removed = [] }) {
+  const removedIds = new Set(removed);
+  const changes = new Map(updated.map((relation) => [relation.id, relation]));
+  return edges
+    .filter((edge) => !removedIds.has(edge.id))
+    .map((edge) => {
+      const change = changes.get(edge.id);
+      if (!change) return edge;
+      return { ...edge, label: change.label, data: change.technology ? { technology: change.technology } : {} };
+    });
+}
+
 function isDragStart(change) {
   return change.type === 'position' && change.dragging === true;
 }
@@ -213,14 +226,32 @@ export function useDiagramEditor(projectId) {
     [activeLevel, editActive]
   );
 
+  // relations (RF22): as relações editadas no mesmo modal entram no mesmo passo do desfazer
   const updateNode = useCallback(
-    (id, data) => {
+    (id, data, relations) => {
       editActive((diagram) => ({
         ...diagram,
         nodes: diagram.nodes.map((node) => (node.id === id ? { ...node, data: pickNodeData(data) } : node)),
+        edges: relations ? applyRelationChanges(diagram.edges, relations) : diagram.edges,
       }));
     },
     [editActive]
+  );
+
+  // RF22: o elemento do nível de cima que um nível detalha. Pode ser definido de outro nível (o modal de um sistema
+  // no Contexto escolhe o foco do nível de Containers); é uma edição daquele nível, com desfazer e salvamento
+  // Nota: a referência é atualizada na hora, e não só depois da renderização: "Detalhar" escolhe o foco e troca de
+  // nível na mesma ação, e a troca salva imediatamente lendo a referência (com o foco anterior, se ainda não mudou)
+  const setScope = useCallback(
+    (level, nodeId) => {
+      const current = diagramsRef.current;
+      record(level, current[level]);
+      const next = { ...current, [level]: { ...current[level], scope: { nodeId } } };
+      diagramsRef.current = next;
+      setDiagrams(next);
+      markDirty(level);
+    },
+    [markDirty, record]
   );
 
   const updateEdge = useCallback(
@@ -235,9 +266,10 @@ export function useDiagramEditor(projectId) {
 
   const removeNode = useCallback(
     (id) => {
-      editActive(({ nodes, edges }) => ({
-        nodes: nodes.filter((node) => node.id !== id),
-        edges: edges.filter((edge) => edge.source !== id && edge.target !== id),
+      editActive((diagram) => ({
+        ...diagram,
+        nodes: diagram.nodes.filter((node) => node.id !== id),
+        edges: diagram.edges.filter((edge) => edge.source !== id && edge.target !== id),
       }));
     },
     [editActive]
@@ -258,6 +290,7 @@ export function useDiagramEditor(projectId) {
     editActive((diagram) => {
       const removedIds = new Set(diagram.nodes.filter((node) => node.selected).map((node) => node.id));
       return {
+        ...diagram,
         nodes: diagram.nodes.filter((node) => !node.selected),
         edges: diagram.edges.filter((edge) => !edge.selected && !removedIds.has(edge.source) && !removedIds.has(edge.target)),
       };
@@ -335,6 +368,7 @@ export function useDiagramEditor(projectId) {
         }));
 
       editActive((diagram) => ({
+        ...diagram,
         nodes: [...diagram.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), ...pastedNodes],
         edges: [...diagram.edges.map((edge) => (edge.selected ? { ...edge, selected: false } : edge)), ...pastedEdges],
       }));
@@ -348,9 +382,21 @@ export function useDiagramEditor(projectId) {
     [diagrams]
   );
 
-  // Elementos e relações de todos os níveis, como estão no editor (exportação do projeto, RF21)
+  // Foco de cada nível (RF22): o que o usuário escolheu, ou null
+  const scopeByLevel = useMemo(
+    () => Object.fromEntries(LEVEL_IDS.map((level) => [level, diagrams[level].scope ?? null])),
+    [diagrams]
+  );
+
+  // Elementos, relações e foco de todos os níveis, como estão no editor (exportação do projeto, RF21 e RF22)
   const diagramsByLevel = useMemo(
-    () => Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: diagrams[level].nodes, edges: diagrams[level].edges }])),
+    () =>
+      Object.fromEntries(
+        LEVEL_IDS.map((level) => {
+          const { nodes, edges, scope } = diagrams[level];
+          return [level, scope ? { nodes, edges, scope } : { nodes, edges }];
+        })
+      ),
     [diagrams]
   );
 
@@ -415,6 +461,8 @@ export function useDiagramEditor(projectId) {
     nodes: diagrams[activeLevel].nodes,
     edges: diagrams[activeLevel].edges,
     nodesByLevel,
+    scopeByLevel,
+    setScope,
     diagramsByLevel,
     onNodesChange,
     onEdgesChange,

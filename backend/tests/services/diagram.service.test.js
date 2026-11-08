@@ -295,6 +295,20 @@ describe('DiagramService', () => {
       expect(diagramRepository.upsert).not.toHaveBeenCalled();
     });
 
+    // RF22: o foco escolhido no editor vem no corpo da validação, antes de ser salvo
+    it('deve usar o foco enviado: com ele, não pede para escolher qual sistema o nível detalha', async () => {
+      const system = (id, label) => ({ id, type: 'c4-system', position: { x: 0, y: 0 }, data: { label, description: 'Sistema' } });
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findAllByProject.mockResolvedValue([
+        { level: 'context', data: { nodes: [system('s1', 'Loja'), system('s2', 'ERP')], edges: [] } },
+      ]);
+      const codes = async (data) =>
+        (await diagramService.validateDiagram(projectId, userId, 'container', data)).map((issue) => issue.code);
+
+      expect(await codes(containerData)).toContain('LEVEL_SCOPE_NOT_CHOSEN');
+      expect(await codes({ ...containerData, scope: { nodeId: 's1' } })).not.toContain('LEVEL_SCOPE_NOT_CHOSEN');
+    });
+
     it('deve propagar o 404 do projeto sem ler os diagramas', async () => {
       projectService.getProject.mockRejectedValue(new ProjectNotFoundError());
 
