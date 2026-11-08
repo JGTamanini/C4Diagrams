@@ -488,6 +488,24 @@ describe('DiagramCanvas', () => {
     });
   });
 
+  it('deve abrir o modo textual pela barra de controles (RF19)', async () => {
+    const user = userEvent.setup();
+    const onOpenText = vi.fn();
+    renderCanvas({ onOpenText });
+
+    await user.click(within(screen.getByLabelText('Controles do canvas')).getByRole('button', { name: 'Modo textual' }));
+
+    expect(onOpenText).toHaveBeenCalled();
+  });
+
+  it('deve oferecer à página a exportação da imagem do nível (RF18)', async () => {
+    const exporterRef = { current: null };
+    renderCanvas({ exporterRef });
+
+    await screen.findByText('Cliente');
+    expect(exporterRef.current).toEqual(expect.any(Function));
+  });
+
   describe('fronteira do elemento detalhado (RF22)', () => {
     const containerNodes = [
       { id: 'p1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } },

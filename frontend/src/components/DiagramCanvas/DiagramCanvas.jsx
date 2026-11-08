@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ClipboardPaste,
+  Code,
   Copy,
   Grid3x3,
   Keyboard,
@@ -32,6 +33,7 @@ import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPal
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ElementTree from '../ElementTree/ElementTree';
+import { exportDiagramImage } from '../../services/diagramImage';
 import ScopeBoundary from '../ScopeBoundary/ScopeBoundary';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
@@ -73,7 +75,7 @@ const ARIA_LABELS = { 'controls.ariaLabel': 'Controles do canvas' };
 
 // Nota: barra de controles do canvas, embaixo e no centro — zoom (com o valor atual, que volta a 100% ao clicar),
 // enquadrar, travar o canvas, alinhar à grade e os atalhos. Fica dentro do React Flow para acompanhar o zoom.
-function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpenShortcuts }) {
+function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpenShortcuts, onOpenText }) {
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
   const { zoom } = useViewport();
   const percent = Math.round(zoom * 100);
@@ -113,6 +115,11 @@ function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpen
       <ControlButton aria-label="Alinhar à grade" aria-pressed={snapToGrid} title="Alinhar à grade" onClick={onToggleSnap}>
         <Grid3x3 aria-hidden="true" />
       </ControlButton>
+      {onOpenText && (
+        <ControlButton aria-label="Modo textual" title="Modo textual (escrever o diagrama)" onClick={onOpenText}>
+          <Code aria-hidden="true" />
+        </ControlButton>
+      )}
       {onOpenShortcuts && (
         <>
           <span aria-hidden="true" className="c4-controls-divider" />
@@ -160,6 +167,8 @@ function DiagramWorkspace({
   issues = [],
   focusRequest = null,
   onOpenShortcuts,
+  onOpenText,
+  exporterRef,
   nodesByLevel = null,
   scopeLabels,
   boundary = null,
@@ -176,7 +185,23 @@ function DiagramWorkspace({
   onEditNode,
   onEditEdge,
 }) {
-  const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNodes, getInternalNode, getViewport } = useReactFlow();
+
+  // RF18: a página exporta a imagem do nível por aqui — precisa do canvas (elementos medidos e enquadramento atual)
+  useEffect(() => {
+    if (!exporterRef) return undefined;
+    exporterRef.current = (options) =>
+      exportDiagramImage({
+        ...options,
+        flowElement: dropAreaRef.current.querySelector('.react-flow'),
+        nodes: getNodes(),
+        edges,
+        viewport: getViewport(),
+      });
+    return () => {
+      exporterRef.current = null;
+    };
+  }, [exporterRef, getNodes, getViewport, edges]);
   const dropAreaRef = useRef(null);
   const paletteRef = useRef(null);
   const fittedLevelRef = useRef(null);
@@ -392,6 +417,7 @@ function DiagramWorkspace({
             snapToGrid={snapToGrid}
             onToggleSnap={() => setSnapToGrid((current) => !current)}
             onOpenShortcuts={onOpenShortcuts}
+            onOpenText={onOpenText}
           />
         </ReactFlow>
 
