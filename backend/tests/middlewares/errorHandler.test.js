@@ -8,7 +8,11 @@ const {
   NoFieldsToUpdateError,
   InvalidImportFileError,
 } = require('../../src/errors/project.errors');
-const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
+const {
+  InvalidDiagramLevelError,
+  InvalidDiagramDataError,
+  DiagramVersionConflictError,
+} = require('../../src/errors/diagram.errors');
 const {
   AiUnavailableError,
   AiDailyLimitError,
@@ -164,6 +168,15 @@ describe('errorHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 412 com a versão atual quando outra aba já gravou o nível (issue #74)', () => {
+    const res = mockRes();
+
+    errorHandler(new DiagramVersionConflictError(5), {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(412);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Este nível foi alterado em outra aba ou dispositivo.', currentVersion: 5 });
   });
 
   it('deve retornar 413 com mensagem clara quando o corpo passar do limite do parser de JSON', () => {

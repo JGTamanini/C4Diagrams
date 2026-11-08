@@ -12,7 +12,11 @@ const {
   NoFieldsToUpdateError,
   InvalidImportFileError,
 } = require('../errors/project.errors');
-const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
+const {
+  InvalidDiagramLevelError,
+  InvalidDiagramDataError,
+  DiagramVersionConflictError,
+} = require('../errors/diagram.errors');
 const {
   AiUnavailableError,
   AiDailyLimitError,
@@ -63,6 +67,11 @@ function errorHandler(err, req, res, next) {
       `Acesso a projeto não encontrado: ${toLogSafe(req.method)} ${toLogSafe(req.originalUrl)} (usuário ${toLogSafe(req.user?.id)})`
     );
     return res.status(404).json({ message: err.message });
+  }
+
+  // Issue #74: a versão atual vai junto, para a aba poder gravar por cima de propósito ("Manter a minha")
+  if (err instanceof DiagramVersionConflictError) {
+    return res.status(412).json({ message: err.message, currentVersion: err.currentVersion });
   }
 
   if (err instanceof EmailAlreadyExistsError) {

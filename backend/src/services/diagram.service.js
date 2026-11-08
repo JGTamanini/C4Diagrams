@@ -5,7 +5,11 @@ const c4Validation = require('./c4.validation');
 const { LEVELS } = require('../domain/c4');
 const { isUuid } = require('../domain/uuid');
 const { ProjectNotFoundError } = require('../errors/project.errors');
-const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../errors/diagram.errors');
+const {
+  InvalidDiagramLevelError,
+  InvalidDiagramDataError,
+  DiagramVersionConflictError,
+} = require('../errors/diagram.errors');
 
 function normalizeLevelData(level, rawData) {
   if (!LEVELS.includes(level)) throw new InvalidDiagramLevelError(level);
@@ -36,7 +40,32 @@ async function withoutPreexisting(projectId, userId, level, violations) {
   return violations.filter((violation) => !preexisting.has(violationKey(violation)));
 }
 
-async function saveDiagram(projectId, userId, level, rawData) {
+// A gravação condicional não aconteceu: ou o projeto não é do usuário (404), ou outra aba mudou o nível (conflito)
+async function conflictOrNotFound(projectId, userId, level) {
+  await projectService.getProject(projectId, userId);
+  return new DiagramVersionConflictError(await diagramRepository.findVersion(projectId, userId, level));
+}
+
+// Esvaziar o nível (RN10), conferindo a versão quando a aba informa uma
+async function removeLevel(projectId, userId, level, expectedVersion) {
+  await projectService.getProject(projectId, userId);
+
+  if (expectedVersion === undefined) {
+    await diagramRepository.remove(projectId, userId, level);
+    return;
+  }
+  if (expectedVersion !== null && (await diagramRepository.removeIfVersion(projectId, userId, level, expectedVersion))) {
+    return;
+  }
+  // Nada foi apagado: se o nível não existe, o resultado é o que a aba queria; se existe, outra aba o gravou
+  const currentVersion = await diagramRepository.findVersion(projectId, userId, level);
+  if (currentVersion !== null) throw new DiagramVersionConflictError(currentVersion);
+}
+
+// Nota: issue #74 — expectedVersion é a versão do nível que a aba conhece: um número, ou null quando a aba acha que o
+// nível ainda não existe. A gravação só acontece se o banco ainda estiver nessa versão; senão, conflito, e nada é
+// sobrescrito. Sem versão (undefined), grava por cima, como antes da concorrência otimista.
+async function saveDiagram(projectId, userId, level, rawData, expectedVersion) {
   const data = normalizeLevelData(level, rawData);
 
   // Nota: só os erros do motor de validação impedem salvar (RN08 e relação repetida); os avisos não (RN11).
@@ -49,15 +78,23 @@ async function saveDiagram(projectId, userId, level, rawData) {
 
   // Nota: RN10 — só o nível com conteúdo existe no banco; esvaziar o canvas remove o registro do nível
   if (data.nodes.length === 0) {
-    await projectService.getProject(projectId, userId);
-    await diagramRepository.remove(projectId, userId, level);
+    await removeLevel(projectId, userId, level, expectedVersion);
     return null;
   }
 
   if (!isUuid(projectId)) throw new ProjectNotFoundError();
 
-  const diagram = await diagramRepository.upsert(projectId, userId, level, data);
-  if (!diagram) throw new ProjectNotFoundError();
+  if (expectedVersion === undefined) {
+    const diagram = await diagramRepository.upsert(projectId, userId, level, data);
+    if (!diagram) throw new ProjectNotFoundError();
+    return diagram;
+  }
+
+  const diagram =
+    expectedVersion === null
+      ? await diagramRepository.insertIfAbsent(projectId, userId, level, data)
+      : await diagramRepository.updateIfVersion(projectId, userId, level, data, expectedVersion);
+  if (!diagram) throw await conflictOrNotFound(projectId, userId, level);
 
   return diagram;
 }
