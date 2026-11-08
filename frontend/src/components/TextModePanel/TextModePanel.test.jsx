@@ -46,6 +46,19 @@ describe('TextModePanel (RF19)', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Aplicado: 1 adicionado, 0 atualizados.');
   });
 
+  // Issue #75: com o canvas travado, o texto pode ser lido e editado, mas não aplicado
+  it('deve impedir aplicar com o canvas travado, dizendo por quê', async () => {
+    const user = userEvent.setup();
+    const { onApply } = renderPanel({ locked: true });
+
+    const apply = screen.getByRole('button', { name: 'Aplicar ao canvas' });
+    expect(apply).toBeDisabled();
+    await user.click(apply);
+
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByText('Canvas travado: destrave para aplicar.')).toBeInTheDocument();
+  });
+
   it('deve mostrar os erros por linha e não aplicar nada', async () => {
     const user = userEvent.setup();
     const { onApply } = renderPanel();

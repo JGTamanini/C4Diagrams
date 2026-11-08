@@ -493,6 +493,7 @@ function ProjectPage() {
               edges={editor.edges}
               onApply={editor.applyTextChanges}
               onClose={() => setTextMode(false)}
+              locked={editor.locked}
             />
           </div>
         )}

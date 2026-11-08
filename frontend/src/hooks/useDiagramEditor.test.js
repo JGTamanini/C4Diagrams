@@ -576,6 +576,19 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodes).toHaveLength(3);
     });
 
+    it('deve barrar também o modo textual (RF19)', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.toggleLock());
+
+      act(() =>
+        result.current.applyTextChanges({
+          addNodes: [{ id: 'n3', type: 'c4-system-external', position: { x: 0, y: 0 }, data: { label: 'Gateway' } }],
+        })
+      );
+
+      expect(result.current.nodes.map((node) => node.id)).toEqual(['n1', 'n2']);
+    });
+
     it('deve ignorar as mudanças do React Flow que alteram o diagrama, mas aplicar as medidas dos elementos', async () => {
       const { result } = await renderLoadedEditor();
       act(() => result.current.toggleLock());
