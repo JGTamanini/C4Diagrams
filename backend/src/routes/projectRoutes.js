@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.post('/', projectController.create);
+router.post('/import', projectController.importFromFile);
 router.get('/', projectController.list);
 router.get('/:id', projectController.getById);
 router.patch('/:id', projectController.update);

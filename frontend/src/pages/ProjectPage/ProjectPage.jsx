@@ -27,6 +27,7 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
@@ -262,6 +263,17 @@ function ProjectPage() {
     setFocusRequest({ nodeId, edgeId });
   }
 
+  // RF21: exporta como está no editor; se a importação fosse recusar o arquivo, avisa já na exportação
+  function exportProject() {
+    downloadProjectFile(project, editor.diagramsByLevel);
+    const levels = levelsWithErrors(editor.diagramsByLevel);
+    if (levels.length > 0) {
+      editor.showNotice(
+        `Projeto exportado, mas ${levels.join(', ')} ${levels.length === 1 ? 'tem' : 'têm'} erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.`
+      );
+    }
+  }
+
   // Clique na árvore de elementos: abre o nível do elemento (se for outro), seleciona e centraliza nele
   function selectTreeElement(level, nodeId) {
     if (level !== editor.activeLevel) editor.selectLevel(level);
@@ -338,7 +350,15 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true },
+              // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json. Só depois de os
+              // diagramas chegarem: antes disso (ou se a carga falhar), o arquivo sairia sem eles
+              {
+                label: 'Exportar projeto',
+                icon: Download,
+                hint: '.json',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: exportProject,
+              },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}
           />

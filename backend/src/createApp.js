@@ -17,6 +17,8 @@ const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 const NO_CACHE = 'no-cache';
 // HEAD também: monitores de disponibilidade costumam checar a página assim
 const PAGE_METHODS = new Set(['GET', 'HEAD']);
+const BODY_LIMIT = '1mb';
+const IMPORT_BODY_LIMIT = '3mb';
 
 function setStaticCacheHeaders(res, filePath) {
   res.setHeader('Cache-Control', filePath.includes(HASHED_ASSETS_PREFIX) ? IMMUTABLE_CACHE : NO_CACHE);
@@ -42,8 +44,11 @@ function createApp({ staticDir, corsOrigin } = {}) {
   app.use(helmet());
   // Nota: só a origem do frontend recebe o cabeçalho de CORS; em produção, frontend e API têm o mesmo endereço
   app.use(cors({ origin: corsOrigin ? [corsOrigin] : false }));
+  // Nota: a importação (RF21) traz os três níveis de uma vez, e cada nível pode chegar a 1 MB; registrada antes do
+  // parser geral, ela lê o corpo primeiro, e o parser geral não lê de novo
+  app.use('/api/projects/import', express.json({ limit: IMPORT_BODY_LIMIT }));
   // Nota: um diagrama com até 200 elementos e descrições passa do limite padrão de 100 KB do Express
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: BODY_LIMIT }));
 
   app.use('/api', healthRoutes);
   app.use('/api/auth', authRoutes);

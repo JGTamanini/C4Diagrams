@@ -2,7 +2,12 @@ const errorHandler = require('../../src/middlewares/errorHandler');
 const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
 const { UnauthorizedError } = require('../../src/errors/auth.errors');
-const { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError } = require('../../src/errors/project.errors');
+const {
+  ProjectNotFoundError,
+  FieldTooLongError,
+  NoFieldsToUpdateError,
+  InvalidImportFileError,
+} = require('../../src/errors/project.errors');
 const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
 const {
   AiUnavailableError,
@@ -149,6 +154,27 @@ describe('errorHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 400 para arquivo de projeto inválido na importação', () => {
+    const err = new InvalidImportFileError('Nível Contexto: elemento sem título.');
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
+  });
+
+  it('deve retornar 413 com mensagem clara quando o corpo passar do limite do parser de JSON', () => {
+    // Formato do erro do body-parser do Express ao recusar um corpo grande demais
+    const err = Object.assign(new Error('request entity too large'), { type: 'entity.too.large', status: 413 });
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalledWith({ message: 'O conteúdo enviado é grande demais.' });
   });
 
   describe('erros da IA (RF16)', () => {

@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import api from './api';
-import { listProjects, getProject, createProject, updateProject, deleteProject, InvalidProjectIdError } from './projects';
+import {
+  listProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  importProject,
+  InvalidProjectIdError,
+} from './projects';
 
 const PROJECT_ID = '3b241101-e2bb-4255-8caf-4136c566a962';
 
@@ -70,5 +78,14 @@ describe('projects service - validação do id', () => {
   ])('deve recusar id fora do formato UUID ao %s, sem fazer requisição', async (_, call, method) => {
     await expect(call()).rejects.toBeInstanceOf(InvalidProjectIdError);
     expect(api[method]).not.toHaveBeenCalled();
+  });
+
+  it('deve importar um projeto a partir do conteúdo do arquivo (RF21)', async () => {
+    const content = { format: 'c4diagrams', version: 1 };
+    const imported = { id: PROJECT_ID, name: 'Loja Online', description: null };
+    api.post.mockResolvedValue({ data: imported });
+
+    expect(await importProject(content)).toEqual(imported);
+    expect(api.post).toHaveBeenCalledWith('/projects/import', content);
   });
 });

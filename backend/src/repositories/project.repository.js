@@ -17,6 +17,32 @@ async function create(userId, project) {
   return result.rows[0];
 }
 
+// Nota: RF21/RF15 — importação: o projeto e os níveis entram numa única transação. Se um nível falhar, nada fica
+// gravado (nem um projeto pela metade).
+async function createWithDiagrams(userId, project, diagrams) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `INSERT INTO projects (user_id, name, description) VALUES ($1, $2, $3) RETURNING ${PUBLIC_COLUMNS}`,
+      [userId, project.name, project.description ?? null]
+    );
+    const created = result.rows[0];
+
+    for (const { level, data } of diagrams) {
+      await client.query('INSERT INTO diagrams (project_id, level, data) VALUES ($1, $2, $3)', [created.id, level, data]);
+    }
+
+    await client.query('COMMIT');
+    return created;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function findAllByUser(userId) {
   const query = `
     SELECT ${PUBLIC_COLUMNS}
@@ -76,6 +102,7 @@ async function remove(id, userId) {
 
 module.exports = {
   create,
+  createWithDiagrams,
   findAllByUser,
   findById,
   update,
