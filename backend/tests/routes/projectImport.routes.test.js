@@ -60,6 +60,39 @@ describe('POST /api/projects/import (RF21 e RF15)', () => {
     expect(diagrams.body).toEqual([expect.objectContaining({ level: 'context', data: projectFile.diagrams.context })]);
   });
 
+  // Cada nível aceita até 200 elementos com 1.000 caracteres de descrição; com acentos (2 bytes cada em UTF-8),
+  // os três níveis juntos passam de 1 MB, o limite das demais rotas
+  it('deve aceitar um projeto válido de mais de 1 MB, com os três níveis cheios (exportar e importar de volta)', async () => {
+    const level = (type) => ({
+      nodes: Array.from({ length: 200 }, (_, index) => ({
+        id: `n${index}`,
+        type,
+        position: { x: index * 10, y: 0 },
+        data: { label: `Elemento ${index}`, description: 'ã'.repeat(1000) },
+      })),
+      edges: [],
+    });
+    const bigFile = {
+      ...projectFile,
+      diagrams: { context: level('c4-system'), container: level('c4-container'), component: level('c4-component') },
+    };
+    expect(Buffer.byteLength(JSON.stringify(bigFile))).toBeGreaterThan(1024 * 1024);
+
+    const response = await request(app).post('/api/projects/import').set('Authorization', auth).send(bigFile);
+
+    expect(response.status).toBe(201);
+  });
+
+  it('deve manter o limite de 1 MB nas demais rotas, respondendo 413 com mensagem clara', async () => {
+    const response = await request(app)
+      .post('/api/projects')
+      .set('Authorization', auth)
+      .send({ name: 'Grande', description: 'x'.repeat(1024 * 1024) });
+
+    expect(response.status).toBe(413);
+    expect(response.body).toEqual({ message: 'O conteúdo enviado é grande demais.' });
+  });
+
   it('deve responder 400 com o motivo para arquivo inválido, sem criar nada', async () => {
     const response = await request(app)
       .post('/api/projects/import')

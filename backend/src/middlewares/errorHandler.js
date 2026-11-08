@@ -26,6 +26,11 @@ function toLogSafe(value) {
 }
 
 function errorHandler(err, req, res, next) {
+  // Corpo maior que o limite do parser de JSON (body-parser do Express)
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'O conteúdo enviado é grande demais.' });
+  }
+
   if (
     err instanceof WeakPasswordError ||
     err instanceof MissingFieldError ||

@@ -487,6 +487,16 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(downloadProjectFile).toHaveBeenCalledWith({ id: 'p1', name: 'Loja Online', description: null }, editor.diagramsByLevel);
     });
 
+    // Os diagramas chegam numa requisição separada: antes de chegarem (ou se falharem), o arquivo sairia vazio
+    it.each(['loading', 'error'])('deve desabilitar Exportar projeto enquanto os diagramas estão %s', async (loadStatus) => {
+      const user = userEvent.setup();
+      await renderLoaded({ loadStatus });
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+
+      expect(screen.getByRole('menuitem', { name: /Exportar projeto/ })).toBeDisabled();
+    });
+
     it('deve avisar ao exportar um projeto com erros, que a importação recusaria', async () => {
       const user = userEvent.setup();
       levelsWithErrors.mockReturnValue(['Contexto', 'Container']);

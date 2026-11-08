@@ -350,12 +350,13 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json
+              // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json. Só depois de os
+              // diagramas chegarem: antes disso (ou se a carga falhar), o arquivo sairia sem eles
               {
                 label: 'Exportar projeto',
                 icon: Download,
                 hint: '.json',
-                disabled: !project,
+                disabled: !project || editor.loadStatus !== 'ready',
                 onSelect: exportProject,
               },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
