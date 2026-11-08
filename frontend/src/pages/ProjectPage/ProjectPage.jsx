@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
   ArrowLeft,
   Check,
-  Download,
+  FileBraces,
+  ImageDown,
   Keyboard,
   LoaderCircle,
   RotateCw,
@@ -24,6 +25,7 @@ import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
+import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
@@ -153,6 +155,7 @@ function EditorBody({
   focusRequest,
   onSelectTreeElement,
   onOpenShortcuts,
+  exporterRef,
   scopeLabels,
   boundary,
 }) {
@@ -187,6 +190,7 @@ function EditorBody({
       scopeLabels={scopeLabels}
       boundary={boundary}
       onOpenShortcuts={onOpenShortcuts}
+      exporterRef={exporterRef}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}
@@ -313,6 +317,11 @@ function ProjectPage() {
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
+  // RF18: exportar a imagem do nível aberto (o canvas preenche o exportador)
+  const [showingExport, setShowingExport] = useState(false);
+  const closeExport = useCallback(() => setShowingExport(false), []);
+  const exporterRef = useRef(null);
+  const activeLevelLabel = LEVELS.find((level) => level.id === editor.activeLevel).label;
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   // O foco escolhido para o nível vai junto (RF22): sem ele, as regras entre níveis continuariam pedindo a escolha, e
@@ -357,7 +366,7 @@ function ProjectPage() {
   }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
-  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts;
+  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts || showingExport;
 
   useEffect(() => {
     let active = true;
@@ -425,11 +434,18 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
+              {
+                label: 'Exportar imagem',
+                icon: ImageDown,
+                hint: 'PNG ou PDF',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: () => setShowingExport(true),
+              },
               // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json. Só depois de os
               // diagramas chegarem: antes disso (ou se a carga falhar), o arquivo sairia sem eles
               {
                 label: 'Exportar projeto',
-                icon: Download,
+                icon: FileBraces,
                 hint: '.json',
                 disabled: !project || editor.loadStatus !== 'ready',
                 onSelect: exportProject,
@@ -452,6 +468,7 @@ function ProjectPage() {
           focusRequest={focusRequest}
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
+          exporterRef={exporterRef}
           scopeLabels={{ container: scopes.container.focus?.data.label ?? null, component: scopes.component.focus?.data.label ?? null }}
           boundary={boundary}
         />
@@ -491,6 +508,16 @@ function ProjectPage() {
       <ElementEditor editor={editor} editing={editing} onClose={closeEditor} />
 
       <AnimatePresence>{showingShortcuts && <ShortcutsModal key="shortcuts" onClose={closeShortcuts} />}</AnimatePresence>
+      <AnimatePresence>
+        {showingExport && (
+          <ExportImageModal
+            key="export-image"
+            levelLabel={activeLevelLabel}
+            onExport={(options) => exporterRef.current({ ...options, projectName: project.name, levelLabel: activeLevelLabel })}
+            onClose={closeExport}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

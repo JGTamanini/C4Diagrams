@@ -12,6 +12,7 @@ import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
+const mockExporter = vi.fn();
 vi.mock('../../services/projectFile');
 vi.mock('../../hooks/useAiSuggestions');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
@@ -24,6 +25,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     issues,
     focusRequest,
     nodesByLevel,
+    exporterRef,
     scopeLabels,
     boundary,
     onOpenShortcuts,
@@ -38,6 +40,7 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     onRemoveNode,
     onRemoveSelected,
   }) {
+    if (exporterRef) exporterRef.current = mockExporter;
     return (
     <div
       data-testid="canvas"
@@ -474,14 +477,14 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.save).toHaveBeenCalledTimes(1);
     });
 
-    it('deve oferecer no menu de configurações Salvar, Exportar projeto e Atalhos', async () => {
+    it('deve oferecer no menu de configurações Salvar, Exportar imagem, Exportar projeto e Atalhos', async () => {
       const user = userEvent.setup();
       await renderLoaded();
 
       await user.click(screen.getByRole('button', { name: 'Configurações' }));
       const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
 
-      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Exportar projeto.json', 'Atalhos']);
+      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Exportar imagemPNG ou PDF', 'Exportar projeto.json', 'Atalhos']);
     });
 
     it('deve baixar o projeto inteiro (os três níveis, como estão no editor) pelo menu (RF21)', async () => {
@@ -711,6 +714,38 @@ describe('ProjectPage (editor de diagramas)', () => {
 
       expect(editor.selectLevel).not.toHaveBeenCalled();
       expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: 'n2', level: 'context' });
+    });
+  });
+
+  describe('exportar imagem (RF18)', () => {
+    it('deve exportar o nível aberto com as opções do modal e o nome do projeto', async () => {
+      const user = userEvent.setup();
+      mockExporter.mockResolvedValue(undefined);
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar imagem/ }));
+      const dialog = screen.getByRole('dialog', { name: 'Exportar imagem do nível Contexto' });
+      await user.click(within(dialog).getByRole('button', { name: 'Exportar' }));
+
+      expect(mockExporter).toHaveBeenCalledWith({
+        format: 'png',
+        area: 'content',
+        background: 'light',
+        projectName: 'Loja Online',
+        levelLabel: 'Contexto',
+      });
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    it('deve desligar os atalhos do editor com o modal de exportação aberto', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar imagem/ }));
+
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
     });
   });
 

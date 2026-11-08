@@ -32,6 +32,7 @@ import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPal
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import ElementTree from '../ElementTree/ElementTree';
+import { exportDiagramImage } from '../../services/diagramImage';
 import ScopeBoundary from '../ScopeBoundary/ScopeBoundary';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
 import FloatingEdge from '../FloatingEdge/FloatingEdge';
@@ -160,6 +161,7 @@ function DiagramWorkspace({
   issues = [],
   focusRequest = null,
   onOpenShortcuts,
+  exporterRef,
   nodesByLevel = null,
   scopeLabels,
   boundary = null,
@@ -176,7 +178,23 @@ function DiagramWorkspace({
   onEditNode,
   onEditEdge,
 }) {
-  const { screenToFlowPosition, fitView, getNodes, getInternalNode } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNodes, getInternalNode, getViewport } = useReactFlow();
+
+  // RF18: a página exporta a imagem do nível por aqui — precisa do canvas (elementos medidos e enquadramento atual)
+  useEffect(() => {
+    if (!exporterRef) return undefined;
+    exporterRef.current = (options) =>
+      exportDiagramImage({
+        ...options,
+        flowElement: dropAreaRef.current.querySelector('.react-flow'),
+        nodes: getNodes(),
+        edges,
+        viewport: getViewport(),
+      });
+    return () => {
+      exporterRef.current = null;
+    };
+  }, [exporterRef, getNodes, getViewport, edges]);
   const dropAreaRef = useRef(null);
   const paletteRef = useRef(null);
   const fittedLevelRef = useRef(null);
