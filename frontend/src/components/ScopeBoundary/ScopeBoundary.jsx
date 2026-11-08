@@ -32,12 +32,12 @@ function ScopeBoundary({ boundary }) {
       <div
         role="group"
         aria-label={`Fronteira: ${boundary.label} [${boundary.type}]`}
-        className="pointer-events-none absolute rounded-2xl border-2 border-dashed border-[#7d8aa3]"
+        className="c4-scope-boundary pointer-events-none absolute rounded-2xl border-2 border-dashed border-[#7d8aa3]"
         style={{ transform: `translate(${left}px, ${top}px)`, width: right - left, height: bottom - top, zIndex: -1 }}
       >
         <div className="absolute bottom-3 left-4 leading-tight">
-          <p className="text-sm font-semibold text-text-primary">{boundary.label}</p>
-          <p className="text-xs text-text-secondary">[{boundary.type}]</p>
+          <p className="c4-scope-boundary-label text-sm font-semibold text-text-primary">{boundary.label}</p>
+          <p className="c4-scope-boundary-type text-xs text-text-secondary">[{boundary.type}]</p>
         </div>
       </div>
     </ViewportPortal>

@@ -295,3 +295,16 @@
   stroke: #4b5563 !important;
   fill: #4b5563 !important;
 }
+
+/* RF22: a fronteira tracejada usa o texto claro do editor, que sumiria no fundo branco */
+.c4-export-light .c4-scope-boundary {
+  border-color: #6b7280 !important;
+}
+
+.c4-export-light .c4-scope-boundary-label {
+  color: #111826 !important;
+}
+
+.c4-export-light .c4-scope-boundary-type {
+  color: #4b5563 !important;
+}
