@@ -18,7 +18,7 @@ function renderPanel(props = {}) {
 }
 
 describe('ValidationPanel', () => {
-  it('deve mostrar o assistente com a aba Validação ativa e Sugestões (IA) ainda em breve', () => {
+  it('deve mostrar o assistente com a aba Validação ativa e, sem a IA ligada ao painel, Sugestões desativada', () => {
     renderPanel();
 
     expect(screen.getByRole('complementary', { name: 'Assistente' })).toBeInTheDocument();
@@ -41,15 +41,15 @@ describe('ValidationPanel', () => {
     expect(within(warnings).getAllByRole('listitem')).toHaveLength(2);
   });
 
-  it('deve deixar as sugestões recolhidas por padrão, para não esconderem os avisos', async () => {
+  it('deve deixar as dicas (descrição e tecnologia) recolhidas por padrão, para não esconderem os avisos', async () => {
     const user = userEvent.setup();
     renderPanel();
 
     expect(screen.queryByText('"Cliente" não tem descrição.')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Mostrar 2 sugestões' }));
+    await user.click(screen.getByRole('button', { name: 'Mostrar 2 dicas' }));
 
     expect(screen.getByText('"Cliente" não tem descrição.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ocultar sugestões' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Ocultar dicas' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('deve levar ao elemento ou à relação do problema ao clicar nele', async () => {
@@ -108,10 +108,57 @@ describe('ValidationPanel', () => {
       expect(onToggle).toHaveBeenCalledTimes(1);
     });
 
-    it('não deve mostrar contagem quando não houver erros nem avisos (sugestões não contam)', () => {
+    it('não deve mostrar contagem quando não houver erros nem avisos (dicas não contam)', () => {
       renderPanel({ open: false, issues: issues.filter((issue) => issue.severity === 'info') });
 
       expect(screen.getByRole('button', { name: 'Mostrar assistente' })).toBeInTheDocument();
+    });
+  });
+
+  describe('aba Sugestões (IA, RF16)', () => {
+    const ai = {
+      mode: 'anthropic',
+      limits: { suggestion: 20, deep: 3 },
+      remaining: { suggestion: 20, deep: 3 },
+      loading: null,
+      busy: false,
+      error: null,
+      result: null,
+      generate: vi.fn(),
+      cancel: vi.fn(),
+      dismiss: vi.fn(),
+    };
+    const nodes = [{ id: 'n1', type: 'c4-person', position: { x: 0, y: 0 }, data: { label: 'Cliente' } }];
+
+    it('deve alternar entre Validação e Sugestões', async () => {
+      const user = userEvent.setup();
+      renderPanel({ ai, nodes, edges: [] });
+
+      await user.click(screen.getByRole('tab', { name: 'Sugestões' }));
+
+      expect(screen.getByRole('tab', { name: 'Sugestões' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tabpanel', { name: 'Sugestões' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sugerir melhorias' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Erros (1)' })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: 'Validação' }));
+
+      expect(screen.getByRole('region', { name: 'Erros (1)' })).toBeInTheDocument();
+    });
+
+    it('deve levar ao elemento citado por uma sugestão, como na validação', async () => {
+      const user = userEvent.setup();
+      const result = {
+        source: 'claude-haiku-5-5',
+        escalated: false,
+        suggestions: [{ id: 's1', kind: 'improve_text', title: 'Descreva o cliente', reason: 'r', targetName: 'Cliente', nodeId: 'n1' }],
+      };
+      const { onSelectIssue } = renderPanel({ ai: { ...ai, result }, nodes, edges: [] });
+
+      await user.click(screen.getByRole('tab', { name: 'Sugestões' }));
+      await user.click(screen.getByRole('button', { name: 'Ver no diagrama' }));
+
+      expect(onSelectIssue).toHaveBeenCalledWith({ nodeId: 'n1' });
     });
   });
 });

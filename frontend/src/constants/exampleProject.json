@@ -1,0 +1,59 @@
+{
+  "format": "c4diagrams",
+  "version": 1,
+  "project": {
+    "name": "Loja Online (exemplo)",
+    "description": "Loja virtual de livros: o cliente navega no catálogo, faz pedidos e paga com cartão."
+  },
+  "diagrams": {
+    "context": {
+      "nodes": [
+        { "id": "ctx-cliente", "type": "c4-person", "position": { "x": 300, "y": 0 }, "data": { "label": "Cliente", "description": "Compra livros pela loja" } },
+        { "id": "ctx-loja", "type": "c4-system", "position": { "x": 300, "y": 240 }, "data": { "label": "Loja Online", "description": "Catálogo, carrinho e pedidos de livros" } },
+        { "id": "ctx-gateway", "type": "c4-system-external", "position": { "x": 0, "y": 480 }, "data": { "label": "Gateway de Pagamento", "description": "Processa os pagamentos com cartão" } },
+        { "id": "ctx-email", "type": "c4-system-external", "position": { "x": 600, "y": 480 }, "data": { "label": "Serviço de E-mail", "description": "Envia as confirmações de pedido" } }
+      ],
+      "edges": [
+        { "id": "ctx-e1", "source": "ctx-cliente", "target": "ctx-loja", "label": "Compra livros em" },
+        { "id": "ctx-e2", "source": "ctx-loja", "target": "ctx-gateway", "label": "Cobra os pedidos via" },
+        { "id": "ctx-e3", "source": "ctx-loja", "target": "ctx-email", "label": "Envia as confirmações por" }
+      ]
+    },
+    "container": {
+      "scope": { "nodeId": "ctx-loja" },
+      "nodes": [
+        { "id": "ctn-cliente", "type": "c4-person", "position": { "x": 300, "y": 0 }, "data": { "label": "Cliente", "description": "Compra livros pela loja" } },
+        { "id": "ctn-web", "type": "c4-container", "position": { "x": 300, "y": 220 }, "data": { "label": "Aplicação Web", "description": "Interface da loja no navegador", "technology": "React" } },
+        { "id": "ctn-api", "type": "c4-container", "position": { "x": 300, "y": 440 }, "data": { "label": "API de Pedidos", "description": "Regras de catálogo, carrinho e pedidos", "technology": "Node.js" } },
+        { "id": "ctn-banco", "type": "c4-container-db", "position": { "x": 300, "y": 680 }, "data": { "label": "Banco de Dados", "description": "Livros, clientes e pedidos", "technology": "PostgreSQL" } },
+        { "id": "ctn-gateway", "type": "c4-system-external", "position": { "x": -180, "y": 440 }, "data": { "label": "Gateway de Pagamento", "description": "Processa os pagamentos com cartão" } },
+        { "id": "ctn-email", "type": "c4-system-external", "position": { "x": 780, "y": 440 }, "data": { "label": "Serviço de E-mail", "description": "Envia as confirmações de pedido" } }
+      ],
+      "edges": [
+        { "id": "ctn-e1", "source": "ctn-cliente", "target": "ctn-web", "label": "Navega e compra em", "technology": "HTTPS" },
+        { "id": "ctn-e2", "source": "ctn-web", "target": "ctn-api", "label": "Faz chamadas para", "technology": "JSON/HTTPS" },
+        { "id": "ctn-e3", "source": "ctn-api", "target": "ctn-banco", "label": "Lê e grava em", "technology": "SQL" },
+        { "id": "ctn-e4", "source": "ctn-api", "target": "ctn-gateway", "label": "Cobra os pedidos via", "technology": "HTTPS" },
+        { "id": "ctn-e5", "source": "ctn-api", "target": "ctn-email", "label": "Envia as confirmações por", "technology": "HTTPS" }
+      ]
+    },
+    "component": {
+      "scope": { "nodeId": "ctn-api" },
+      "nodes": [
+        { "id": "cmp-web", "type": "c4-container", "position": { "x": 300, "y": 0 }, "data": { "label": "Aplicação Web", "description": "Interface da loja no navegador", "technology": "React" } },
+        { "id": "cmp-controlador", "type": "c4-component", "position": { "x": 300, "y": 220 }, "data": { "label": "Controlador de Pedidos", "description": "Recebe as requisições de pedido", "technology": "Express" } },
+        { "id": "cmp-servico", "type": "c4-component", "position": { "x": 300, "y": 440 }, "data": { "label": "Serviço de Pedidos", "description": "Aplica as regras de carrinho e pedido", "technology": "Node.js" } },
+        { "id": "cmp-repositorio", "type": "c4-component", "position": { "x": 300, "y": 660 }, "data": { "label": "Repositório de Pedidos", "description": "Lê e grava os pedidos no banco", "technology": "node-postgres" } },
+        { "id": "cmp-banco", "type": "c4-container-db", "position": { "x": 300, "y": 900 }, "data": { "label": "Banco de Dados", "description": "Livros, clientes e pedidos", "technology": "PostgreSQL" } },
+        { "id": "cmp-gateway", "type": "c4-system-external", "position": { "x": -180, "y": 440 }, "data": { "label": "Gateway de Pagamento", "description": "Processa os pagamentos com cartão" } }
+      ],
+      "edges": [
+        { "id": "cmp-e1", "source": "cmp-web", "target": "cmp-controlador", "label": "Envia pedidos para", "technology": "JSON/HTTPS" },
+        { "id": "cmp-e2", "source": "cmp-controlador", "target": "cmp-servico", "label": "Repassa os pedidos para", "technology": "Chamada interna" },
+        { "id": "cmp-e3", "source": "cmp-servico", "target": "cmp-repositorio", "label": "Grava os pedidos com", "technology": "Chamada interna" },
+        { "id": "cmp-e4", "source": "cmp-repositorio", "target": "cmp-banco", "label": "Lê e grava em", "technology": "SQL" },
+        { "id": "cmp-e5", "source": "cmp-servico", "target": "cmp-gateway", "label": "Cobra o pedido via", "technology": "HTTPS" }
+      ]
+    }
+  }
+}
