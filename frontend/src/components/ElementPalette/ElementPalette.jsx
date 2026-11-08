@@ -20,7 +20,8 @@ function handleDragStart(event, type) {
 // do elemento e o nome curto embaixo (como em ferramentas de diagramação). Arrastar para o canvas é o caminho
 // principal; o clique adiciona no centro e atende quem usa teclado. Flutua sobre o canvas e pode ser ocultada para o
 // lado (onCollapse) ou recolhida na vertical, ficando só o título (collapsed + onToggleCollapsed).
-function ElementPalette({ level, onAdd, onCollapse, collapsed = false, onToggleCollapsed }) {
+// disabled: canvas travado (issue #75) — os elementos aparecem, mas não são adicionados nem arrastados
+function ElementPalette({ level, onAdd, onCollapse, collapsed = false, onToggleCollapsed, disabled = false }) {
   return (
     <aside
       aria-labelledby="element-palette-title"
@@ -45,7 +46,11 @@ function ElementPalette({ level, onAdd, onCollapse, collapsed = false, onToggleC
             {onCollapse && <IconButton icon={PanelLeftClose} label="Ocultar elementos" onClick={onCollapse} />}
           </div>
         </div>
-        {!collapsed && <p className="mt-0.5 text-xs text-text-muted">Arraste para o canvas ou clique</p>}
+        {!collapsed && (
+          <p className="mt-0.5 text-xs text-text-muted">
+            {disabled ? 'Canvas travado: destrave para adicionar' : 'Arraste para o canvas ou clique'}
+          </p>
+        )}
       </div>
       <AnimatePresence initial={false}>
         {!collapsed && (
@@ -63,12 +68,17 @@ function ElementPalette({ level, onAdd, onCollapse, collapsed = false, onToggleC
             <li key={type}>
               <button
                 type="button"
-                draggable
+                draggable={!disabled}
+                disabled={disabled}
                 aria-label={element.name}
-                title={`${element.name} — arraste para o canvas ou clique para adicionar`}
+                title={
+                  disabled
+                    ? `${element.name} — destrave o canvas para adicionar`
+                    : `${element.name} — arraste para o canvas ou clique para adicionar`
+                }
                 onDragStart={(event) => handleDragStart(event, type)}
                 onClick={() => onAdd(type)}
-                className="flex h-[76px] w-full cursor-grab flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-raised text-[11px] font-medium text-text-secondary transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-0.5 hover:border-accent-text/50 hover:bg-[#1e2a42] hover:text-text-primary active:scale-95 active:cursor-grabbing"
+                className="flex h-[76px] w-full cursor-grab flex-col items-center justify-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-raised text-[11px] font-medium text-text-secondary transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-0.5 hover:border-accent-text/50 hover:bg-[#1e2a42] hover:text-text-primary active:scale-95 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-line disabled:hover:bg-surface-raised disabled:hover:text-text-secondary disabled:active:scale-100"
               >
                 <ElementGlyph type={type} />
                 <span className="truncate px-1">{element.shortName}</span>

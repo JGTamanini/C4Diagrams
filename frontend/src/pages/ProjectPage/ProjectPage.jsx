@@ -191,6 +191,8 @@ function EditorBody({
       boundary={boundary}
       onOpenShortcuts={onOpenShortcuts}
       exporterRef={exporterRef}
+      locked={editor.locked}
+      onToggleLock={editor.toggleLock}
       onSelectTreeElement={onSelectTreeElement}
       onNodesChange={editor.onNodesChange}
       onEdgesChange={editor.onEdgesChange}

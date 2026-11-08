@@ -28,6 +28,8 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
     exporterRef,
     scopeLabels,
     boundary,
+    locked,
+    onToggleLock,
     onOpenShortcuts,
     onSelectTreeElement,
     onTogglePalette,
@@ -54,7 +56,9 @@ vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
       data-tree-levels={Object.keys(nodesByLevel).join(',')}
       data-scope-labels={JSON.stringify(scopeLabels)}
       data-boundary={boundary ? `${boundary.label} [${boundary.type}] ${boundary.innerTypes.join(',')}` : ''}
+      data-locked={String(locked)}
     >
+      <button type="button" onClick={onToggleLock}>mock-lock</button>
       <button type="button" onClick={onOpenShortcuts}>mock-shortcuts</button>
       <button type="button" onClick={() => onSelectTreeElement('container', 'c1')}>mock-tree-container</button>
       <button type="button" onClick={() => onSelectTreeElement('context', 'n2')}>mock-tree-context</button>
@@ -109,6 +113,8 @@ const editor = {
   canRedo: false,
   save: vi.fn(),
   saveStatus: 'saved',
+  locked: false,
+  toggleLock: vi.fn(),
 };
 
 function mockEditor(overrides = {}) {
@@ -400,6 +406,16 @@ describe('ProjectPage (editor de diagramas)', () => {
       await user.click(screen.getByRole('button', { name: 'Cancelar' }));
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
     });
+  });
+
+  // Issue #75: o travamento é do editor, e o canvas só o mostra e pede a troca
+  it('deve passar ao canvas o travamento do editor e a ação de travar', async () => {
+    const user = userEvent.setup();
+    await renderLoaded({ locked: true });
+
+    expect(screen.getByTestId('canvas')).toHaveAttribute('data-locked', 'true');
+    await user.click(screen.getByRole('button', { name: 'mock-lock' }));
+    expect(editor.toggleLock).toHaveBeenCalled();
   });
 
   describe('salvamento (RNF08)', () => {
