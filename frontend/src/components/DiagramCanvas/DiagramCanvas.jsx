@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ClipboardPaste,
+  Code,
   Copy,
   Grid3x3,
   Keyboard,
@@ -74,7 +75,7 @@ const ARIA_LABELS = { 'controls.ariaLabel': 'Controles do canvas' };
 
 // Nota: barra de controles do canvas, embaixo e no centro — zoom (com o valor atual, que volta a 100% ao clicar),
 // enquadrar, travar o canvas, alinhar à grade e os atalhos. Fica dentro do React Flow para acompanhar o zoom.
-function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpenShortcuts }) {
+function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpenShortcuts, onOpenText }) {
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow();
   const { zoom } = useViewport();
   const percent = Math.round(zoom * 100);
@@ -114,6 +115,11 @@ function CanvasControls({ locked, onToggleLock, snapToGrid, onToggleSnap, onOpen
       <ControlButton aria-label="Alinhar à grade" aria-pressed={snapToGrid} title="Alinhar à grade" onClick={onToggleSnap}>
         <Grid3x3 aria-hidden="true" />
       </ControlButton>
+      {onOpenText && (
+        <ControlButton aria-label="Modo textual" title="Modo textual (escrever o diagrama)" onClick={onOpenText}>
+          <Code aria-hidden="true" />
+        </ControlButton>
+      )}
       {onOpenShortcuts && (
         <>
           <span aria-hidden="true" className="c4-controls-divider" />
@@ -161,6 +167,7 @@ function DiagramWorkspace({
   issues = [],
   focusRequest = null,
   onOpenShortcuts,
+  onOpenText,
   exporterRef,
   nodesByLevel = null,
   scopeLabels,
@@ -410,6 +417,7 @@ function DiagramWorkspace({
             snapToGrid={snapToGrid}
             onToggleSnap={() => setSnapToGrid((current) => !current)}
             onOpenShortcuts={onOpenShortcuts}
+            onOpenText={onOpenText}
           />
         </ReactFlow>
 

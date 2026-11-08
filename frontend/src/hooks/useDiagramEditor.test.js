@@ -830,6 +830,43 @@ describe('useDiagramEditor', () => {
     });
   });
 
+  describe('modo textual (RF19)', () => {
+    it('deve aplicar o que veio do texto num passo só do desfazer', async () => {
+      const { result } = await renderLoadedEditor();
+      const plan = {
+        addNodes: [{ id: 'n3', type: 'c4-system-external', position: { x: 600, y: 0 }, data: { label: 'Gateway' } }],
+        addEdges: [{ id: 'e2', source: 'n2', target: 'n3', label: 'Cobra via', data: { technology: 'HTTPS' } }],
+        updateNodes: [{ id: 'n1', data: { label: 'Cliente VIP', description: 'Compra' } }],
+        updateEdges: [{ id: 'e1', label: 'Compra livros em', technology: '' }],
+      };
+
+      act(() => result.current.applyTextChanges(plan));
+
+      expect(result.current.nodes.map((n) => n.data.label)).toEqual(['Cliente VIP', 'Loja', 'Gateway']);
+      expect(result.current.nodes[0].data).toEqual({ label: 'Cliente VIP', description: 'Compra' });
+      expect(result.current.edges.map((e) => [e.id, e.label, e.data])).toEqual([
+        ['e1', 'Compra livros em', {}],
+        ['e2', 'Cobra via', { technology: 'HTTPS' }],
+      ]);
+
+      act(() => result.current.undo());
+      expect(result.current.nodes.map((n) => n.data.label)).toEqual(['Cliente', 'Loja']);
+      expect(result.current.edges.map((e) => e.label)).toEqual(['Compra em']);
+    });
+
+    it('deve inverter o sentido da relação quando o texto pedir', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() =>
+        result.current.applyTextChanges({
+          updateEdges: [{ id: 'e1', label: 'Compra em', technology: 'HTTPS', source: 'n2', target: 'n1' }],
+        })
+      );
+
+      expect(result.current.edges[0]).toMatchObject({ id: 'e1', source: 'n2', target: 'n1', label: 'Compra em' });
+    });
+  });
+
   describe('ligação entre níveis e relações no modal (RF22)', () => {
     it('deve definir o foco de um nível (mesmo não sendo o aberto), salvá-lo e permitir desfazer', async () => {
       const { result } = await renderLoadedEditor();
