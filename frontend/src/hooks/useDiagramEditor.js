@@ -31,6 +31,20 @@ function emptyDiagrams() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: [], edges: [] }]));
 }
 
+function emptyVersions() {
+  return Object.fromEntries(LEVEL_IDS.map((level) => [level, null]));
+}
+
+function withoutLevel(byLevel, level) {
+  const next = { ...byLevel };
+  delete next[level];
+  return next;
+}
+
+function isVersionConflict(error) {
+  return error?.response?.status === 412;
+}
+
 function emptyHistory() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { past: [], future: [] }]));
 }
@@ -61,6 +75,11 @@ export function useDiagramEditor(projectId) {
 
   const diagramsRef = useRef(diagrams);
   const dirtyLevelsRef = useRef(new Set());
+  // Issue #74: a versão de cada nível que esta aba conhece (null: o nível ainda não existe no banco)
+  const versionsRef = useRef(emptyVersions());
+  // Níveis em conflito com outra aba ou dispositivo, com a versão atual no banco; não são salvos até o usuário escolher
+  const [conflicts, setConflicts] = useState({});
+  const conflictsRef = useRef(conflicts);
   const autosaveTimerRef = useRef(null);
   const inFlightSaveRef = useRef(null);
   const saveRequestedRef = useRef(false);
@@ -83,9 +102,13 @@ export function useDiagramEditor(projectId) {
       .then((saved) => {
         if (!active) return;
         const loaded = emptyDiagrams();
-        saved.forEach(({ level, data }) => {
-          if (loaded[level]) loaded[level] = fromApi(data);
+        const versions = emptyVersions();
+        saved.forEach(({ level, data, version }) => {
+          if (!loaded[level]) return;
+          loaded[level] = fromApi(data);
+          versions[level] = version ?? null;
         });
+        versionsRef.current = versions;
         setDiagrams(loaded);
         setLoadStatus('ready');
       })
@@ -96,21 +119,50 @@ export function useDiagramEditor(projectId) {
     };
   }, [projectId]);
 
+  const updateConflicts = useCallback((update) => {
+    conflictsRef.current = update(conflictsRef.current);
+    setConflicts(conflictsRef.current);
+  }, []);
+
+  // Estado do salvamento quando nada está sendo enviado: conflito pede uma escolha, então vem antes do "não salvo"
+  const idleStatus = useCallback(() => {
+    if (Object.keys(conflictsRef.current).length > 0) return 'conflict';
+    return dirtyLevelsRef.current.size > 0 ? 'pending' : 'saved';
+  }, []);
+
   // Nota: salva os níveis alterados em paralelo (são registros independentes). Só os que falharem voltam
-  // para a fila, e as alterações continuam em memória (RFC 3.2.2).
+  // para a fila, e as alterações continuam em memória (RFC 3.2.2). Cada nível vai com a versão que esta aba conhece
+  // (issue #74): se outra aba gravou antes, o nível fica em conflito e para de ser salvo até o usuário escolher.
   const saveDirtyLevels = useCallback(async function saveRound() {
     saveRequestedRef.current = false;
-    const levels = [...dirtyLevelsRef.current];
-    dirtyLevelsRef.current.clear();
+    const levels = [...dirtyLevelsRef.current].filter((level) => !(level in conflictsRef.current));
+    levels.forEach((level) => dirtyLevelsRef.current.delete(level));
+    if (levels.length === 0) {
+      setSaveStatus(idleStatus());
+      return;
+    }
     setSaveStatus('saving');
 
     const results = await Promise.allSettled(
-      levels.map((level) => saveDiagram(projectId, level, toApi(diagramsRef.current[level])))
+      levels.map((level) => saveDiagram(projectId, level, toApi(diagramsRef.current[level]), versionsRef.current[level]))
     );
-    const failedLevels = levels.filter((_, index) => results[index].status === 'rejected');
+    let failed = false;
+    results.forEach((outcome, index) => {
+      const level = levels[index];
+      if (outcome.status === 'fulfilled') {
+        versionsRef.current[level] = outcome.value?.version ?? null;
+        return;
+      }
+      dirtyLevelsRef.current.add(level);
+      if (isVersionConflict(outcome.reason)) {
+        const currentVersion = outcome.reason.response.data?.currentVersion ?? null;
+        updateConflicts((current) => ({ ...current, [level]: currentVersion }));
+      } else {
+        failed = true;
+      }
+    });
 
-    if (failedLevels.length > 0) {
-      failedLevels.forEach((level) => dirtyLevelsRef.current.add(level));
+    if (failed) {
       setSaveStatus('error');
       return;
     }
@@ -120,8 +172,8 @@ export function useDiagramEditor(projectId) {
       return;
     }
 
-    setSaveStatus(dirtyLevelsRef.current.size > 0 ? 'pending' : 'saved');
-  }, [projectId]);
+    setSaveStatus(idleStatus());
+  }, [projectId, idleStatus, updateConflicts]);
 
   // Nota: um salvamento por vez — dois PUTs do mesmo nível em paralelo podem chegar fora de ordem e gravar
   // a versão antiga por cima da nova. Um pedido feito durante o salvamento roda logo depois dele.
@@ -150,6 +202,41 @@ export function useDiagramEditor(projectId) {
       }, AUTOSAVE_DELAY_MS);
     },
     [save]
+  );
+
+  // Issue #74: o usuário escolhe o que fica no nível em conflito com outra aba ou dispositivo.
+  // "mine": grava esta versão por cima da atual, de propósito; "saved": troca o nível pelo que está no banco.
+  const resolveConflict = useCallback(
+    async (level, choice) => {
+      if (!(level in conflictsRef.current)) return;
+
+      if (choice === 'mine') {
+        versionsRef.current[level] = conflictsRef.current[level];
+        updateConflicts((current) => withoutLevel(current, level));
+        dirtyLevelsRef.current.add(level);
+        await save();
+        return;
+      }
+
+      let saved;
+      try {
+        saved = await listDiagrams(projectId);
+      } catch {
+        setNotice('Não foi possível carregar a versão salva. Tente de novo.');
+        return;
+      }
+      const entry = saved.find((diagram) => diagram.level === level);
+      versionsRef.current[level] = entry?.version ?? null;
+      const next = { ...diagramsRef.current, [level]: entry ? fromApi(entry.data) : { nodes: [], edges: [] } };
+      diagramsRef.current = next;
+      setDiagrams(next);
+      // O histórico deste nível era da versão descartada: desfazer voltaria a ela
+      setHistory((current) => ({ ...current, [level]: { past: [], future: [] } }));
+      dirtyLevelsRef.current.delete(level);
+      updateConflicts((current) => withoutLevel(current, level));
+      setSaveStatus(idleStatus());
+    },
+    [projectId, save, idleStatus, updateConflicts]
   );
 
   // Nota: ao sair do editor, o que estiver pendente é salvo na hora
@@ -488,5 +575,7 @@ export function useDiagramEditor(projectId) {
     canRedo: history[activeLevel].future.length > 0,
     save,
     saveStatus,
+    conflictLevels: LEVEL_IDS.filter((level) => level in conflicts),
+    resolveConflict,
   };
 }

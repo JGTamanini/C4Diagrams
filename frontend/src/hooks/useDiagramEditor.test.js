@@ -7,6 +7,9 @@ vi.mock('../services/diagrams');
 
 const PROJECT_ID = '3b241101-e2bb-4255-8caf-4136c566a962';
 
+// Verificações que olham só o documento salvo: aceitam qualquer versão (a concorrência tem testes próprios)
+const ANY_VERSION = { asymmetricMatch: () => true, toString: () => 'ANY_VERSION' };
+
 const savedContext = {
   level: 'context',
   data: {
@@ -16,6 +19,7 @@ const savedContext = {
     ],
     edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Compra em', technology: 'HTTPS' }],
   },
+  version: 1,
 };
 
 async function renderLoadedEditor() {
@@ -98,7 +102,7 @@ describe('useDiagramEditor', () => {
           { id: 'n2', type: 'c4-system', position: { x: 300, y: 0 }, data: { label: 'Loja' } },
         ],
         edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Compra em', technology: 'HTTPS' }],
-      });
+      }, ANY_VERSION);
       await waitFor(() => expect(result.current.saveStatus).toBe('saved'));
     });
 
@@ -123,7 +127,7 @@ describe('useDiagramEditor', () => {
       act(() => result.current.onEdgesChange([{ type: 'remove', id: 'e1' }]));
       await advanceAutosave();
 
-      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.objectContaining({ edges: [] }));
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.objectContaining({ edges: [] }), ANY_VERSION);
     });
 
     it('deve salvar o nível vazio quando o último elemento for removido', async () => {
@@ -135,7 +139,7 @@ describe('useDiagramEditor', () => {
       act(() => result.current.onNodesChange([{ type: 'remove', id: 'n1' }]));
       await advanceAutosave();
 
-      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', { nodes: [], edges: [] });
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', { nodes: [], edges: [] }, ANY_VERSION);
     });
 
     it('deve sinalizar falha sem perder as alterações em memória (RFC 3.2.2)', async () => {
@@ -181,7 +185,7 @@ describe('useDiagramEditor', () => {
           { id: 'c2', type: 'c4-container-db', position: { x: 0, y: 200 }, data: { label: 'Banco', technology: 'PostgreSQL' } },
         ],
         edges: [{ id: 'e1', source: 'c1', target: 'c2', label: 'Lê e grava' }],
-      });
+      }, ANY_VERSION);
     });
 
     it('deve manter "pendente" quando houver alteração durante um salvamento em andamento', async () => {
@@ -298,7 +302,7 @@ describe('useDiagramEditor', () => {
       expect(added.id).not.toBe(result.current.nodes[1].id);
       expect(result.current.saveStatus).toBe('pending');
       await advanceAutosave();
-      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.objectContaining({ nodes: expect.any(Array) }));
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.objectContaining({ nodes: expect.any(Array) }), ANY_VERSION);
     });
 
     it('deve ignorar elemento incompatível com o nível ativo (RN08)', async () => {
@@ -369,7 +373,7 @@ describe('useDiagramEditor', () => {
       expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', {
         nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API de Pedidos', technology: 'Node.js' } }],
         edges: [],
-      });
+      }, ANY_VERSION);
     });
 
     it('deve atualizar rótulo e tecnologia de uma conexão', async () => {
@@ -382,7 +386,7 @@ describe('useDiagramEditor', () => {
       expect(saveDiagram).toHaveBeenCalledWith(
         PROJECT_ID,
         'context',
-        expect.objectContaining({ edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Navega em' }] })
+        expect.objectContaining({ edges: [{ id: 'e1', source: 'n1', target: 'n2', label: 'Navega em' }] }), ANY_VERSION
       );
     });
 
@@ -540,6 +544,99 @@ describe('useDiagramEditor', () => {
     });
   });
 
+  // Issue #74: a aba grava só sobre a versão que conhece; se outra aba gravou antes, o usuário escolhe o que fica
+  describe('conflito com outra aba ou dispositivo', () => {
+    const conflict = (currentVersion) =>
+      Object.assign(new Error('Request failed with status code 412'), {
+        response: { status: 412, data: { message: 'Este nível foi alterado em outra aba ou dispositivo.', currentVersion } },
+      });
+
+    it('deve enviar a versão carregada e, depois, a que cada salvamento devolve; null para nível que ainda não existe', async () => {
+      saveDiagram.mockResolvedValueOnce({ level: 'context', version: 2 });
+      const { result } = await renderLoadedEditor();
+
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenLastCalledWith(PROJECT_ID, 'context', expect.any(Object), 1);
+
+      saveDiagram.mockResolvedValueOnce({ level: 'context', version: 3 });
+      dragEnd(result, 'n1', { x: 70, y: 60 });
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenLastCalledWith(PROJECT_ID, 'context', expect.any(Object), 2);
+
+      saveDiagram.mockResolvedValueOnce({ level: 'container', version: 1 });
+      act(() => result.current.setScope('container', 'n2'));
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenLastCalledWith(PROJECT_ID, 'container', expect.any(Object), null);
+    });
+
+    it('deve parar de salvar o nível em conflito, mantendo as alterações, e seguir salvando os outros', async () => {
+      saveDiagram.mockRejectedValueOnce(conflict(5));
+      const { result } = await renderLoadedEditor();
+
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await advanceAutosave();
+
+      await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
+      expect(result.current.conflictLevels).toEqual(['context']);
+      expect(result.current.nodes[0].position).toEqual({ x: 50, y: 60 });
+
+      saveDiagram.mockClear();
+      saveDiagram.mockResolvedValue({ level: 'container', version: 1 });
+      dragEnd(result, 'n1', { x: 90, y: 60 });
+      act(() => result.current.setScope('container', 'n2'));
+      await advanceAutosave();
+
+      expect(saveDiagram).toHaveBeenCalledTimes(1);
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.any(Object), null);
+      await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
+    });
+
+    it('"Manter a minha": deve gravar por cima da versão atual, de propósito', async () => {
+      saveDiagram.mockRejectedValueOnce(conflict(5)).mockResolvedValue({ level: 'context', version: 6 });
+      const { result } = await renderLoadedEditor();
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await advanceAutosave();
+      await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
+
+      await act(() => result.current.resolveConflict('context', 'mine'));
+
+      expect(saveDiagram).toHaveBeenLastCalledWith(
+        PROJECT_ID,
+        'context',
+        expect.objectContaining({ nodes: expect.arrayContaining([expect.objectContaining({ position: { x: 50, y: 60 } })]) }),
+        5
+      );
+      expect(result.current.conflictLevels).toEqual([]);
+      expect(result.current.saveStatus).toBe('saved');
+    });
+
+    it('"Carregar a versão salva": deve trocar o nível pelo que está no banco, sem salvar nada', async () => {
+      saveDiagram.mockRejectedValueOnce(conflict(2));
+      const { result } = await renderLoadedEditor();
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await advanceAutosave();
+      await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
+      const fromOtherTab = { ...savedContext.data, nodes: [{ ...savedContext.data.nodes[0], data: { label: 'Salvo na aba B' } }] };
+      listDiagrams.mockResolvedValue([{ level: 'context', data: fromOtherTab, version: 2 }]);
+      saveDiagram.mockClear();
+
+      await act(() => result.current.resolveConflict('context', 'saved'));
+
+      expect(result.current.nodes.map((node) => node.data.label)).toEqual(['Salvo na aba B']);
+      expect(result.current.conflictLevels).toEqual([]);
+      expect(result.current.saveStatus).toBe('saved');
+      expect(result.current.canUndo).toBe(false);
+      expect(saveDiagram).not.toHaveBeenCalled();
+
+      // o próximo salvamento parte da versão carregada
+      saveDiagram.mockResolvedValue({ level: 'context', version: 3 });
+      dragEnd(result, 'n1', { x: 10, y: 10 });
+      await advanceAutosave();
+      expect(saveDiagram).toHaveBeenLastCalledWith(PROJECT_ID, 'context', expect.any(Object), 2);
+    });
+  });
+
   describe('salvamento imediato', () => {
     it('deve salvar na hora pelo botão Salvar', async () => {
       const { result } = await renderLoadedEditor();
@@ -570,7 +667,7 @@ describe('useDiagramEditor', () => {
 
       act(() => result.current.selectLevel('container'));
 
-      await waitFor(() => expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.any(Object)));
+      await waitFor(() => expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.any(Object), ANY_VERSION));
       expect(result.current.activeLevel).toBe('container');
     });
 
@@ -580,7 +677,7 @@ describe('useDiagramEditor', () => {
 
       unmount();
 
-      await waitFor(() => expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.any(Object)));
+      await waitFor(() => expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'context', expect.any(Object), ANY_VERSION));
     });
 
     it('não deve salvar nada ao sair do editor sem alterações', async () => {
@@ -838,7 +935,7 @@ describe('useDiagramEditor', () => {
       expect(result.current.scopeByLevel).toEqual({ context: null, container: { nodeId: 'n2' }, component: null });
 
       await advanceAutosave();
-      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', { nodes: [], edges: [], scope: { nodeId: 'n2' } });
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', { nodes: [], edges: [], scope: { nodeId: 'n2' } }, ANY_VERSION);
 
       act(() => result.current.selectLevel('container'));
       act(() => result.current.undo());
@@ -867,7 +964,7 @@ describe('useDiagramEditor', () => {
       });
 
       await waitFor(() => expect(saveDiagram).toHaveBeenCalledTimes(1));
-      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n3' } }));
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n3' } }), ANY_VERSION);
       await waitFor(() => expect(result.current.saveStatus).toBe('saved'));
     });
 

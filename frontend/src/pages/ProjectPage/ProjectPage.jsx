@@ -40,14 +40,21 @@ const SAVE_STATUS_TEXT = {
   pending: 'Alterações não salvas',
   saving: 'Salvando…',
   error: 'Falha ao salvar. Suas alterações continuam aqui — use "Tentar de novo" ou Ctrl+S.',
+  conflict: 'Um nível foi alterado em outra aba ou dispositivo. Escolha, no aviso, qual versão manter.',
 };
 
 // Texto curto visível ao lado do ícone, nos estados que pedem atenção
-const SAVE_STATUS_SHORT = { pending: 'Não salvo', error: 'Falha ao salvar' };
-const SAVE_STATUS_COLOR = { saved: 'text-text-muted', saving: 'text-text-muted', pending: 'text-highlight-text', error: 'text-danger' };
+const SAVE_STATUS_SHORT = { pending: 'Não salvo', error: 'Falha ao salvar', conflict: 'Conflito' };
+const SAVE_STATUS_COLOR = {
+  saved: 'text-text-muted',
+  saving: 'text-text-muted',
+  pending: 'text-highlight-text',
+  error: 'text-danger',
+  conflict: 'text-danger',
+};
 
 // "Não salvo" fica só no texto curto; o "salvo" é um check verde, para ser percebido de relance
-const SAVE_STATUS_ICON = { saved: Check, pending: null, saving: LoaderCircle, error: AlertCircle };
+const SAVE_STATUS_ICON = { saved: Check, pending: null, saving: LoaderCircle, error: AlertCircle, conflict: AlertCircle };
 const SAVE_STATUS_ICON_COLOR = { saved: 'text-success', saving: 'animate-spin' };
 
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
@@ -99,6 +106,45 @@ function EditorNotice({ message, onDismiss }) {
       <TriangleAlert aria-hidden="true" className="h-4 w-4 shrink-0 text-highlight-text" />
       {message}
       <IconButton icon={X} label="Fechar aviso" onClick={onDismiss} />
+    </motion.div>
+  );
+}
+
+const LEVEL_LABELS = Object.fromEntries(LEVELS.map((level) => [level.id, level.label]));
+
+// Nota: issue #74 — outra aba (ou outro dispositivo) gravou o nível depois da versão que esta aba conhece. O nível
+// para de ser salvo até o usuário escolher: carregar a versão salva (descarta o que mudou aqui nesse nível) ou manter a
+// sua (grava por cima, de propósito). Não some sozinho, ao contrário do aviso comum: a escolha é necessária.
+function ConflictNotice({ levels, onResolve }) {
+  return (
+    <motion.div
+      role="alert"
+      aria-label="Conflito ao salvar"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.2, ease: EASE_OUT_SOFT }}
+      className="absolute bottom-28 left-1/2 z-30 flex w-max max-w-[min(36rem,calc(100%-2rem))] -translate-x-1/2 flex-col gap-2 rounded-[var(--radius-control)] border border-danger/50 bg-surface-raised p-3 text-sm text-text-primary shadow-[var(--shadow-raised)]"
+    >
+      {levels.map((level) => (
+        <div key={level} className="flex flex-col gap-2">
+          <p className="flex items-start gap-2">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+            <span>
+              O nível {LEVEL_LABELS[level]} foi alterado em outra aba ou dispositivo, e o que mudou aqui nesse nível ainda
+              não foi salvo. Qual versão manter?
+            </span>
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => onResolve(level, 'saved')}>
+              Carregar a versão salva
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => onResolve(level, 'mine')}>
+              Manter a minha
+            </Button>
+          </div>
+        </div>
+      ))}
     </motion.div>
   );
 }
@@ -485,6 +531,11 @@ function ProjectPage() {
         )}
         <AnimatePresence>
           {editor.notice && <EditorNotice key={editor.notice} message={editor.notice} onDismiss={editor.dismissNotice} />}
+        </AnimatePresence>
+        <AnimatePresence>
+          {editor.conflictLevels.length > 0 && (
+            <ConflictNotice key="conflict" levels={editor.conflictLevels} onResolve={editor.resolveConflict} />
+          )}
         </AnimatePresence>
       </main>
 

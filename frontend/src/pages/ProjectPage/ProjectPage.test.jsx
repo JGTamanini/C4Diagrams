@@ -106,6 +106,8 @@ const editor = {
   canRedo: false,
   save: vi.fn(),
   saveStatus: 'saved',
+  conflictLevels: [],
+  resolveConflict: vi.fn(),
 };
 
 function mockEditor(overrides = {}) {
@@ -396,6 +398,30 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
       await user.click(screen.getByRole('button', { name: 'Cancelar' }));
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'true');
+    });
+  });
+
+  // Issue #74: outra aba gravou o nível antes; o usuário escolhe o que fica
+  describe('conflito com outra aba ou dispositivo', () => {
+    it('deve mostrar o conflito no indicador e no aviso, com as duas escolhas', async () => {
+      const user = userEvent.setup();
+      await renderLoaded({ saveStatus: 'conflict', conflictLevels: ['context'] });
+
+      expect(screen.getByTestId('save-status')).toHaveTextContent('Conflito');
+      const alert = screen.getByRole('alert', { name: 'Conflito ao salvar' });
+      expect(alert).toHaveTextContent('O nível Contexto foi alterado em outra aba ou dispositivo');
+
+      await user.click(within(alert).getByRole('button', { name: 'Carregar a versão salva' }));
+      expect(editor.resolveConflict).toHaveBeenCalledWith('context', 'saved');
+
+      await user.click(within(alert).getByRole('button', { name: 'Manter a minha' }));
+      expect(editor.resolveConflict).toHaveBeenCalledWith('context', 'mine');
+    });
+
+    it('não deve mostrar o aviso sem conflito', async () => {
+      await renderLoaded();
+
+      expect(screen.queryByRole('alert', { name: 'Conflito ao salvar' })).not.toBeInTheDocument();
     });
   });
 
