@@ -806,6 +806,16 @@ describe('useDiagramEditor', () => {
       expect(result.current.diagramsByLevel.context.edges).toEqual(expect.any(Array));
     });
 
+    // RF22: sem o foco, o projeto importado de volta perderia a ligação entre os níveis
+    it('deve levar o foco de cada nível na exportação, só nos níveis que têm um', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.setScope('container', 'n2'));
+
+      expect(result.current.diagramsByLevel.container.scope).toEqual({ nodeId: 'n2' });
+      expect(result.current.diagramsByLevel.context).not.toHaveProperty('scope');
+    });
+
     it('deve selecionar um elemento de outro nível (o clique na árvore troca de nível e seleciona)', async () => {
       listDiagrams.mockResolvedValue([
         savedContext,

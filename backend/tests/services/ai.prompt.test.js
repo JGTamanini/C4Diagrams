@@ -51,6 +51,20 @@ describe('Prompt das sugestões (RF16)', () => {
     expect(parsed.jaApontadoPeloValidador).toEqual(['"Banco" não tem tecnologia.']);
   });
 
+  // RF22: sem saber qual sistema o nível de Containers detalha, a IA sugeriria containers de qualquer sistema
+  it('deve dizer qual elemento do nível acima o nível detalha', () => {
+    const context = { nodes: [node('s1', 'c4-system', 'Loja Online'), node('s2', 'c4-system', 'ERP')], edges: [] };
+    const build = (data) =>
+      buildUserMessage({ project, level: 'container', data, otherLevels: { context }, knownIssues: [], depth: 'standard' });
+    const parse = (message) => JSON.parse(message.slice(message.indexOf('{')));
+
+    const withFocus = build({ ...containerData, scope: { nodeId: 's2' } });
+    expect(parse(withFocus).detalha).toBe('ERP (c4-system)');
+    expect(withFocus).toMatch(/detalha "ERP"/);
+
+    expect(parse(build(containerData)).detalha).toBeNull();
+  });
+
   it('deve pedir o ponto de partida quando o nível está vazio, usando a descrição informada', () => {
     const message = buildUserMessage({
       project,

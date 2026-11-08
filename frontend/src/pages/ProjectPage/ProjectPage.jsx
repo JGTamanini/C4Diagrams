@@ -315,16 +315,12 @@ function ProjectPage() {
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
-  // O foco escolhido para o nível vai junto: sem ele, as regras entre níveis continuariam pedindo a escolha (RF22)
-  const validation = useDiagramValidation(
-    id,
-    editor.activeLevel,
-    editor.nodes,
-    editor.edges,
-    editor.scopeByLevel[editor.activeLevel] ?? null
-  );
+  // O foco escolhido para o nível vai junto (RF22): sem ele, as regras entre níveis continuariam pedindo a escolha, e
+  // a IA não saberia o que o nível detalha
+  const activeScopeChoice = editor.scopeByLevel[editor.activeLevel] ?? null;
+  const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges, activeScopeChoice);
   // RF16: sugestões da IA sob pedido, na aba Sugestões do mesmo painel
-  const ai = useAiSuggestions(id, editor.activeLevel, editor.nodes, editor.edges);
+  const ai = useAiSuggestions(id, editor.activeLevel, editor.nodes, editor.edges, activeScopeChoice);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);

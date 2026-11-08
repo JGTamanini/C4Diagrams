@@ -1,4 +1,4 @@
-const { findViolations, validateDiagram } = require('../../src/services/c4.validation');
+const { findViolations, validateDiagram, levelFocus } = require('../../src/services/c4.validation');
 
 function node(id, type, label, data = {}) {
   return { id, type, position: { x: 0, y: 0 }, data: { label, ...data } };
@@ -328,6 +328,31 @@ describe('Motor de validação C4', () => {
 
         expect(codes(validateDiagram('component', { container, component }))).toEqual(['LEVEL_SCOPE_NOT_CHOSEN']);
         expect(validateDiagram('component', { container, component: { ...component, scope: { nodeId: 'c1' } } })).toEqual([]);
+      });
+    });
+
+    describe('levelFocus (o elemento que o nível detalha, para o prompt da IA — RF22)', () => {
+      const twoSystems = {
+        ...completeContext,
+        nodes: [...completeContext.nodes, node('s2', 'c4-system', 'ERP', { description: 'Gestão interna' })],
+      };
+
+      it('deve devolver o foco escolhido', () => {
+        const container = { ...completeContainer, scope: { nodeId: 's2' } };
+
+        expect(levelFocus('container', { context: twoSystems, container }).data.label).toBe('ERP');
+      });
+
+      it('deve devolver o único candidato quando não há foco escolhido', () => {
+        expect(levelFocus('container', { context: completeContext, container: completeContainer }).id).toBe('s1');
+      });
+
+      it('deve devolver null quando há mais de um candidato sem escolha, quando o foco não existe mais e no Contexto', () => {
+        const missing = { ...completeContainer, scope: { nodeId: 'apagado' } };
+
+        expect(levelFocus('container', { context: twoSystems, container: completeContainer })).toBeNull();
+        expect(levelFocus('container', { context: twoSystems, container: missing })).toBeNull();
+        expect(levelFocus('context', { context: completeContext })).toBeNull();
       });
     });
   });

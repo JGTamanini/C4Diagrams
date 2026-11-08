@@ -388,9 +388,15 @@ export function useDiagramEditor(projectId) {
     [diagrams]
   );
 
-  // Elementos e relações de todos os níveis, como estão no editor (exportação do projeto, RF21)
+  // Elementos, relações e foco de todos os níveis, como estão no editor (exportação do projeto, RF21 e RF22)
   const diagramsByLevel = useMemo(
-    () => Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: diagrams[level].nodes, edges: diagrams[level].edges }])),
+    () =>
+      Object.fromEntries(
+        LEVEL_IDS.map((level) => {
+          const { nodes, edges, scope } = diagrams[level];
+          return [level, scope ? { nodes, edges, scope } : { nodes, edges }];
+        })
+      ),
     [diagrams]
   );
 

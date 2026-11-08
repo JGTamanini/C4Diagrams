@@ -820,7 +820,7 @@ describe('ProjectPage (editor de diagramas)', () => {
       const user = userEvent.setup();
       await renderLoaded();
 
-      expect(useAiSuggestions).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges);
+      expect(useAiSuggestions).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges, null);
       await user.click(screen.getByRole('tab', { name: 'Sugestões' }));
 
       expect(screen.getByText(/Modo demonstração/)).toBeInTheDocument();

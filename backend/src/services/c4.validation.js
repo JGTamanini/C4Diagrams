@@ -145,6 +145,18 @@ function scopeWarnings(level, scope, candidates) {
   return [];
 }
 
+// O elemento do nível acima que o nível detalha (RF22), pela mesma regra dos avisos: o foco escolhido ou, sem
+// escolha, o único candidato. null no Contexto, com mais de um candidato sem escolha ou com o foco apagado
+function levelFocus(level, diagramsByLevel) {
+  const parent = PARENT_LEVEL[level];
+  if (!parent) return null;
+
+  const candidates = (diagramsByLevel[parent.level]?.nodes ?? []).filter((node) => node.type === parent.focus);
+  const scope = diagramsByLevel[level]?.scope;
+  if (scope) return candidates.find((node) => node.id === scope.nodeId) ?? null;
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 // Devolve os avisos gerais e o conjunto de chaves do nível acima (ou null, quando não há o que comparar)
 function parentLevelCheck(level, diagramsByLevel) {
   const parent = PARENT_LEVEL[level];
@@ -233,4 +245,4 @@ function validateDiagram(level, diagramsByLevel) {
   return issues.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 }
 
-module.exports = { findViolations, validateDiagram };
+module.exports = { findViolations, validateDiagram, levelFocus };
