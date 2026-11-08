@@ -25,6 +25,7 @@ import ShortcutsModal from '../../components/ShortcutsModal/ShortcutsModal';
 import DiagramCanvas from '../../components/DiagramCanvas/DiagramCanvas';
 import ElementFormModal from '../../components/ElementFormModal/ElementFormModal';
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
+import TextModePanel from '../../components/TextModePanel/TextModePanel';
 import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
@@ -155,6 +156,7 @@ function EditorBody({
   focusRequest,
   onSelectTreeElement,
   onOpenShortcuts,
+  onOpenText,
   exporterRef,
   scopeLabels,
   boundary,
@@ -190,6 +192,7 @@ function EditorBody({
       scopeLabels={scopeLabels}
       boundary={boundary}
       onOpenShortcuts={onOpenShortcuts}
+      onOpenText={onOpenText}
       exporterRef={exporterRef}
       locked={editor.locked}
       onToggleLock={editor.toggleLock}
@@ -319,6 +322,10 @@ function ProjectPage() {
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
+  // RF19: painel do modo textual (sobre a coluna da direita), aberto pela barra de controles do canvas
+  const [textMode, setTextMode] = useState(false);
+  const openText = useCallback(() => setTextMode(true), []);
+
   // RF18: exportar a imagem do nível aberto (o canvas preenche o exportador)
   const [showingExport, setShowingExport] = useState(false);
   const closeExport = useCallback(() => setShowingExport(false), []);
@@ -470,10 +477,25 @@ function ProjectPage() {
           focusRequest={focusRequest}
           onSelectTreeElement={selectTreeElement}
           onOpenShortcuts={openShortcuts}
+          onOpenText={openText}
           exporterRef={exporterRef}
           scopeLabels={{ container: scopes.container.focus?.data.label ?? null, component: scopes.component.focus?.data.label ?? null }}
           boundary={boundary}
         />
+        {textMode && editor.loadStatus === 'ready' && (
+          // Trocar de nível gera o texto do novo nível (a chave recria o painel)
+          <div className="pointer-events-none absolute top-3 right-3 bottom-3 z-30 flex">
+            <TextModePanel
+              key={editor.activeLevel}
+              level={editor.activeLevel}
+              levelLabel={LEVELS.find((level) => level.id === editor.activeLevel).label}
+              nodes={editor.nodes}
+              edges={editor.edges}
+              onApply={editor.applyTextChanges}
+              onClose={() => setTextMode(false)}
+            />
+          </div>
+        )}
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
         {/* Com um candidato só, ele é o foco e não há o que escolher; mas, se o foco escolhido foi apagado, é aqui que se corrige */}
         {editor.loadStatus === 'ready' && activeScope && (activeScope.candidates.length > 1 || (activeScope.status === 'missing' && activeScope.candidates.length > 0)) && (
