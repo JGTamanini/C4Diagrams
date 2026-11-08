@@ -6,10 +6,14 @@ import ProjectPage from './ProjectPage';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 
 vi.mock('../../services/projects');
 vi.mock('../../hooks/useDiagramEditor');
 vi.mock('../../hooks/useDiagramValidation');
+vi.mock('../../services/projectFile');
+vi.mock('../../hooks/useAiSuggestions');
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: function MockCanvas({
     level,
@@ -88,6 +92,8 @@ const editor = {
   nodesByLevel: { context: [], container: [], component: [] },
   scopeByLevel: { context: null, container: null, component: null },
   setScope: vi.fn(),
+  showNotice: vi.fn(),
+  diagramsByLevel: { context: { nodes: [], edges: [] }, container: { nodes: [], edges: [] }, component: { nodes: [], edges: [] } },
   selectOnly: vi.fn(),
   paste: vi.fn(),
   hasClipboard: false,
@@ -133,6 +139,19 @@ describe('ProjectPage (editor de diagramas)', () => {
     vi.clearAllMocks();
     mockEditor();
     useDiagramValidation.mockReturnValue({ status: 'ready', issues: validationIssues });
+    levelsWithErrors.mockReturnValue([]);
+    useAiSuggestions.mockReturnValue({
+      mode: 'demo',
+      limits: { suggestion: 20, deep: 3 },
+      remaining: { suggestion: 20, deep: 3 },
+      loading: null,
+      busy: false,
+      error: null,
+      result: null,
+      generate: vi.fn(),
+      cancel: vi.fn(),
+      dismiss: vi.fn(),
+    });
   });
 
   describe('estrutura (wireframe 7)', () => {
@@ -455,15 +474,58 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.save).toHaveBeenCalledTimes(1);
     });
 
-    it('deve oferecer no menu de configurações Salvar, Exportar (em breve) e Atalhos', async () => {
+    it('deve oferecer no menu de configurações Salvar, Exportar projeto e Atalhos', async () => {
       const user = userEvent.setup();
       await renderLoaded();
 
       await user.click(screen.getByRole('button', { name: 'Configurações' }));
       const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
 
-      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'ExportarEm breve', 'Atalhos']);
-      expect(items[1]).toBeDisabled();
+      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Exportar projeto.json', 'Atalhos']);
+    });
+
+    it('deve baixar o projeto inteiro (os três níveis, como estão no editor) pelo menu (RF21)', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(downloadProjectFile).toHaveBeenCalledWith({ id: 'p1', name: 'Loja Online', description: null }, editor.diagramsByLevel);
+    });
+
+    // Os diagramas chegam numa requisição separada: antes de chegarem (ou se falharem), o arquivo sairia vazio
+    it.each(['loading', 'error'])('deve desabilitar Exportar projeto enquanto os diagramas estão %s', async (loadStatus) => {
+      const user = userEvent.setup();
+      await renderLoaded({ loadStatus });
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+
+      expect(screen.getByRole('menuitem', { name: /Exportar projeto/ })).toBeDisabled();
+    });
+
+    it('deve avisar ao exportar um projeto com erros, que a importação recusaria', async () => {
+      const user = userEvent.setup();
+      levelsWithErrors.mockReturnValue(['Contexto', 'Container']);
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(downloadProjectFile).toHaveBeenCalled();
+      expect(editor.showNotice).toHaveBeenCalledWith(
+        'Projeto exportado, mas Contexto, Container têm erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.'
+      );
+    });
+
+    it('não deve avisar nada ao exportar um projeto sem erros', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: 'Configurações' }));
+      await user.click(screen.getByRole('menuitem', { name: /Exportar projeto/ }));
+
+      expect(editor.showNotice).not.toHaveBeenCalled();
     });
 
     it('deve mostrar os atalhos do editor num modal, incluindo a seleção múltipla', async () => {
@@ -738,6 +800,19 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.setScope).toHaveBeenCalledWith('container', 'n2');
       expect(editor.selectLevel).toHaveBeenCalledWith('container');
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+  });
+
+  describe('sugestões da IA (RF16)', () => {
+    it('deve ligar as sugestões ao nível aberto, na aba Sugestões do assistente', async () => {
+      const user = userEvent.setup();
+      await renderLoaded();
+
+      expect(useAiSuggestions).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges);
+      await user.click(screen.getByRole('tab', { name: 'Sugestões' }));
+
+      expect(screen.getByText(/Modo demonstração/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sugerir melhorias' })).toBeInTheDocument();
     });
   });
 });

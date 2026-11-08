@@ -27,6 +27,8 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
+import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
+import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
@@ -314,6 +316,8 @@ function ProjectPage() {
   const [paletteOpen, setPaletteOpen] = useState(true);
   // RF17: valida o nível aberto pouco depois de cada mudança e mostra o resultado no painel Assistente (à direita)
   const validation = useDiagramValidation(id, editor.activeLevel, editor.nodes, editor.edges);
+  // RF16: sugestões da IA sob pedido, na aba Sugestões do mesmo painel
+  const ai = useAiSuggestions(id, editor.activeLevel, editor.nodes, editor.edges);
   const [assistantOpen, setAssistantOpen] = useState(true);
   const toggleAssistant = useCallback(() => setAssistantOpen((open) => !open), []);
   const [focusRequest, setFocusRequest] = useState(null);
@@ -329,6 +333,17 @@ function ProjectPage() {
   function selectIssue({ nodeId, edgeId }) {
     editor.selectOnly({ nodeId, edgeId });
     setFocusRequest({ nodeId, edgeId });
+  }
+
+  // RF21: exporta como está no editor; se a importação fosse recusar o arquivo, avisa já na exportação
+  function exportProject() {
+    downloadProjectFile(project, editor.diagramsByLevel);
+    const levels = levelsWithErrors(editor.diagramsByLevel);
+    if (levels.length > 0) {
+      editor.showNotice(
+        `Projeto exportado, mas ${levels.join(', ')} ${levels.length === 1 ? 'tem' : 'têm'} erros de validação: a importação vai recusar o arquivo até eles serem corrigidos.`
+      );
+    }
   }
 
   // Clique na árvore de elementos: abre o nível do elemento (se for outro), seleciona e centraliza nele
@@ -407,7 +422,15 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
-              { label: 'Exportar', icon: Download, hint: 'Em breve', disabled: true },
+              // RF21: o projeto inteiro (os três níveis, como estão no editor) num arquivo .json. Só depois de os
+              // diagramas chegarem: antes disso (ou se a carga falhar), o arquivo sairia sem eles
+              {
+                label: 'Exportar projeto',
+                icon: Download,
+                hint: '.json',
+                disabled: !project || editor.loadStatus !== 'ready',
+                onSelect: exportProject,
+              },
               { label: 'Atalhos', icon: Keyboard, onSelect: () => setShowingShortcuts(true) },
             ]}
           />
@@ -446,6 +469,10 @@ function ProjectPage() {
                 issues={validation.issues}
                 onToggle={toggleAssistant}
                 onSelectIssue={selectIssue}
+                ai={ai}
+                nodes={editor.nodes}
+                edges={editor.edges}
+                projectDescription={project?.description}
               />
             </div>
             <div className="pointer-events-none mt-auto shrink-0">

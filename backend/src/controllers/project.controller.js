@@ -1,4 +1,5 @@
 const projectService = require('../services/project.service');
+const { importProject } = require('../services/projectImport.service');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 // Nota: só name/description saem do corpo — user_id vem sempre do token (evita mass assignment)
@@ -29,4 +30,10 @@ const remove = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-module.exports = { create, list, getById, update, remove };
+// Nota: RF21/RF15 — cria um projeto novo a partir de um arquivo exportado (ou do exemplo); nunca sobrescreve
+const importFromFile = asyncHandler(async (req, res) => {
+  const project = await importProject(req.user.id, req.body);
+  res.status(201).json(project);
+});
+
+module.exports = { create, list, getById, update, remove, importFromFile };

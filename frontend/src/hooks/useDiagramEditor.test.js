@@ -790,6 +790,22 @@ describe('useDiagramEditor', () => {
       expect(result.current.nodesByLevel.component).toEqual([]);
     });
 
+    it('deve mostrar um aviso pedido de fora do editor', async () => {
+      const { result } = await renderLoadedEditor();
+
+      act(() => result.current.showNotice('Atenção'));
+
+      expect(result.current.notice).toBe('Atenção');
+    });
+
+    it('deve expor os elementos e as relações de todos os níveis (exportação do projeto)', async () => {
+      const { result } = await renderLoadedEditor();
+
+      expect(Object.keys(result.current.diagramsByLevel)).toEqual(['context', 'container', 'component']);
+      expect(result.current.diagramsByLevel.context.nodes).toBe(result.current.nodesByLevel.context);
+      expect(result.current.diagramsByLevel.context.edges).toEqual(expect.any(Array));
+    });
+
     it('deve selecionar um elemento de outro nível (o clique na árvore troca de nível e seleciona)', async () => {
       listDiagrams.mockResolvedValue([
         savedContext,
