@@ -835,6 +835,32 @@ describe('useDiagramEditor', () => {
       expect(result.current.scopeByLevel.container).toBeNull();
     });
 
+    // "Detalhar" no modal escolhe o foco e abre o nível na mesma ação: trocar de nível salva na hora, e esse
+    // salvamento precisa levar o foco novo (antes levava o anterior e ainda marcava "salvo")
+    it('deve salvar o foco novo quando ele é escolhido e o nível é trocado na mesma ação', async () => {
+      listDiagrams.mockResolvedValue([
+        savedContext,
+        {
+          level: 'container',
+          data: {
+            nodes: [{ id: 'c1', type: 'c4-container', position: { x: 0, y: 0 }, data: { label: 'API' } }],
+            edges: [],
+            scope: { nodeId: 'n2' },
+          },
+        },
+      ]);
+      const { result } = await renderLoadedEditor();
+
+      act(() => {
+        result.current.setScope('container', 'n3');
+        result.current.selectLevel('container');
+      });
+
+      await waitFor(() => expect(saveDiagram).toHaveBeenCalledTimes(1));
+      expect(saveDiagram).toHaveBeenCalledWith(PROJECT_ID, 'container', expect.objectContaining({ scope: { nodeId: 'n3' } }));
+      await waitFor(() => expect(result.current.saveStatus).toBe('saved'));
+    });
+
     it('deve carregar o foco salvo e mantê-lo ao excluir elementos', async () => {
       listDiagrams.mockResolvedValue([
         savedContext,

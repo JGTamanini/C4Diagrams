@@ -633,7 +633,7 @@ describe('ProjectPage (editor de diagramas)', () => {
     it('deve validar o nível aberto e mostrar o resultado no assistente', async () => {
       await renderLoaded();
 
-      expect(useDiagramValidation).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges);
+      expect(useDiagramValidation).toHaveBeenCalledWith('p1', 'context', editor.nodes, editor.edges, null);
       const panel = screen.getByRole('complementary', { name: 'Assistente' });
       expect(within(panel).getByRole('region', { name: 'Erros (1)' })).toBeInTheDocument();
       expect(screen.getByTestId('canvas')).toHaveAttribute('data-issues', '2');
@@ -777,6 +777,18 @@ describe('ProjectPage (editor de diagramas)', () => {
       });
 
       expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
+    });
+
+    it('deve validar o nível aberto com o foco escolhido para ele', async () => {
+      await renderLoaded({
+        activeLevel: 'container',
+        nodes: containerNodes,
+        edges: [],
+        nodesByLevel,
+        scopeByLevel: { context: null, container: { nodeId: 'n2' }, component: null },
+      });
+
+      expect(useDiagramValidation).toHaveBeenCalledWith('p1', 'container', containerNodes, [], { nodeId: 'n2' });
     });
 
     it('deve mostrar no modal as relações do elemento', async () => {

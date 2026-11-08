@@ -240,10 +240,15 @@ export function useDiagramEditor(projectId) {
 
   // RF22: o elemento do nível de cima que um nível detalha. Pode ser definido de outro nível (o modal de um sistema
   // no Contexto escolhe o foco do nível de Containers); é uma edição daquele nível, com desfazer e salvamento
+  // Nota: a referência é atualizada na hora, e não só depois da renderização: "Detalhar" escolhe o foco e troca de
+  // nível na mesma ação, e a troca salva imediatamente lendo a referência (com o foco anterior, se ainda não mudou)
   const setScope = useCallback(
     (level, nodeId) => {
-      record(level, diagramsRef.current[level]);
-      setDiagrams((current) => ({ ...current, [level]: { ...current[level], scope: { nodeId } } }));
+      const current = diagramsRef.current;
+      record(level, current[level]);
+      const next = { ...current, [level]: { ...current[level], scope: { nodeId } } };
+      diagramsRef.current = next;
+      setDiagrams(next);
       markDirty(level);
     },
     [markDirty, record]
