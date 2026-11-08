@@ -25,7 +25,14 @@ const edges = [{ id: 'e1', source: 'p1', target: 's1', label: 'Usa' }];
 // Canvas 2D de mentira (o jsdom não desenha): registra o que foi pedido
 function fakeContext() {
   return new Proxy(
-    { measureText: (text) => ({ width: text.length * 7 }), calls: [] },
+    {
+      font: '14px sans-serif',
+      calls: [],
+      // Largura aproximada: metade do tamanho da fonte por caractere
+      measureText(text) {
+        return { width: text.length * Number(/(\d+)px/.exec(this.font)[1]) * 0.5 };
+      },
+    },
     {
       get(target, prop) {
         if (prop in target) return target[prop];
@@ -56,6 +63,10 @@ const baseOptions = { projectName: 'Loja Online', levelLabel: 'Contexto', nodes,
 describe('exportar imagem do diagrama (RF18)', () => {
   let context;
   let anchorClicks;
+  // Tamanho da imagem capturada pelo html-to-image (2x a largura lógica)
+  let capturedSize;
+  // Largura de cada canvas final, no momento em que vira imagem
+  let finalWidths;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,14 +74,19 @@ describe('exportar imagem do diagrama (RF18)', () => {
     toPng.mockResolvedValue('data:image/png;base64,DIAGRAMA');
     context = fakeContext();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
-    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,FINAL');
+    capturedSize = { width: 2400, height: 1600 };
+    finalWidths = [];
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(function toDataURL() {
+      finalWidths.push(this.width);
+      return 'data:image/png;base64,FINAL';
+    });
     anchorClicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     // Imagens carregam na hora, com o tamanho pedido
     vi.stubGlobal(
       'Image',
       class {
-        width = 2400;
-        height = 1600;
+        width = capturedSize.width;
+        height = capturedSize.height;
         set src(value) {
           this.loaded = value;
           queueMicrotask(() => this.onload());
@@ -121,6 +137,41 @@ describe('exportar imagem do diagrama (RF18)', () => {
     const download = anchorClicks.mock.contexts[0];
     expect(download.download).toBe('loja-online-contexto.png');
     expect(download.href).toBe('data:image/png;base64,FINAL');
+  });
+
+  // Diagrama alto e estreito (ex.: 20 componentes em coluna): a imagem não pode ficar mais estreita que o título e a
+  // legenda, que têm fonte fixa
+  it('deve garantir uma largura mínima, centralizando o diagrama estreito, e encurtar o título que não couber', async () => {
+    capturedSize = { width: 612, height: 4800 };
+    const { flow } = flowElement();
+    const longName = 'Plataforma de Gestão Integrada de Pedidos, Estoque, Faturamento e Logística da Loja Online de Livros Usados';
+
+    await exportDiagramImage({ ...baseOptions, projectName: longName, flowElement: flow, format: 'png', area: 'content', background: 'dark' });
+
+    const [width] = finalWidths;
+    expect(width).toBe(1120);
+    const draw = context.calls.find(([call]) => call === 'drawImage');
+    expect(draw[2]).toBe((1120 - 612) / 2);
+
+    const texts = context.calls.filter(([call]) => call === 'fillText');
+    const [, title, titleX] = texts[0];
+    // Só o nome do projeto é encurtado: o nível continua visível
+    expect(title).toMatch(/… · Contexto$/);
+    expect(title.startsWith('Plataforma de Gestão')).toBe(true);
+    for (const [, text, x] of texts) {
+      expect(x + context.measureText(text).width).toBeLessThanOrEqual(width);
+    }
+    expect(titleX).toBeGreaterThan(0);
+  });
+
+  it('deve manter a largura do diagrama quando ele já é mais largo que o mínimo, sem encurtar o título', async () => {
+    const { flow } = flowElement();
+
+    await exportDiagramImage({ ...baseOptions, flowElement: flow, format: 'png', area: 'content', background: 'dark' });
+
+    expect(finalWidths[0]).toBe(2400);
+    expect(context.calls.find(([call]) => call === 'drawImage')[2]).toBe(0);
+    expect(context.calls.find(([call]) => call === 'fillText')[1]).toBe('Loja Online · Contexto');
   });
 
   it('deve exportar só a área visível na tela, como ela está', async () => {

@@ -17,6 +17,9 @@ const PIXEL_RATIO = 2;
 const CONTENT_MARGIN = 90;
 const BASE_WIDTH = 1600;
 const MAX_SIDE = 2400;
+// Largura mínima da imagem final (em pixels de tela): título e legenda têm fonte fixa, e um diagrama alto e estreito
+// (ex.: componentes em coluna) deixaria a imagem estreita demais para eles
+const MIN_COMPOSED_WIDTH = 560;
 const ELEMENT_ORDER = Object.keys(C4_ELEMENTS);
 const RELATIONSHIP_LEGEND = 'Relacionamento (rótulo [tecnologia])';
 
@@ -109,8 +112,21 @@ function drawLegendItem(context, item, x, y, theme, scale) {
   context.fillText(item.label, x + 30 * scale, y + 4.5 * scale);
 }
 
-// Título no topo ("Projeto · Nível") e legenda embaixo, em volta do diagrama capturado
-async function composeWithTitleAndLegend(diagramUrl, { title, legend, theme }) {
+// Título "Projeto · Nível" que cabe na largura (com a fonte já definida no contexto): se não couber, só o nome do
+// projeto é encurtado com "…", e o nível continua visível
+function fitTitle(context, projectName, levelLabel, maxWidth) {
+  const suffix = ` · ${levelLabel}`;
+  const full = `${projectName}${suffix}`;
+  if (context.measureText(full).width <= maxWidth) return full;
+  let name = projectName;
+  while (name.length > 1 && context.measureText(`${name}…${suffix}`).width > maxWidth) name = name.slice(0, -1);
+  return `${name.trimEnd()}…${suffix}`;
+}
+
+// Título no topo ("Projeto · Nível") e legenda embaixo, em volta do diagrama capturado. A imagem tem uma largura
+// mínima, com o diagrama estreito centralizado; o título que não couber termina em "…"
+
+async function composeWithTitleAndLegend(diagramUrl, { projectName, levelLabel, legend, theme }) {
   const diagram = await loadImage(diagramUrl);
   const scale = PIXEL_RATIO;
   const padding = 24 * scale;
@@ -118,21 +134,25 @@ async function composeWithTitleAndLegend(diagramUrl, { title, legend, theme }) {
   const rowHeight = 26 * scale;
   const legendFont = `${13 * scale}px Inter, sans-serif`;
 
+  const width = Math.max(diagram.width, MIN_COMPOSED_WIDTH * scale);
+  const contentWidth = width - 2 * padding;
+  const titleFont = `600 ${20 * scale}px Inter, sans-serif`;
+
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   context.font = legendFont;
-  const rows = layoutLegend(context, legend, diagram.width - 2 * padding, scale);
+  const rows = layoutLegend(context, legend, contentWidth, scale);
   const legendHeight = rows.length * rowHeight + padding;
 
-  canvas.width = diagram.width;
+  canvas.width = width;
   canvas.height = titleHeight + diagram.height + legendHeight;
   context.fillStyle = theme.background;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   context.fillStyle = theme.title;
-  context.font = `600 ${20 * scale}px Inter, sans-serif`;
-  context.fillText(title, padding, 36 * scale);
-  context.drawImage(diagram, 0, titleHeight);
+  context.font = titleFont;
+  context.fillText(fitTitle(context, projectName, levelLabel, contentWidth), padding, 36 * scale);
+  context.drawImage(diagram, Math.round((width - diagram.width) / 2), titleHeight);
 
   context.font = legendFont;
   rows.forEach((row, index) => {
@@ -171,7 +191,8 @@ export async function exportDiagramImage({ flowElement, nodes, edges, viewport, 
   }
 
   const imageUrl = await composeWithTitleAndLegend(diagramUrl, {
-    title: `${projectName} · ${levelLabel}`,
+    projectName,
+    levelLabel,
     legend: legendItems(nodes, edges),
     theme,
   });
