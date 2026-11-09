@@ -800,50 +800,30 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(JSON.parse(canvas.dataset.scopeLabels)).toEqual({ container: 'Loja', component: null });
     });
 
-    it('deve pedir qual elemento o nível detalha quando há mais de um candidato, e guardar a escolha', async () => {
-      const user = userEvent.setup();
+    // A escolha do que o nível detalha fica só no modal do elemento do nível de cima ("Detalhar"), onde o usuário
+    // vê o elemento; abaixo das abas não há mais seletor
+    it('não deve mostrar seletor de foco abaixo das abas, nem com mais de um candidato', async () => {
       await renderLoaded({ activeLevel: 'component', nodes: [], edges: [], nodesByLevel });
 
-      const picker = screen.getByLabelText('Elemento que este nível detalha');
-      expect(screen.getByTestId('canvas')).toHaveAttribute('data-boundary', '');
-      await user.selectOptions(picker, 'c2');
-
-      expect(editor.setScope).toHaveBeenCalledWith('component', 'c2');
-    });
-
-    it('não deve mostrar a escolha quando só há um candidato (ele é o foco)', async () => {
-      await renderLoaded({ activeLevel: 'container', nodes: containerNodes, edges: [], nodesByLevel });
-
       expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
+      expect(screen.getByTestId('canvas')).toHaveAttribute('data-boundary', '');
     });
 
-    it('deve mostrar a escolha quando o foco se perdeu, mesmo com um candidato só, para o usuário corrigir ali', async () => {
+    it('deve explicar no modal a troca de foco quando o nível de baixo já detalha outro elemento', async () => {
       const user = userEvent.setup();
+      const withTwoSystems = [...contextNodes, { ...contextNodes[1], id: 'n3', data: { label: 'ERP' } }];
       await renderLoaded({
-        activeLevel: 'container',
-        nodes: containerNodes,
-        edges: [],
-        nodesByLevel,
-        scopeByLevel: { context: null, container: { nodeId: 'apagado' }, component: null },
+        nodes: withTwoSystems,
+        nodesByLevel: { ...nodesByLevel, context: withTwoSystems },
+        scopeByLevel: { context: null, container: { nodeId: 'n3' }, component: null },
       });
 
-      const picker = screen.getByLabelText('Elemento que este nível detalha');
-      expect(screen.getByTestId('canvas')).toHaveAttribute('data-boundary', '');
-      await user.selectOptions(picker, 'n2');
+      await user.click(screen.getByRole('button', { name: 'mock-edit-system' }));
 
+      expect(screen.getByText(/O nível Container detalha "ERP"/)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Trocar o foco para este' }));
       expect(editor.setScope).toHaveBeenCalledWith('container', 'n2');
-    });
-
-    it('não deve mostrar a escolha quando o foco se perdeu e não há candidato', async () => {
-      await renderLoaded({
-        activeLevel: 'container',
-        nodes: containerNodes,
-        edges: [],
-        nodesByLevel: { ...nodesByLevel, context: [contextNodes[0]] },
-        scopeByLevel: { context: null, container: { nodeId: 'apagado' }, component: null },
-      });
-
-      expect(screen.queryByLabelText('Elemento que este nível detalha')).not.toBeInTheDocument();
+      expect(editor.selectLevel).toHaveBeenCalledWith('container');
     });
 
     it('deve validar o nível aberto com o foco escolhido para ele', async () => {

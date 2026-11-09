@@ -3,7 +3,7 @@
   "version": 1,
   "project": {
     "name": "Loja Online (exemplo)",
-    "description": "Loja virtual de livros: o cliente navega no catálogo, faz pedidos e paga com cartão."
+    "description": "Loja de livros. Só a API é detalhada em componentes: no C4, detalha-se apenas o que agrega valor."
   },
   "diagrams": {
     "context": {

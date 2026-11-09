@@ -36,7 +36,6 @@ import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
 import { INNER_TYPES, SCOPE_TYPE_LABEL, detailLevelOf, isInnerType, resolveScope } from '../../constants/levelScope';
-import ScopePicker from '../../components/ScopePicker/ScopePicker';
 
 const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
@@ -248,6 +247,8 @@ function levelInfoOf(editor, node) {
     count: editor.nodesByLevel[childLevel].filter((child) => isInnerType(childLevel, child.type)).length,
     isFocus: scopes[childLevel].focus?.id === node.id,
   };
+  // O nível de baixo já detalha outro elemento: detalhar este troca o foco
+  if (detail && !detail.isFocus) detail.currentFocusLabel = scopes[childLevel].focus?.data.label ?? null;
   return { partOf, detail };
 }
 
@@ -495,10 +496,6 @@ function ProjectPage() {
           </div>
         )}
         <LevelTabs activeLevel={editor.activeLevel} onSelect={editor.selectLevel} />
-        {/* Com um candidato só, ele é o foco e não há o que escolher; mas, se o foco escolhido foi apagado, é aqui que se corrige */}
-        {editor.loadStatus === 'ready' && activeScope && (activeScope.candidates.length > 1 || (activeScope.status === 'missing' && activeScope.candidates.length > 0)) && (
-          <ScopePicker scope={activeScope} onChange={(nodeId) => editor.setScope(editor.activeLevel, nodeId)} />
-        )}
         {editor.loadStatus === 'ready' && (
           // Coluna da direita: o assistente em cima e a legenda no canto de baixo. Se o assistente crescer até a legenda,
           // é ele que encolhe e rola por dentro; a legenda não se mexe. A coluna deixa passar os cliques para o canvas:

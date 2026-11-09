@@ -226,6 +226,31 @@ describe('ElementFormModal (RF22)', () => {
       await user.click(screen.getByRole('button', { name: 'Detalhar no nível Container' }));
 
       expect(onDetail).toHaveBeenCalled();
+      expect(screen.queryByText(/detalha um elemento por vez/)).not.toBeInTheDocument();
+    });
+
+    // Cada nível detalha um elemento por vez (RN06); no C4, detalha-se só o que agrega valor
+    it('deve explicar que detalhar este elemento troca o foco do nível de baixo, quando ele já detalha outro', async () => {
+      const user = userEvent.setup();
+      const onDetail = vi.fn();
+      renderModal(
+        { kind: 'node', type: 'c4-container', data: { label: 'Aplicação Web' } },
+        {
+          levelInfo: {
+            partOf: null,
+            detail: { levelName: 'Componente', count: 3, isFocus: false, currentFocusLabel: 'API de Pedidos' },
+          },
+          onDetail,
+        }
+      );
+
+      const note = screen.getByText(/O nível Componente detalha "API de Pedidos"/);
+      expect(note).toHaveTextContent('Cada nível detalha um elemento por vez');
+      expect(note).toHaveTextContent('no C4, só se detalha o que agrega valor');
+      expect(note).toHaveTextContent('os 3 elementos que já estão lá continuam');
+      await user.click(screen.getByRole('button', { name: 'Trocar o foco para este' }));
+
+      expect(onDetail).toHaveBeenCalled();
     });
   });
 });

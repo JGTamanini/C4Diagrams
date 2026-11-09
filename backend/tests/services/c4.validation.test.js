@@ -289,7 +289,8 @@ describe('Motor de validação C4', () => {
           {
             code: 'LEVEL_SCOPE_NOT_CHOSEN',
             severity: 'warning',
-            message: 'O diagrama de Contexto tem 2 sistemas de software: indique qual deles o de Containers detalha.',
+            message:
+              'O diagrama de Contexto tem 2 sistemas de software: indique qual deles o de Containers detalha (no diagrama de Contexto, abra o elemento e use "Detalhar").',
           },
         ]);
       });
@@ -310,7 +311,8 @@ describe('Motor de validação C4', () => {
           {
             code: 'LEVEL_SCOPE_NOT_FOUND',
             severity: 'warning',
-            message: 'O elemento que o diagrama de Containers detalhava não existe mais no de Contexto: indique qual sistema ele detalha.',
+            message:
+              'O elemento que o diagrama de Containers detalhava não existe mais no de Contexto: indique qual sistema ele detalha (no diagrama de Contexto, abra o elemento e use "Detalhar").',
           },
         ]);
       });

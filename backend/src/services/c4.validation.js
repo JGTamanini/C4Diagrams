@@ -126,6 +126,9 @@ function levelWarnings(level, data) {
   return warnings;
 }
 
+// Onde o usuário escolhe o foco: no modal do elemento do nível de cima, pela ação "Detalhar"
+const WHERE_TO_CHOOSE = (parentName) => `(no diagrama de ${parentName}, abra o elemento e use "Detalhar")`;
+
 // RF22: o foco do nível (o elemento do nível acima que ele detalha). Sem foco escolhido, vale o único candidato;
 // com mais de um, o usuário precisa indicar. Foco apagado (ou de outro tipo) também é avisado.
 function scopeWarnings(level, scope, candidates) {
@@ -135,11 +138,11 @@ function scopeWarnings(level, scope, candidates) {
 
   if (scope) {
     if (candidates.some((node) => node.id === scope.nodeId)) return [];
-    const message = `O elemento que o diagrama de ${levelName} detalhava não existe mais no de ${parentName}: indique qual ${parent.detailedNoun} ele detalha.`;
+    const message = `O elemento que o diagrama de ${levelName} detalhava não existe mais no de ${parentName}: indique qual ${parent.detailedNoun} ele detalha ${WHERE_TO_CHOOSE(parentName)}.`;
     return [issue('warning', 'LEVEL_SCOPE_NOT_FOUND', message)];
   }
   if (candidates.length > 1) {
-    const message = `O diagrama de ${parentName} tem ${candidates.length} ${parent.focusPlural}: indique qual deles o de ${levelName} detalha.`;
+    const message = `O diagrama de ${parentName} tem ${candidates.length} ${parent.focusPlural}: indique qual deles o de ${levelName} detalha ${WHERE_TO_CHOOSE(parentName)}.`;
     return [issue('warning', 'LEVEL_SCOPE_NOT_CHOSEN', message)];
   }
   return [];
