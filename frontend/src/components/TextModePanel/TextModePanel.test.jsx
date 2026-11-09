@@ -57,6 +57,20 @@ describe('TextModePanel (RF19)', () => {
     expect(onApply).not.toHaveBeenCalled();
   });
 
+  it('deve selecionar no texto a linha do erro ao clicar nele', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    const content = 'Person(c, "Cliente")\nContainer(api, "API")';
+
+    await setText(user, content);
+    await user.click(screen.getByRole('button', { name: 'Aplicar ao canvas' }));
+    await user.click(screen.getByRole('button', { name: /Linha 2: Container não pertence ao nível Contexto/ }));
+
+    const textarea = screen.getByLabelText('Texto do nível Contexto');
+    expect(textarea).toHaveFocus();
+    expect(content.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('Container(api, "API")');
+  });
+
   it('deve avisar quando não há nada para aplicar', async () => {
     const user = userEvent.setup();
     const { onApply } = renderPanel();
