@@ -177,6 +177,53 @@ describe('Rotas de diagramas /api/projects/:projectId/diagrams', () => {
     });
   });
 
+  // Issue #74: duas abas no mesmo nível; a desatualizada não pode apagar o que a outra salvou
+  describe('PUT com a versão conhecida pela aba (concorrência otimista)', () => {
+    const put = (version, data = contextData) => {
+      const req = request(app).put(`${diagramsUrl(projectId)}/context`).set('Authorization', auth);
+      const conditional = version === null ? req.set('If-None-Match', '*') : req.set('If-Match', `"${version}"`);
+      return conditional.send(data);
+    };
+    const tabB = { nodes: [{ id: 'b1', type: 'c4-system', position: { x: 0, y: 0 }, data: { label: 'Salvo na aba B' } }], edges: [] };
+
+    it('deve recusar com 412 a aba que não conhecia o nível criado pela outra, sem apagar nada', async () => {
+      const tabA = await put(null);
+      const tabBResponse = await put(null, tabB);
+
+      expect(tabA.status).toBe(200);
+      expect(tabA.body.version).toBe(1);
+      expect(tabBResponse.status).toBe(412);
+      expect(tabBResponse.body).toEqual({ message: 'Este nível foi alterado em outra aba ou dispositivo.', currentVersion: 1 });
+      const listed = await request(app).get(diagramsUrl(projectId)).set('Authorization', auth);
+      expect(listed.body).toHaveLength(1);
+      expect(listed.body[0]).toEqual(expect.objectContaining({ level: 'context', version: 1 }));
+      expect(listed.body[0].data.nodes.map((node) => node.id)).toEqual(contextData.nodes.map((node) => node.id));
+    });
+
+    it('deve gravar sobre a versão atual e recusar a versão antiga; com a versão atual, a aba grava por cima de propósito', async () => {
+      await put(null);
+      expect((await put(1)).body.version).toBe(2);
+
+      const stale = await put(1, tabB);
+      expect(stale.status).toBe(412);
+      expect(stale.body.currentVersion).toBe(2);
+
+      const keepMine = await put(stale.body.currentVersion, tabB);
+      expect(keepMine.status).toBe(200);
+      expect(keepMine.body).toEqual(expect.objectContaining({ data: tabB, version: 3 }));
+    });
+
+    it('deve responder 400 para versão em formato inválido', async () => {
+      const response = await request(app)
+        .put(`${diagramsUrl(projectId)}/context`)
+        .set('Authorization', auth)
+        .set('If-Match', 'abc')
+        .send(contextData);
+
+      expect(response.status).toBe(400);
+    });
+  });
+
   describe('POST /:level/validate (motor de validação C4 — RF17)', () => {
     const containerData = {
       nodes: [
