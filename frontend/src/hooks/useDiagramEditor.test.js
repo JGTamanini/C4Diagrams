@@ -592,6 +592,22 @@ describe('useDiagramEditor', () => {
       await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
     });
 
+    // Review da #76: o "salvar ao sair" usa o mesmo salvamento, que pula o nível em conflito; nada grava por cima
+    it('não deve gravar o nível em conflito ao sair do editor sem escolher', async () => {
+      saveDiagram.mockRejectedValueOnce(conflict(5));
+      const { result, unmount } = await renderLoadedEditor();
+      dragEnd(result, 'n1', { x: 50, y: 60 });
+      await advanceAutosave();
+      await waitFor(() => expect(result.current.saveStatus).toBe('conflict'));
+      dragEnd(result, 'n1', { x: 90, y: 60 });
+      saveDiagram.mockClear();
+
+      unmount();
+      await advanceAutosave();
+
+      expect(saveDiagram).not.toHaveBeenCalled();
+    });
+
     it('"Manter a minha": deve gravar por cima da versão atual, de propósito', async () => {
       saveDiagram.mockRejectedValueOnce(conflict(5)).mockResolvedValue({ level: 'context', version: 6 });
       const { result } = await renderLoadedEditor();
