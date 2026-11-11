@@ -421,6 +421,17 @@ describe('ProjectPage (editor de diagramas)', () => {
     expect(editor.toggleLock).toHaveBeenCalled();
   });
 
+  // Review da #77: travado, o modal de edição não abre (salvar seria barrado e o que foi digitado, perdido)
+  it('não deve abrir o modal de edição com o canvas travado, avisando como destravar', async () => {
+    const user = userEvent.setup();
+    await renderLoaded({ locked: true });
+
+    await user.click(screen.getByRole('button', { name: 'mock-edit-node' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(editor.showNotice).toHaveBeenCalledWith(expect.stringMatching(/travado/));
+  });
+
   describe('salvamento (RNF08)', () => {
     it.each([
       ['saved', 'Todas as alterações salvas'],

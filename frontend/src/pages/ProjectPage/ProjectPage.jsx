@@ -28,7 +28,7 @@ import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import TextModePanel from '../../components/TextModePanel/TextModePanel';
 import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
-import { useDiagramEditor } from '../../hooks/useDiagramEditor';
+import { LOCKED_NOTICE, useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
 import { downloadProjectFile, levelsWithErrors } from '../../services/projectFile';
 import { useAiSuggestions } from '../../hooks/useAiSuggestions';
@@ -319,6 +319,15 @@ function ProjectPage() {
   const editor = useDiagramEditor(id);
   const [editing, setEditing] = useState(null);
   const closeEditor = useCallback(() => setEditing(null), []);
+  // Travado (issue #75), o modal de edição não abre: salvar seria barrado, e o que fosse digitado se perderia
+  const { locked, showNotice } = editor;
+  const openEditor = useCallback(
+    (target) => {
+      if (locked) showNotice(LOCKED_NOTICE);
+      else setEditing(target);
+    },
+    [locked, showNotice]
+  );
   const [showingShortcuts, setShowingShortcuts] = useState(false);
   const closeShortcuts = useCallback(() => setShowingShortcuts(false), []);
   const openShortcuts = useCallback(() => setShowingShortcuts(true), []);
@@ -469,7 +478,7 @@ function ProjectPage() {
       <main className="relative min-h-0 flex-1">
         <EditorBody
           editor={editor}
-          onEdit={setEditing}
+          onEdit={openEditor}
           keyboardEnabled={!modalOpen}
           paletteOpen={paletteOpen}
           onTogglePalette={togglePalette}

@@ -129,8 +129,10 @@ describe('DiagramCanvas', () => {
 
       dropElement('c4-system');
       fireEvent.contextMenu(element, { clientX: 120, clientY: 80 });
+      fireEvent.doubleClick(element);
 
       expect(handlers.onAddNode).not.toHaveBeenCalled();
+      expect(handlers.onEditNode).not.toHaveBeenCalled();
       expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     });
 

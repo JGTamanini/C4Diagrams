@@ -27,7 +27,7 @@ function changesDiagram(change) {
   return change.type === 'position' && change.dragging === false && Boolean(change.position);
 }
 
-const LOCKED_NOTICE = 'O canvas está travado: destrave-o (cadeado na barra de baixo) para editar o diagrama.';
+export const LOCKED_NOTICE = 'O canvas está travado: destrave-o (cadeado na barra de baixo) para editar o diagrama.';
 
 function emptyDiagrams() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: [], edges: [] }]));
