@@ -31,6 +31,17 @@ describe('diagrams service', () => {
     expect(result).toEqual({ level: 'context', data });
   });
 
+  // Issue #74: a versão que a aba conhece vai nos cabeçalhos de concorrência otimista
+  it('deve enviar a versão conhecida em If-Match, e If-None-Match quando o nível ainda não existe para a aba', async () => {
+    api.put.mockResolvedValue({ status: 200, data: { level: 'context', data, version: 4 } });
+
+    await saveDiagram(PROJECT_ID, 'context', data, 3);
+    expect(api.put).toHaveBeenLastCalledWith(`/projects/${PROJECT_ID}/diagrams/context`, data, { headers: { 'If-Match': '"3"' } });
+
+    await saveDiagram(PROJECT_ID, 'context', data, null);
+    expect(api.put).toHaveBeenLastCalledWith(`/projects/${PROJECT_ID}/diagrams/context`, data, { headers: { 'If-None-Match': '*' } });
+  });
+
   it('deve validar o estado do nível sem salvar e devolver os problemas encontrados (RF17)', async () => {
     const issues = [{ code: 'MISSING_DESCRIPTION', severity: 'info', nodeId: 'n1', message: 'Sem descrição.' }];
     api.post.mockResolvedValue({ data: { issues } });

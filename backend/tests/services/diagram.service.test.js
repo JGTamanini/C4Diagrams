@@ -5,7 +5,11 @@ const diagramRepository = require('../../src/repositories/diagram.repository');
 const projectService = require('../../src/services/project.service');
 const diagramService = require('../../src/services/diagram.service');
 const { ProjectNotFoundError } = require('../../src/errors/project.errors');
-const { InvalidDiagramLevelError, InvalidDiagramDataError } = require('../../src/errors/diagram.errors');
+const {
+  InvalidDiagramLevelError,
+  InvalidDiagramDataError,
+  DiagramVersionConflictError,
+} = require('../../src/errors/diagram.errors');
 
 describe('DiagramService', () => {
   const userId = '8f14e45f-ceea-467a-9575-6f1c8e3b2a10';
@@ -164,6 +168,100 @@ describe('DiagramService', () => {
         ).rejects.toThrow(ProjectNotFoundError);
         expect(diagramRepository.remove).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  // Issue #74: a aba envia a versão que conhece; uma aba desatualizada não pode apagar o que outra salvou
+  describe('saveDiagram com a versão conhecida pela aba (concorrência otimista)', () => {
+    const empty = { nodes: [], edges: [] };
+    const conflictWith = (currentVersion) =>
+      expect.objectContaining({ name: 'DiagramVersionConflictError', currentVersion });
+
+    it('sem nenhuma versão conhecida, deve criar o nível só se ele ainda não existe', async () => {
+      diagramRepository.insertIfAbsent.mockResolvedValue({ level: 'context', data: normalizedData, version: 1 });
+
+      const result = await diagramService.saveDiagram(projectId, userId, 'context', validData, null);
+
+      expect(diagramRepository.insertIfAbsent).toHaveBeenCalledWith(projectId, userId, 'context', normalizedData);
+      expect(diagramRepository.upsert).not.toHaveBeenCalled();
+      expect(result.version).toBe(1);
+    });
+
+    it('com a versão conhecida, deve gravar só se ela ainda é a atual', async () => {
+      diagramRepository.updateIfVersion.mockResolvedValue({ level: 'context', data: normalizedData, version: 4 });
+
+      const result = await diagramService.saveDiagram(projectId, userId, 'context', validData, 3);
+
+      expect(diagramRepository.updateIfVersion).toHaveBeenCalledWith(projectId, userId, 'context', normalizedData, 3);
+      expect(result.version).toBe(4);
+    });
+
+    it('deve recusar com a versão atual quando outra aba já gravou o nível', async () => {
+      diagramRepository.updateIfVersion.mockResolvedValue(undefined);
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findVersion.mockResolvedValue(5);
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', validData, 3)).rejects.toEqual(conflictWith(5));
+    });
+
+    it('deve recusar quando outra aba criou o nível que esta aba ainda não conhecia', async () => {
+      diagramRepository.insertIfAbsent.mockResolvedValue(undefined);
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findVersion.mockResolvedValue(1);
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', validData, null)).rejects.toThrow(
+        DiagramVersionConflictError
+      );
+    });
+
+    it('deve recusar com versão null quando outra aba esvaziou o nível', async () => {
+      diagramRepository.updateIfVersion.mockResolvedValue(undefined);
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findVersion.mockResolvedValue(null);
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', validData, 3)).rejects.toEqual(conflictWith(null));
+    });
+
+    it('deve responder 404, e não conflito, quando a gravação falha por o projeto não ser do usuário', async () => {
+      diagramRepository.updateIfVersion.mockResolvedValue(undefined);
+      projectService.getProject.mockRejectedValue(new ProjectNotFoundError());
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', validData, 3)).rejects.toThrow(ProjectNotFoundError);
+      expect(diagramRepository.findVersion).not.toHaveBeenCalled();
+    });
+
+    it('canvas vazio: deve esvaziar o nível só se a versão ainda é a atual', async () => {
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.removeIfVersion.mockResolvedValue(true);
+
+      expect(await diagramService.saveDiagram(projectId, userId, 'context', empty, 2)).toBeNull();
+      expect(diagramRepository.removeIfVersion).toHaveBeenCalledWith(projectId, userId, 'context', 2);
+      expect(diagramRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it('canvas vazio: deve recusar quando outra aba gravou uma versão mais nova', async () => {
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.removeIfVersion.mockResolvedValue(false);
+      diagramRepository.findVersion.mockResolvedValue(3);
+
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', empty, 2)).rejects.toEqual(conflictWith(3));
+    });
+
+    it('canvas vazio: não é conflito se outra aba já tinha esvaziado o nível (o resultado é o mesmo)', async () => {
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.removeIfVersion.mockResolvedValue(false);
+      diagramRepository.findVersion.mockResolvedValue(null);
+
+      expect(await diagramService.saveDiagram(projectId, userId, 'context', empty, 2)).toBeNull();
+    });
+
+    it('canvas vazio sem versão conhecida: nada a fazer, mas recusa se outra aba criou o nível', async () => {
+      projectService.getProject.mockResolvedValue({ id: projectId });
+      diagramRepository.findVersion.mockResolvedValueOnce(null).mockResolvedValueOnce(1);
+
+      expect(await diagramService.saveDiagram(projectId, userId, 'context', empty, null)).toBeNull();
+      await expect(diagramService.saveDiagram(projectId, userId, 'context', empty, null)).rejects.toEqual(conflictWith(1));
+      expect(diagramRepository.remove).not.toHaveBeenCalled();
     });
   });
 
