@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { SCOPE_ISSUE_CODES } from '../../constants/levelScope';
 import { AlertCircle, ChevronDown, Lightbulb, PanelRightClose, PanelRightOpen, TriangleAlert } from 'lucide-react';
 import IconButton from '../Button/IconButton';
+import { SCOPE_ISSUE_CODES } from '../../constants/levelScope';
 import AiSuggestions from '../AiSuggestions/AiSuggestions';
 
 const GROUPS = [
