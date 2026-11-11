@@ -71,6 +71,18 @@ describe('TextModePanel (RF19)', () => {
     expect(content.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('Container(api, "API")');
   });
 
+  it('não deve tornar clicável o erro que não é de uma linha (limite de elementos do diagrama)', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    const people = Array.from({ length: 201 }, (_, index) => `Person(p${index}, "Pessoa ${index}")`).join('\n');
+
+    await setText(user, people);
+    await user.click(screen.getByRole('button', { name: 'Aplicar ao canvas' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('O diagrama pode ter no máximo 200 elementos.');
+    expect(screen.queryByRole('button', { name: /no máximo 200 elementos/ })).not.toBeInTheDocument();
+  });
+
   it('deve avisar quando não há nada para aplicar', async () => {
     const user = userEvent.setup();
     const { onApply } = renderPanel();

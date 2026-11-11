@@ -47,6 +47,17 @@ describe('NumberedTextArea (modo textual)', () => {
     expect(numbers(container).map((number) => number.dataset.error)).toEqual(['false', 'true', 'false']);
   });
 
+  // Review da #78: erros do diagrama inteiro (ex.: limite de elementos) vêm com a linha 0
+  it('não deve fazer nada com uma linha menor que 1', () => {
+    const { ref } = renderArea({ value: 'aa\nbbb' });
+    const textarea = screen.getByLabelText('Texto');
+
+    act(() => ref.current.selectLine(0));
+
+    expect(textarea).not.toHaveFocus();
+    expect([textarea.selectionStart, textarea.selectionEnd]).toEqual([0, 0]);
+  });
+
   it('deve selecionar uma linha inteira pelo número, para mostrar onde está o erro', () => {
     const { ref } = renderArea({ value: 'aa\nbbb\ncccc' });
     const textarea = screen.getByLabelText('Texto');

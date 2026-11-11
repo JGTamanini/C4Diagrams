@@ -128,16 +128,20 @@ function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose }) {
       <div className="flex flex-col gap-2 px-4 py-3">
         {errors.length > 0 && (
           <ul role="alert" className="max-h-28 overflow-y-auto text-xs text-danger">
-            {/* Clicar no erro seleciona a linha dele no texto */}
+            {/* Clicar no erro seleciona a linha dele no texto; erro do diagrama inteiro (linha 0) é só texto */}
             {errors.map((error) => (
               <li key={`${error.line}-${error.message}`}>
-                <button
-                  type="button"
-                  onClick={() => textRef.current.selectLine(error.line)}
-                  className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
-                >
-                  {error.message}
-                </button>
+                {error.line >= 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => textRef.current.selectLine(error.line)}
+                    className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
+                  >
+                    {error.message}
+                  </button>
+                ) : (
+                  error.message
+                )}
               </li>
             ))}
           </ul>

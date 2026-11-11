@@ -44,6 +44,8 @@ function NumberedTextArea({ ref, label, value, onChange, errorLines = [] }) {
     ref,
     () => ({
       selectLine(lineNumber) {
+        // Erros do diagrama inteiro (ex.: limite de elementos) não têm linha: vêm com 0
+        if (!(lineNumber >= 1)) return;
         const textarea = textareaRef.current;
         const { start, end } = lineRange(textarea.value, lineNumber);
         textarea.focus();
