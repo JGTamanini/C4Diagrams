@@ -35,7 +35,14 @@ import { useAiSuggestions } from '../../hooks/useAiSuggestions';
 import ValidationPanel from '../../components/ValidationPanel/ValidationPanel';
 import DiagramLegend from '../../components/DiagramLegend/DiagramLegend';
 import { LEVELS } from '../../constants/c4Notation';
-import { INNER_TYPES, SCOPE_TYPE_LABEL, detailLevelOf, isInnerType, resolveScope } from '../../constants/levelScope';
+import {
+  INNER_TYPES,
+  SCOPE_ISSUE_CODES,
+  SCOPE_TYPE_LABEL,
+  detailLevelOf,
+  isInnerType,
+  resolveScope,
+} from '../../constants/levelScope';
 
 const SAVE_STATUS_TEXT = {
   saved: 'Todas as alterações salvas',
@@ -350,7 +357,15 @@ function ProjectPage() {
 
   // Clicar num problema: seleciona o alvo e pede ao canvas para centralizá-lo (o objeto novo dispara o foco mesmo
   // quando o mesmo problema é clicado de novo)
-  function selectIssue({ nodeId, edgeId }) {
+  // Nos avisos de foco, leva ao nível de cima, onde a escolha é feita ("Detalhar"): com um candidato só, já o
+  // seleciona; com vários, o usuário escolhe
+  function selectIssue({ code, nodeId, edgeId }) {
+    if (SCOPE_ISSUE_CODES.has(code) && activeScope) {
+      const [only, ...others] = activeScope.candidates;
+      if (only && others.length === 0) selectTreeElement(activeScope.parentLevel, only.id);
+      else editor.selectLevel(activeScope.parentLevel);
+      return;
+    }
     editor.selectOnly({ nodeId, edgeId });
     setFocusRequest({ nodeId, edgeId });
   }

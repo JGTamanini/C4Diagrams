@@ -317,6 +317,17 @@ describe('Motor de validação C4', () => {
         ]);
       });
 
+      // Review da #79: sem candidato, não há o que "Detalhar"; o aviso de nível de cima sem sistema já explica
+      it('não deve pedir para escolher o foco apagado quando o nível acima não tem nenhum candidato', () => {
+        const contextWithoutSystem = { ...completeContext, nodes: completeContext.nodes.filter((n) => n.type !== 'c4-system') };
+        const container = { ...completeContainer, scope: { nodeId: 's1' } };
+
+        const found = codes(validateDiagram('container', { context: contextWithoutSystem, container }));
+
+        expect(found).toContain('PARENT_LEVEL_WITHOUT_FOCUS');
+        expect(found).not.toContain('LEVEL_SCOPE_NOT_FOUND');
+      });
+
       it('deve pedir o container que o nível de Componentes detalha quando há mais de um', () => {
         const container = {
           ...completeContainer,

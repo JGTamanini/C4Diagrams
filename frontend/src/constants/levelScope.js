@@ -35,6 +35,9 @@ export function resolveScope(level, nodesByLevel, scopeByLevel) {
   return { ...base, focus: null, status: candidates.length > 1 ? 'ambiguous' : 'none' };
 }
 
+// Avisos do motor de validação sobre o foco do nível: a correção é feita no nível de cima ("Detalhar")
+export const SCOPE_ISSUE_CODES = new Set(['LEVEL_SCOPE_NOT_CHOSEN', 'LEVEL_SCOPE_NOT_FOUND']);
+
 export function isInnerType(level, type) {
   return Boolean(INNER_TYPES[level]?.includes(type));
 }

@@ -826,6 +826,31 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.selectLevel).toHaveBeenCalledWith('container');
     });
 
+    // Review da #79: clicar no aviso de foco leva ao nível de cima (e ao candidato, quando é um só)
+    it.each([
+      ['um candidato: abre o nível de cima e seleciona o candidato', [contextNodes[0], contextNodes[1]], 'n2'],
+      ['vários candidatos: só abre o nível de cima', [...contextNodes, { ...contextNodes[1], id: 'n3', data: { label: 'ERP' } }], null],
+    ])('deve levar ao nível de cima ao clicar no aviso de foco (%s)', async (_, context, selected) => {
+      const user = userEvent.setup();
+      useDiagramValidation.mockReturnValue({
+        status: 'ready',
+        issues: [{ code: 'LEVEL_SCOPE_NOT_FOUND', severity: 'warning', message: 'Indique qual sistema o nível detalha.' }],
+      });
+      await renderLoaded({
+        activeLevel: 'container',
+        nodes: containerNodes,
+        edges: [],
+        nodesByLevel: { ...nodesByLevel, context },
+        scopeByLevel: { context: null, container: { nodeId: 'apagado' }, component: null },
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Indique qual sistema o nível detalha.' }));
+
+      expect(editor.selectLevel).toHaveBeenCalledWith('context');
+      if (selected) expect(editor.selectOnly).toHaveBeenCalledWith({ nodeId: selected, level: 'context' });
+      else expect(editor.selectOnly).not.toHaveBeenCalled();
+    });
+
     it('deve validar o nível aberto com o foco escolhido para ele', async () => {
       await renderLoaded({
         activeLevel: 'container',

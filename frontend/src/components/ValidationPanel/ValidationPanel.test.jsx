@@ -63,6 +63,17 @@ describe('ValidationPanel', () => {
     expect(onSelectIssue).toHaveBeenNthCalledWith(2, issues[0]);
   });
 
+  // Review da #79: o aviso de foco leva ao nível de cima, onde a escolha é feita
+  it('deve oferecer clique nos avisos de foco do nível, mesmo sem apontar um elemento', async () => {
+    const user = userEvent.setup();
+    const scopeIssue = { code: 'LEVEL_SCOPE_NOT_CHOSEN', severity: 'warning', message: 'Indique qual sistema o nível detalha.' };
+    const { onSelectIssue } = renderPanel({ issues: [scopeIssue] });
+
+    await user.click(screen.getByRole('button', { name: 'Indique qual sistema o nível detalha.' }));
+
+    expect(onSelectIssue).toHaveBeenCalledWith(scopeIssue);
+  });
+
   it('não deve oferecer clique em problema que é do diagrama inteiro (sem elemento)', () => {
     renderPanel();
 

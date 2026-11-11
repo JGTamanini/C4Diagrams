@@ -137,7 +137,8 @@ function scopeWarnings(level, scope, candidates) {
   const parentName = LEVEL_NAMES[parent.level];
 
   if (scope) {
-    if (candidates.some((node) => node.id === scope.nodeId)) return [];
+    // Sem candidato não há o que "Detalhar": o aviso de nível de cima sem sistema (ou container) já explica
+    if (candidates.length === 0 || candidates.some((node) => node.id === scope.nodeId)) return [];
     const message = `O elemento que o diagrama de ${levelName} detalhava não existe mais no de ${parentName}: indique qual ${parent.detailedNoun} ele detalha ${WHERE_TO_CHOOSE(parentName)}.`;
     return [issue('warning', 'LEVEL_SCOPE_NOT_FOUND', message)];
   }
