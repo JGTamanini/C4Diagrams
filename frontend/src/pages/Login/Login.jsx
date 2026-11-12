@@ -7,6 +7,12 @@ import FormInput from '../../components/FormInput/FormInput';
 import Button from '../../components/Button/Button';
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
+import ResendVerification from '../../components/ResendVerification/ResendVerification';
+
+// Só caminhos do próprio site: "//site.com" e "https://..." levariam para fora (redirecionamento aberto)
+function returnPath(from) {
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/\\') ? from : '/projetos';
+}
 
 const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
@@ -19,10 +25,12 @@ function Login() {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage('');
+    setNeedsVerification(false);
     setSubmitting(true);
 
     try {
@@ -34,10 +42,11 @@ function Login() {
       }
 
       saveSession(token, user);
-      void navigate('/projetos');
+      void navigate(returnPath(location.state?.from));
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);
+      setNeedsVerification(err.response?.data?.code === 'EMAIL_NOT_VERIFIED');
       setSubmitting(false);
     }
   }
@@ -81,6 +90,11 @@ function Login() {
         <p role="alert" className="mb-4 text-center text-sm text-danger">
           {errorMessage}
         </p>
+      )}
+      {needsVerification && (
+        <div className="mb-4 flex justify-center">
+          <ResendVerification email={email} />
+        </div>
       )}
 
       <AuthItem>

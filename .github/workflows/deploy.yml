@@ -22,7 +22,12 @@ env:
   IMAGE: ghcr.io/jgtamanini/c4diagrams
   RESOURCE_GROUP: c4diagrams
   WEB_APP: c4diagrams
-  APP_URL: https://c4diagrams-aubseke6gwheaqa5.canadacentral-01.azurewebsites.net
+  # Endereço público e remetente dos e-mails: variáveis do repositório (Settings → Variables), para trocar pelo domínio
+  # próprio sem mexer no código; sem elas, valem o endereço do Azure e o domínio de teste do Resend
+  APP_URL: ${{ vars.APP_URL || 'https://c4diagrams-aubseke6gwheaqa5.canadacentral-01.azurewebsites.net' }}
+  EMAIL_FROM: ${{ vars.EMAIL_FROM || 'onboarding@resend.dev' }}
+  # Exigir e-mail confirmado no login: só depois de o domínio estar verificado no Resend (senão ninguém recebe o link)
+  REQUIRE_EMAIL_VERIFICATION: ${{ vars.REQUIRE_EMAIL_VERIFICATION || 'false' }}
 
 jobs:
   build:
@@ -94,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://c4diagrams-aubseke6gwheaqa5.canadacentral-01.azurewebsites.net
+      url: ${{ env.APP_URL }}
     permissions:
       contents: read
       id-token: write
@@ -125,8 +130,9 @@ jobs:
             WEBSITES_PORT=8080 \
             DATABASE_SSL=true \
             JWT_EXPIRES_IN=7d \
-            EMAIL_FROM=onboarding@resend.dev \
-            FRONTEND_URL=$APP_URL \
+            EMAIL_FROM="$EMAIL_FROM" \
+            FRONTEND_URL="$APP_URL" \
+            REQUIRE_EMAIL_VERIFICATION="$REQUIRE_EMAIL_VERIFICATION" \
             DATABASE_URL="$DATABASE_URL" \
             JWT_SECRET="$JWT_SECRET" \
             RESEND_API_KEY="$RESEND_API_KEY" \
