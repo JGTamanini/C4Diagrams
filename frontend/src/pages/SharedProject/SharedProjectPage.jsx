@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Eye } from 'lucide-react';
 import Brand from '../../components/Brand/Brand';
 import LevelTabs from '../../components/LevelTabs/LevelTabs';
 import DiagramViewer from '../../components/DiagramViewer/DiagramViewer';
+import ElementDetails from '../../components/ElementDetails/ElementDetails';
 import { buttonClasses } from '../../components/Button/buttonStyles';
 import { getSharedProject } from '../../services/share';
 import { fromApi } from '../../services/diagramMapper';
-import { LEVEL_IDS } from '../../constants/c4Notation';
-import { INNER_TYPES, SCOPE_TYPE_LABEL, resolveScope } from '../../constants/levelScope';
+import { LEVELS, LEVEL_IDS } from '../../constants/c4Notation';
+import { INNER_TYPES, SCOPE_TYPE_LABEL, detailLevelOf, isInnerType, resolveScope } from '../../constants/levelScope';
 
 const GENERIC_ERROR = 'Não foi possível abrir este link agora. Tente de novo em instantes.';
 
@@ -38,14 +39,23 @@ function boundaryOf(level, levels) {
   return focus ? { label: focus.data.label, type: SCOPE_TYPE_LABEL[level], innerTypes: INNER_TYPES[level] } : null;
 }
 
+// O nível que detalha o elemento ("Ver o nível Container"), só quando ele é mesmo o foco daquele nível
+function detailedInOf(level, node, levels) {
+  const detailLevel = detailLevelOf(level, node.type);
+  if (!detailLevel) return null;
+  const focus = resolveScope(detailLevel, levels.nodesByLevel, levels.scopeByLevel)?.focus;
+  if (focus?.id !== node.id) return null;
+  return { id: detailLevel, label: LEVELS.find((candidate) => candidate.id === detailLevel).label };
+}
+
 // Nota: link de visualização — qualquer pessoa logada com o link vê o projeto, sem poder editar. Mostra sempre a versão
 // salva mais recente, com quem compartilhou e a data da última alteração (o professor vê se o diagrama mudou depois da
-// entrega). Só o que ajuda a ler: abas de nível, legenda, fronteira e zoom.
-function SharedProjectPage() {
-  const { token } = useParams();
+// entrega). Só o que ajuda a ler: abas de nível, legenda, fronteira, zoom e os detalhes do elemento clicado.
+function SharedProjectView({ token }) {
   const [shared, setShared] = useState(null);
   const [error, setError] = useState('');
   const [activeLevel, setActiveLevel] = useState('context');
+  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +68,16 @@ function SharedProjectPage() {
   }, [token]);
 
   const levels = useMemo(() => (shared ? levelsFrom(shared.diagrams) : null), [shared]);
+  const closeDetails = useCallback(() => setSelectedId(null), []);
+
+  // Trocar de nível fecha os detalhes: o elemento aberto pertence ao nível anterior
+  function openLevel(level) {
+    setActiveLevel(level);
+    setSelectedId(null);
+  }
+
+  const boundary = levels ? boundaryOf(activeLevel, levels) : null;
+  const selected = levels?.byLevel[activeLevel].nodes.find((node) => node.id === selectedId) ?? null;
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
@@ -98,18 +118,39 @@ function SharedProjectPage() {
         )}
         {shared && (
           <>
-            <LevelTabs activeLevel={activeLevel} onSelect={setActiveLevel} />
+            <LevelTabs activeLevel={activeLevel} onSelect={openLevel} />
             <DiagramViewer
               level={activeLevel}
               nodes={levels.byLevel[activeLevel].nodes}
               edges={levels.byLevel[activeLevel].edges}
-              boundary={boundaryOf(activeLevel, levels)}
+              boundary={boundary}
+              selectedId={selectedId}
+              onSelectElement={setSelectedId}
             />
+            {selected && (
+              <ElementDetails
+                key={selected.id}
+                node={selected}
+                nodes={levels.byLevel[activeLevel].nodes}
+                edges={levels.byLevel[activeLevel].edges}
+                partOf={boundary && isInnerType(activeLevel, selected.type) ? `${boundary.label} [${boundary.type}]` : null}
+                detailedIn={detailedInOf(activeLevel, selected, levels)}
+                onOpenLevel={openLevel}
+                onClose={closeDetails}
+              />
+            )}
           </>
         )}
       </main>
     </div>
   );
+}
+
+// Cada link tem a própria tela (key): ir de um link para outro sem recarregar não mostra o erro nem o projeto do
+// anterior enquanto o novo carrega
+function SharedProjectPage() {
+  const { token } = useParams();
+  return <SharedProjectView key={token} token={token} />;
 }
 
 export default SharedProjectPage;

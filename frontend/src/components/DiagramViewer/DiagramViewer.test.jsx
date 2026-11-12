@@ -1,5 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import DiagramViewer from './DiagramViewer';
 import { mockReactFlowBrowserApis } from '../../test/reactFlowMocks';
 
@@ -44,6 +44,24 @@ describe('DiagramViewer (link de visualização, só leitura)', () => {
 
     expect(await screen.findByRole('group', { name: 'Fronteira: Loja Online [Software System]' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /legenda/i })).toHaveTextContent('Container');
+  });
+
+  it('deve avisar quem clica num elemento (para abrir os detalhes) e no fundo (para fechar)', async () => {
+    const onSelectElement = vi.fn();
+    const { container } = renderViewer({ onSelectElement });
+
+    fireEvent.click(await screen.findByText('API'));
+    expect(onSelectElement).toHaveBeenLastCalledWith('c1');
+
+    fireEvent.click(container.querySelector('.react-flow__pane'));
+    expect(onSelectElement).toHaveBeenLastCalledWith(null);
+  });
+
+  it('deve destacar o elemento aberto nos detalhes', async () => {
+    renderViewer({ selectedId: 'c1' });
+
+    const element = (await screen.findByText('API')).closest('.react-flow__node');
+    expect(element.querySelector('[data-selected]')).toHaveAttribute('data-selected', 'true');
   });
 
   it('deve avisar quando o nível ainda não tem diagrama', () => {

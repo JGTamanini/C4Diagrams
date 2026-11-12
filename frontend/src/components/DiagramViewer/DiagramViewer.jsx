@@ -68,9 +68,19 @@ function FitWhenMeasured() {
 }
 
 // Nota: visualização só leitura do link compartilhado — a mesma notação do editor (elementos, relações, fronteira e
-// legenda), com zoom e arraste da visão, mas sem mover, conectar, selecionar ou editar nada
-function DiagramViewer({ level, nodes, edges, boundary = null }) {
+// legenda), com zoom e arraste da visão, mas sem mover, conectar ou editar nada. Clicar num elemento avisa a página
+// (que abre os detalhes) e o destaca; clicar no fundo fecha.
+function DiagramViewer({ level, nodes, edges, boundary = null, selectedId = null, onSelectElement }) {
   const shownEdges = useMemo(() => displayEdges(edges), [edges]);
+  const shownNodes = useMemo(
+    () =>
+      nodes.map((node) => ({
+        ...node,
+        selected: node.id === selectedId,
+        ...(onSelectElement ? { className: 'cursor-pointer' } : {}),
+      })),
+    [nodes, selectedId, onSelectElement]
+  );
 
   if (nodes.length === 0) {
     return (
@@ -85,7 +95,7 @@ function DiagramViewer({ level, nodes, edges, boundary = null }) {
     <ReactFlowProvider key={level}>
       <div className="relative h-full w-full">
         <ReactFlow
-          nodes={nodes}
+          nodes={shownNodes}
           edges={shownEdges}
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
@@ -98,6 +108,8 @@ function DiagramViewer({ level, nodes, edges, boundary = null }) {
           minZoom={0.1}
           colorMode="dark"
           ariaLabelConfig={ARIA_LABELS}
+          onNodeClick={(_event, node) => onSelectElement?.(node.id)}
+          onPaneClick={() => onSelectElement?.(null)}
         >
           <Background gap={GRID_GAP} size={2} />
           <ScopeBoundary boundary={boundary} />
