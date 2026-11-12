@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { vi } from 'vitest';
 import Register from './Register';
 import api from '../../services/api';
@@ -98,6 +98,16 @@ describe('Register', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/projetos', { replace: true });
     });
 
+    it('deve voltar ao link de visualização de onde veio, quando houver um guardado', async () => {
+      localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
+      await registerAndWait();
+
+      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
+
+      expect(mockNavigate).toHaveBeenCalledWith('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', { replace: true });
+      expect(localStorage.getItem('returnTo')).toBeNull();
+    });
+
     it('não deve seguir quando outra conta entrar em outra aba', async () => {
       await registerAndWait();
 
@@ -190,5 +200,26 @@ describe('Register', () => {
     finish({ response: { data: { message: 'E-mail já cadastrado.' } } });
     expect(await screen.findByText('E-mail já cadastrado.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cadastrar' })).toBeEnabled();
+  });
+
+  // Review da #80: o login aberto sem origem esquece o link guardado, então o "Entrar" do cadastro leva a origem junto
+  it('o link Entrar deve levar ao login a origem de quem veio por um link de visualização', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
+    function LoginProbe() {
+      return <p>origem: {useLocation().state?.from ?? 'nenhuma'}</p>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/cadastro']}>
+        <Routes>
+          <Route path="/cadastro" element={<Register />} />
+          <Route path="/login" element={<LoginProbe />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Entrar' }));
+
+    expect(screen.getByText('origem: /compartilhado/abcDEF123_-abcDEF123_-abcDEF1234')).toBeInTheDocument();
   });
 });

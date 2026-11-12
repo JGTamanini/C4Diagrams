@@ -6,7 +6,7 @@ const userRepository = require('../../src/repositories/user.repository');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const authService = require('../../src/services/auth.service');
-const { InvalidCredentialsError, AccountLockedError } = require('../../src/errors/auth.errors');
+const { InvalidCredentialsError, AccountLockedError, EmailNotVerifiedError } = require('../../src/errors/auth.errors');
 
 describe('AuthService', () => {
   const credentials = { email: 'joao@example.com', password: 'Senha@12345' };
@@ -22,6 +22,41 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  // Exigir e-mail verificado só quando REQUIRE_EMAIL_VERIFICATION=true (ligado depois do domínio verificado no Resend)
+  describe('login com e-mail ainda não verificado', () => {
+    const unverified = { ...mockUser, email_verified: false };
+
+    afterEach(() => {
+      delete process.env.REQUIRE_EMAIL_VERIFICATION;
+    });
+
+    it('deve recusar, com a senha certa, quando a verificação é exigida', async () => {
+      process.env.REQUIRE_EMAIL_VERIFICATION = 'true';
+      userRepository.findByEmail.mockResolvedValue(unverified);
+      bcrypt.compare.mockResolvedValue(true);
+
+      await expect(authService.login(credentials)).rejects.toThrow(EmailNotVerifiedError);
+      expect(userRepository.resetFailedAttempts).toHaveBeenCalledWith(mockUser.id);
+      expect(jwt.sign).not.toHaveBeenCalled();
+    });
+
+    it('não deve revelar que a conta existe quando a senha está errada', async () => {
+      process.env.REQUIRE_EMAIL_VERIFICATION = 'true';
+      userRepository.findByEmail.mockResolvedValue(unverified);
+      bcrypt.compare.mockResolvedValue(false);
+
+      await expect(authService.login(credentials)).rejects.toThrow(InvalidCredentialsError);
+    });
+
+    it('deve entrar normalmente quando a verificação não é exigida (o padrão)', async () => {
+      userRepository.findByEmail.mockResolvedValue(unverified);
+      bcrypt.compare.mockResolvedValue(true);
+      jwt.sign.mockReturnValue('fake-jwt-token');
+
+      expect((await authService.login(credentials)).token).toBe('fake-jwt-token');
+    });
   });
 
   describe('login', () => {

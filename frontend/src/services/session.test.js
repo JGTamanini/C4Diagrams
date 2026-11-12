@@ -1,5 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { saveSession, getToken, getUser, clearSession, hasActiveSession } from './session';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  saveSession,
+  getToken,
+  getUser,
+  clearSession,
+  hasActiveSession,
+  rememberReturnPath,
+  peekReturnPath,
+  takeReturnPath,
+} from './session';
 import { fakeJwt } from '../test/fakeJwt';
 
 describe('session', () => {
@@ -72,6 +81,54 @@ describe('session', () => {
       localStorage.setItem('token', fakeJwt({ withExp: false }));
 
       expect(hasActiveSession()).toBe(true);
+    });
+  });
+
+  // Link de visualização: quem chega sem login volta ao link depois de entrar ou de se cadastrar, mesmo passando pelo
+  // cadastro e pela aba nova que o link de confirmação do e-mail abre
+  describe('caminho de volta depois de entrar', () => {
+    // Review da #80: quem sai da conta (ou outra pessoa no mesmo navegador) não pode cair no link de antes
+    it('sair da conta deve esquecer o caminho guardado', () => {
+      rememberReturnPath('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+
+      clearSession();
+
+      expect(takeReturnPath()).toBeNull();
+    });
+
+    it('deve guardar um caminho do próprio site e entregá-lo uma vez só', () => {
+      rememberReturnPath('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+
+      expect(peekReturnPath()).toBe('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+      expect(takeReturnPath()).toBe('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+      expect(takeReturnPath()).toBeNull();
+    });
+
+    it.each(['//site-externo.com', 'https://site-externo.com', '/\\site-externo.com', 'projetos', ''])(
+      'deve ignorar o que não for caminho do próprio site (%s)',
+      (path) => {
+        rememberReturnPath(path);
+
+        expect(takeReturnPath()).toBeNull();
+      }
+    );
+
+    it('deve descartar um caminho guardado há mais de 24 horas', () => {
+      vi.useFakeTimers();
+      try {
+        rememberReturnPath('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+        vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
+
+        expect(takeReturnPath()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('deve devolver null quando o valor guardado estiver corrompido', () => {
+      localStorage.setItem('returnTo', 'não é json');
+
+      expect(takeReturnPath()).toBeNull();
     });
   });
 });

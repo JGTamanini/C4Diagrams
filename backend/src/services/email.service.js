@@ -1,4 +1,5 @@
 const { Resend } = require('resend');
+const { renderEmail } = require('./emailTemplate');
 
 function getResendClient() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -26,12 +27,14 @@ async function sendVerificationEmail(email, token) {
     {
       to: email,
       subject: 'Confirme seu e-mail — C4Diagrams',
-      html: `
-        <p>Olá!</p>
-        <p>Clique no link abaixo para confirmar seu e-mail:</p>
-        <p><a href="${verificationLink}">${verificationLink}</a></p>
-        <p>Este link expira em 24 horas.</p>
-      `,
+      ...renderEmail({
+        title: 'Confirme seu e-mail',
+        lead: 'Falta um passo para começar a modelar sua arquitetura no C4Diagrams: confirme que este e-mail é seu.',
+        buttonLabel: 'Confirmar e-mail',
+        link: verificationLink,
+        expiry: 'O link vale por 24 horas.',
+        footer: 'Você recebeu este e-mail porque criou uma conta no C4Diagrams. Se não foi você, é só ignorar: nada será ativado.',
+      }),
     },
     'Falha ao enviar e-mail de verificação'
   );
@@ -44,12 +47,14 @@ async function sendPasswordResetEmail(email, token) {
     {
       to: email,
       subject: 'Redefinição de senha — C4Diagrams',
-      html: `
-        <p>Olá!</p>
-        <p>Recebemos um pedido para redefinir sua senha. Clique no link abaixo:</p>
-        <p><a href="${resetLink}">${resetLink}</a></p>
-        <p>Este link expira em 10 minutos. Se você não solicitou isso, ignore este e-mail.</p>
-      `,
+      ...renderEmail({
+        title: 'Redefina sua senha',
+        lead: 'Recebemos um pedido para redefinir a senha da sua conta no C4Diagrams.',
+        buttonLabel: 'Criar nova senha',
+        link: resetLink,
+        expiry: 'O link vale por 10 minutos.',
+        footer: 'Se você não pediu a redefinição, ignore este e-mail: sua senha continua a mesma.',
+      }),
     },
     'Falha ao enviar e-mail de redefinição de senha'
   );

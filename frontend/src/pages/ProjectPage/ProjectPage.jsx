@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   FileBraces,
+  Link2,
   ImageDown,
   Keyboard,
   LoaderCircle,
@@ -27,6 +28,8 @@ import ElementFormModal from '../../components/ElementFormModal/ElementFormModal
 import EditorToolbar from '../../components/EditorToolbar/EditorToolbar';
 import TextModePanel from '../../components/TextModePanel/TextModePanel';
 import ExportImageModal from '../../components/ExportImageModal/ExportImageModal';
+import ShareModal from '../../components/ShareModal/ShareModal';
+import LevelTabs from '../../components/LevelTabs/LevelTabs';
 import { getProject, InvalidProjectIdError } from '../../services/projects';
 import { LOCKED_NOTICE, useDiagramEditor } from '../../hooks/useDiagramEditor';
 import { useDiagramValidation } from '../../hooks/useDiagramValidation';
@@ -155,46 +158,6 @@ function ConflictNotice({ levels, onResolve }) {
         </div>
       ))}
     </motion.div>
-  );
-}
-
-// Nota: abas de nível flutuando no topo do canvas, fixas no centro do editor (não acompanham a paleta nem o
-// assistente, para não "dançarem" ao abrir e fechar os painéis); o destaque do nível ativo desliza entre as abas
-function LevelTabs({ activeLevel, onSelect }) {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
-      <div
-        role="tablist"
-        aria-label="Níveis do modelo C4"
-        className="pointer-events-auto flex gap-1 rounded-full border border-line bg-surface/90 p-1 shadow-[var(--shadow-raised)] backdrop-blur-sm"
-      >
-        {LEVELS.map((level) => {
-          const selected = level.id === activeLevel;
-          return (
-            <button
-              key={level.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => onSelect(level.id)}
-              className={`relative rounded-full px-4 py-1.5 text-sm transition-colors duration-200 ${
-                selected ? 'text-accent-fg' : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {selected && (
-                <motion.span
-                  layoutId="active-level"
-                  aria-hidden="true"
-                  transition={{ duration: 0.25, ease: EASE_OUT_SOFT }}
-                  className="absolute inset-0 rounded-full bg-accent"
-                />
-              )}
-              <span className="relative">{level.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -391,6 +354,9 @@ function ProjectPage() {
 
   // RF18: exportar a imagem do nível aberto (o canvas preenche o exportador)
   const [showingExport, setShowingExport] = useState(false);
+  // Link de visualização (só leitura) do projeto
+  const [showingShare, setShowingShare] = useState(false);
+  const closeShare = useCallback(() => setShowingShare(false), []);
   const closeExport = useCallback(() => setShowingExport(false), []);
   const exporterRef = useRef(null);
   const activeLevelLabel = LEVELS.find((level) => level.id === editor.activeLevel).label;
@@ -446,7 +412,7 @@ function ProjectPage() {
   }
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
   // Com um modal aberto, atalhos e teclado do canvas ficam desligados (não mexem no diagrama por trás)
-  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts || showingExport;
+  const modalOpen = Boolean(findEditTarget(editor, editing)) || showingShortcuts || showingExport || showingShare;
 
   useEffect(() => {
     let active = true;
@@ -514,6 +480,8 @@ function ProjectPage() {
             triggerClassName={iconButtonClasses({ className: 'border border-line bg-surface' })}
             items={[
               { label: 'Salvar', icon: Save, hint: 'Ctrl+S', onSelect: editor.save },
+              // Link de visualização: quem tem o link (e está logado) vê o diagrama, sem editar
+              { label: 'Compartilhar', icon: Link2, hint: 'link', disabled: !project, onSelect: () => setShowingShare(true) },
               {
                 label: 'Exportar imagem',
                 icon: ImageDown,
@@ -606,6 +574,7 @@ function ProjectPage() {
 
       <AnimatePresence>{showingShortcuts && <ShortcutsModal key="shortcuts" onClose={closeShortcuts} />}</AnimatePresence>
       <AnimatePresence>
+        {showingShare && <ShareModal key="share" projectId={id} onClose={closeShare} />}
         {showingExport && (
           <ExportImageModal
             key="export-image"

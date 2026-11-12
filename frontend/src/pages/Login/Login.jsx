@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../services/api';
-import { saveSession } from '../../services/session';
+import { forgetReturnPath, rememberReturnPath, saveSession, takeReturnPath } from '../../services/session';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
 import Button from '../../components/Button/Button';
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
+import ResendVerification from '../../components/ResendVerification/ResendVerification';
+
 
 const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
@@ -19,10 +21,22 @@ function Login() {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+
+  // Quem chegou por um link (ex.: de visualização) volta para ele depois de entrar, mesmo passando pelo cadastro.
+  // Login aberto sem origem esquece um link guardado antes: quem desistiu do link e entra depois vai para os projetos.
+  // Vale a origem com que a tela abriu: na animação de saída (ex.: "Cadastre-se"), ela ainda fica montada e já lê a
+  // localização seguinte, sem origem, e apagaria o link de quem está indo se cadastrar
+  const [from] = useState(() => location.state?.from);
+  useEffect(() => {
+    if (from) rememberReturnPath(from);
+    else forgetReturnPath();
+  }, [from]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage('');
+    setNeedsVerification(false);
     setSubmitting(true);
 
     try {
@@ -34,10 +48,11 @@ function Login() {
       }
 
       saveSession(token, user);
-      void navigate('/projetos');
+      void navigate(takeReturnPath() ?? '/projetos');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);
+      setNeedsVerification(err.response?.data?.code === 'EMAIL_NOT_VERIFIED');
       setSubmitting(false);
     }
   }
@@ -81,6 +96,11 @@ function Login() {
         <p role="alert" className="mb-4 text-center text-sm text-danger">
           {errorMessage}
         </p>
+      )}
+      {needsVerification && (
+        <div className="mb-4 flex justify-center">
+          <ResendVerification email={email} />
+        </div>
       )}
 
       <AuthItem>

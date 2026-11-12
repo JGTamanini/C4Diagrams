@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../../services/api';
-import { saveSession } from '../../services/session';
+import { peekReturnPath, saveSession } from '../../services/session';
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 
 const STATUS_CONFIG = {
@@ -85,11 +85,12 @@ function VerifyEmail() {
           <output className="mb-4 max-w-xs text-sm text-text-secondary">
             E-mail verificado! Pode fechar esta guia: a aba do cadastro já entrou na sua conta.
           </output>
-          {/* Link aberto em outro aparelho: não há aba de cadastro aqui, mas a sessão já está salva neste navegador */}
+          {/* Link aberto em outro aparelho: não há aba de cadastro aqui, mas a sessão já está salva neste navegador.
+              Quem chegou por um link de visualização pode ir direto ao diagrama compartilhado */}
           <p className="text-xs text-text-muted">
             <span>Abriu o link em outro aparelho?</span>{' '}
-            <Link to="/projetos" className="text-link">
-              Ir para meus projetos
+            <Link to={peekReturnPath() ?? '/projetos'} className="text-link">
+              {peekReturnPath() ? 'Abrir o diagrama compartilhado' : 'Ir para meus projetos'}
             </Link>
           </p>
         </>

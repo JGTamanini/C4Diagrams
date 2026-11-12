@@ -29,4 +29,13 @@ class IncorrectPasswordError extends Error {
   }
 }
 
-module.exports = { InvalidCredentialsError, AccountLockedError, UnauthorizedError, IncorrectPasswordError };
+// Login com a senha certa, mas e-mail ainda não confirmado (só quando REQUIRE_EMAIL_VERIFICATION=true)
+class EmailNotVerifiedError extends Error {
+  constructor() {
+    super('Confirme seu e-mail antes de entrar: abra o link que enviamos no cadastro.');
+    this.name = 'EmailNotVerifiedError';
+    this.code = 'EMAIL_NOT_VERIFIED';
+  }
+}
+
+module.exports = { InvalidCredentialsError, AccountLockedError, UnauthorizedError, IncorrectPasswordError, EmailNotVerifiedError };

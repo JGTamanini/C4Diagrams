@@ -1,3 +1,11 @@
+// Link de visualização que não existe (código errado) ou foi revogado/trocado pelo dono
+class SharedProjectNotFoundError extends Error {
+  constructor() {
+    super('Este link de visualização é inválido ou foi revogado. Peça um link novo a quem compartilhou.');
+    this.name = 'SharedProjectNotFoundError';
+  }
+}
+
 class ProjectNotFoundError extends Error {
   constructor() {
     super('Projeto não encontrado. Volte à lista de projetos e tente novamente.');
@@ -27,4 +35,10 @@ class InvalidImportFileError extends Error {
   }
 }
 
-module.exports = { ProjectNotFoundError, FieldTooLongError, NoFieldsToUpdateError, InvalidImportFileError };
+module.exports = {
+  SharedProjectNotFoundError,
+  ProjectNotFoundError,
+  FieldTooLongError,
+  NoFieldsToUpdateError,
+  InvalidImportFileError,
+};

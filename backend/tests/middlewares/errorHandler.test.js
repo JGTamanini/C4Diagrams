@@ -1,12 +1,13 @@
 const errorHandler = require('../../src/middlewares/errorHandler');
 const { WeakPasswordError, EmailAlreadyExistsError, MissingFieldError } = require('../../src/errors/user.errors');
 const { InvalidOrExpiredTokenError } = require('../../src/errors/token.errors');
-const { UnauthorizedError } = require('../../src/errors/auth.errors');
+const { UnauthorizedError, EmailNotVerifiedError } = require('../../src/errors/auth.errors');
 const {
   ProjectNotFoundError,
   FieldTooLongError,
   NoFieldsToUpdateError,
   InvalidImportFileError,
+  SharedProjectNotFoundError,
 } = require('../../src/errors/project.errors');
 const {
   InvalidDiagramLevelError,
@@ -177,6 +178,26 @@ describe('errorHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(412);
     expect(res.json).toHaveBeenCalledWith({ message: 'Este nível foi alterado em outra aba ou dispositivo.', currentVersion: 5 });
+  });
+
+  it('deve retornar 403 com um código próprio para e-mail não verificado (a tela oferece reenviar o link)', () => {
+    const err = new EmailNotVerifiedError();
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message, code: 'EMAIL_NOT_VERIFIED' });
+  });
+
+  it('deve retornar 404 para link de visualização inválido ou revogado', () => {
+    const err = new SharedProjectNotFoundError();
+    const res = mockRes();
+
+    errorHandler(err, {}, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ message: err.message });
   });
 
   it('deve retornar 413 com mensagem clara quando o corpo passar do limite do parser de JSON', () => {

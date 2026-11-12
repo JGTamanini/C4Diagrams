@@ -4,6 +4,7 @@ const {
   AccountLockedError,
   UnauthorizedError,
   IncorrectPasswordError,
+  EmailNotVerifiedError,
 } = require('../errors/auth.errors');
 const { InvalidOrExpiredTokenError } = require('../errors/token.errors');
 const {
@@ -11,6 +12,7 @@ const {
   FieldTooLongError,
   NoFieldsToUpdateError,
   InvalidImportFileError,
+  SharedProjectNotFoundError,
 } = require('../errors/project.errors');
 const {
   InvalidDiagramLevelError,
@@ -57,6 +59,11 @@ function errorHandler(err, req, res, next) {
     return res.status(403).json({ message: err.message });
   }
 
+  // O código deixa a tela de login oferecer o reenvio do link de verificação
+  if (err instanceof EmailNotVerifiedError) {
+    return res.status(403).json({ message: err.message, code: err.code });
+  }
+
   if (err instanceof UnauthorizedError) {
     return res.set('WWW-Authenticate', 'Bearer').status(401).json({ message: err.message });
   }
@@ -72,6 +79,10 @@ function errorHandler(err, req, res, next) {
   // Issue #74: a versão atual vai junto, para a aba poder gravar por cima de propósito ("Manter a minha")
   if (err instanceof DiagramVersionConflictError) {
     return res.status(412).json({ message: err.message, currentVersion: err.currentVersion });
+  }
+
+  if (err instanceof SharedProjectNotFoundError) {
+    return res.status(404).json({ message: err.message });
   }
 
   if (err instanceof EmailAlreadyExistsError) {

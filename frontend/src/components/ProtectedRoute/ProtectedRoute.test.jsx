@@ -6,7 +6,11 @@ import api from '../../services/api';
 
 function LoginProbe() {
   const location = useLocation();
-  return <p>Tela de login {location.state?.sessionExpired ? '(sessão expirada)' : ''}</p>;
+  return (
+    <p>
+      Tela de login {location.state?.sessionExpired ? '(sessão expirada)' : ''} vindo de {location.state?.from}
+    </p>
+  );
 }
 
 function renderAt(path) {
@@ -14,6 +18,14 @@ function renderAt(path) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/login" element={<LoginProbe />} />
+        <Route
+          path="/compartilhado/:token"
+          element={
+            <ProtectedRoute>
+              <p>Projeto compartilhado</p>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/projetos"
           element={
@@ -44,6 +56,13 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Conteúdo protegido')).not.toBeInTheDocument();
   });
 
+  // Link de visualização: sem login, entra e volta para o link
+  it('deve levar ao login guardando de onde veio, para voltar depois de entrar', () => {
+    renderAt('/compartilhado/abc123');
+
+    expect(screen.getByText(/tela de login/i)).toHaveTextContent('vindo de /compartilhado/abc123');
+  });
+
   it('deve renderizar o conteúdo quando houver token', () => {
     localStorage.setItem('token', fakeJwt());
 
@@ -57,7 +76,7 @@ describe('ProtectedRoute', () => {
 
     renderAt('/projetos');
 
-    expect(screen.getByText('Tela de login (sessão expirada)')).toBeInTheDocument();
+    expect(screen.getByText(/tela de login/i)).toHaveTextContent('Tela de login (sessão expirada) vindo de /projetos');
     expect(screen.queryByText('Conteúdo protegido')).not.toBeInTheDocument();
   });
 
@@ -67,7 +86,7 @@ describe('ProtectedRoute', () => {
 
     await act(simulateAuthenticated401);
 
-    expect(screen.getByText('Tela de login (sessão expirada)')).toBeInTheDocument();
+    expect(screen.getByText(/tela de login/i)).toHaveTextContent('Tela de login (sessão expirada) vindo de /projetos');
     expect(localStorage.getItem('token')).toBeNull();
   });
 
