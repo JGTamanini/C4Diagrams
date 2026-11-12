@@ -87,6 +87,15 @@ describe('session', () => {
   // Link de visualização: quem chega sem login volta ao link depois de entrar ou de se cadastrar, mesmo passando pelo
   // cadastro e pela aba nova que o link de confirmação do e-mail abre
   describe('caminho de volta depois de entrar', () => {
+    // Review da #80: quem sai da conta (ou outra pessoa no mesmo navegador) não pode cair no link de antes
+    it('sair da conta deve esquecer o caminho guardado', () => {
+      rememberReturnPath('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+
+      clearSession();
+
+      expect(takeReturnPath()).toBeNull();
+    });
+
     it('deve guardar um caminho do próprio site e entregá-lo uma vez só', () => {
       rememberReturnPath('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
 

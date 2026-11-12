@@ -8,7 +8,7 @@ import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailC
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
-import { takeReturnPath } from '../../services/session';
+import { peekReturnPath, takeReturnPath } from '../../services/session';
 
 function parseUser(value) {
   try {
@@ -106,7 +106,8 @@ function Register() {
       <AuthItem>
         <p className="text-center text-sm text-text-secondary">
           Já tem uma conta?{' '}
-          <Link to="/login" className="text-link">
+          {/* A origem vai junto: o login aberto sem ela esqueceria o link de visualização de onde a pessoa veio */}
+          <Link to="/login" state={{ from: peekReturnPath() ?? undefined }} className="text-link">
             Entrar
           </Link>
         </p>

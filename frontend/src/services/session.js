@@ -45,9 +45,11 @@ export function getUser() {
   }
 }
 
+// Sair também esquece o caminho de volta: a próxima pessoa neste navegador não cai no link de quem saiu
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  forgetReturnPath();
 }
 
 // --- Caminho de volta depois de entrar (link de visualização) ---
@@ -67,6 +69,10 @@ export function rememberReturnPath(path) {
   localStorage.setItem(RETURN_KEY, JSON.stringify({ path, at: Date.now() }));
 }
 
+export function forgetReturnPath() {
+  localStorage.removeItem(RETURN_KEY);
+}
+
 // O caminho guardado, se ainda válido, sem apagar (a página de confirmação só mostra o link)
 export function peekReturnPath() {
   try {
@@ -80,6 +86,6 @@ export function peekReturnPath() {
 // O caminho guardado, uma vez só: depois de usado, um login futuro não volta a um link antigo
 export function takeReturnPath() {
   const path = peekReturnPath();
-  localStorage.removeItem(RETURN_KEY);
+  forgetReturnPath();
   return path;
 }

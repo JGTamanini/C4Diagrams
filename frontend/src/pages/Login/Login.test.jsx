@@ -112,6 +112,18 @@ describe('Login', () => {
     expect(JSON.parse(localStorage.getItem('returnTo')).path).toBe('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
   });
 
+  // Review da #80: abrir o link, desistir do login e depois entrar direto pelo /login levava ao link antigo
+  it('aberto direto (sem origem), deve esquecer um link guardado antes e ir para os projetos', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
+    api.post.mockResolvedValue({ data: { token: 'header.payload.signature', user: { name: 'João', email: 'joao@example.com' } } });
+    renderWithRouter(<Login />);
+
+    await submitLogin(user);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/projetos');
+  });
+
   it('deve oferecer reenviar o link quando o e-mail ainda não foi verificado (403)', async () => {
     const user = userEvent.setup();
     api.post.mockRejectedValue({
