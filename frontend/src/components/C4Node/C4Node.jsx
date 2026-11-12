@@ -12,6 +12,10 @@ const BODY_SHAPE_CLASSES = {
 const SELECTED_RING = '0 0 0 2px var(--color-canvas-deep), 0 0 0 4px var(--color-accent-text), 0 12px 32px -8px rgb(47 107 255 / 0.5)';
 const RESTING_SHADOW = '0 10px 24px -10px rgb(0 0 0 / 0.7)';
 
+// A cabeça da Pessoa (48px, com 12px sobre o corpo) ocupa 36px acima dele: o centro do corpo fica 18px abaixo do
+// meio do elemento inteiro. Os pontos laterais ficam ali, onde a linha parece se ligar
+const PERSON_SIDE_HANDLE_STYLE = { top: 'calc(50% + 18px)' };
+
 // Marcador do motor de validação (RF17): só erro e aviso marcam o elemento; sugestões ficam só no painel
 const ISSUE_MARKER = {
   error: { color: 'bg-danger', label: 'Este elemento tem erro de validação' },
@@ -32,6 +36,7 @@ function C4Node({ id, type, data, selected = false }) {
     updateNodeInternals(id);
   }, [id, isConnectionTarget, updateNodeInternals]);
   const colors = { backgroundColor: element.background, borderColor: element.border, color: element.color };
+  const sideHandleStyle = element.shape === 'person' ? PERSON_SIDE_HANDLE_STYLE : undefined;
 
   return (
     <div
@@ -42,8 +47,8 @@ function C4Node({ id, type, data, selected = false }) {
     >
       {/* Pontos de conexão nos quatro lados (a conexão é flutuante: o lado escolhido não fica salvo) */}
       <Handle type="target" position={Position.Top} />
-      <Handle type="source" id="esquerda" position={Position.Left} />
-      <Handle type="source" id="direita" position={Position.Right} />
+      <Handle type="source" id="esquerda" position={Position.Left} style={sideHandleStyle} />
+      <Handle type="source" id="direita" position={Position.Right} style={sideHandleStyle} />
       {isConnectionTarget && (
         <Handle type="target" id="corpo" position={Position.Top} data-testid="c4-node-drop-target" className="c4-drop-target" />
       )}

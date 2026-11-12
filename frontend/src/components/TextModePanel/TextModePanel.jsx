@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import Button from '../Button/Button';
 import IconButton from '../Button/IconButton';
+import NumberedTextArea from '../NumberedTextArea/NumberedTextArea';
 import { diagramToText, exampleText, planTextChanges } from '../../services/textMode';
 
 // Só o que o texto descreve (tipo, nome, descrição, tecnologia e relações): mover ou selecionar não "muda" o diagrama
@@ -47,6 +48,7 @@ function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose, lock
   const [message, setMessage] = useState('');
   const [awaitingResult, setAwaitingResult] = useState(false);
   const [confirmingReload, setConfirmingReload] = useState(false);
+  const textRef = useRef(null);
 
   const currentKey = contentKey(nodes, edges);
   const changedOnCanvas = currentKey !== generated.key;
@@ -115,21 +117,33 @@ function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose, lock
       )}
 
       <div className="flex min-h-0 flex-1 flex-col px-4">
-        <textarea
-          aria-label={`Texto do nível ${levelLabel}`}
+        <NumberedTextArea
+          ref={textRef}
+          label={`Texto do nível ${levelLabel}`}
           value={text}
-          spellCheck={false}
-          wrap="off"
           onChange={(event) => setText(event.target.value)}
-          className="min-h-0 flex-1 resize-none rounded-[var(--radius-control)] border border-line bg-canvas p-3 font-mono text-xs leading-relaxed text-text-primary outline-none focus:border-accent-text"
+          errorLines={errors.map((error) => error.line)}
         />
       </div>
 
       <div className="flex flex-col gap-2 px-4 py-3">
         {errors.length > 0 && (
           <ul role="alert" className="max-h-28 overflow-y-auto text-xs text-danger">
+            {/* Clicar no erro seleciona a linha dele no texto; erro do diagrama inteiro (linha 0) é só texto */}
             {errors.map((error) => (
-              <li key={`${error.line}-${error.message}`}>{error.message}</li>
+              <li key={`${error.line}-${error.message}`}>
+                {error.line >= 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => textRef.current.selectLine(error.line)}
+                    className="text-left hover:underline focus-visible:underline focus-visible:outline-none"
+                  >
+                    {error.message}
+                  </button>
+                ) : (
+                  error.message
+                )}
+              </li>
             ))}
           </ul>
         )}

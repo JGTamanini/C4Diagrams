@@ -56,6 +56,19 @@ describe('C4Node', () => {
     expect(screen.queryByTestId('c4-node-drop-target')).not.toBeInTheDocument();
   });
 
+  // A cabeça da Pessoa fica acima do corpo: no meio do elemento inteiro, os pontos laterais cairiam na borda de
+  // cima do corpo, desalinhados de onde a linha parece se ligar
+  it('deve alinhar os pontos laterais da Pessoa ao centro do corpo, e não do elemento inteiro', () => {
+    connecting(null);
+    const person = renderNode('c4-person', { label: 'Cliente' }).container;
+    const system = renderNode('c4-system', { label: 'Loja' }).container;
+    const side = (container, id) => container.querySelector(`.react-flow__handle[data-handleid="${id}"]`);
+
+    expect(side(person, 'esquerda').style.top).toBe('calc(50% + 18px)');
+    expect(side(person, 'direita').style.top).toBe('calc(50% + 18px)');
+    expect(side(system, 'esquerda').style.top).toBe('');
+  });
+
   it('deve virar alvo de corpo inteiro enquanto outro elemento está sendo conectado (basta passar o mouse)', () => {
     connecting('outro');
     renderNode('c4-system', { label: 'Loja' });
