@@ -80,3 +80,59 @@ describe.each([
     expect(mockSend).not.toHaveBeenCalled();
   });
 });
+
+// Visual dos e-mails (opção B, "papel claro"): botão com o link completo e, abaixo, um link alternativo curto, sem o
+// token à vista; a versão em texto puro leva o link inteiro (texto puro não tem link clicável)
+describe('EmailService — conteúdo dos e-mails', () => {
+  const previousUrl = process.env.FRONTEND_URL;
+  const token = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.FRONTEND_URL = 'https://c4diagrams.com.br';
+    mockSend.mockResolvedValue(SDK_SUCCESS);
+  });
+
+  afterAll(() => {
+    process.env.FRONTEND_URL = previousUrl;
+  });
+
+  const sent = () => mockSend.mock.calls[0][0];
+  const visibleText = (html) => html.replace(/href="[^"]*"/g, '');
+
+  it.each([
+    [
+      'sendVerificationEmail',
+      'Confirme seu e-mail — C4Diagrams',
+      'Confirmar e-mail',
+      'verify-email',
+      '24 horas',
+      'criou uma conta no C4Diagrams',
+    ],
+    [
+      'sendPasswordResetEmail',
+      'Redefinição de senha — C4Diagrams',
+      'Criar nova senha',
+      'reset-password',
+      '10 minutos',
+      'sua senha continua a mesma',
+    ],
+  ])('%s: botão, link alternativo curto, validade, rodapé e versão em texto', async (method, subject, button, path, expiry, footer) => {
+    await emailService[method]('joao@example.com', token);
+    const link = `https://c4diagrams.com.br/${path}?token=${token}`;
+    const { html, text } = sent();
+
+    expect(sent().subject).toBe(subject);
+    expect(html).toContain(`href="${link}"`);
+    expect(html).toContain(button);
+    expect(html).toContain(`>c4diagrams.com.br/${path}</a>`);
+    expect(visibleText(html)).not.toContain(token);
+    expect(html).toContain(expiry);
+    expect(html).toContain(footer);
+    expect(html).toContain('C4//diagrams');
+
+    expect(text).toContain(link);
+    expect(text).toContain(expiry);
+    expect(text).not.toContain('<');
+  });
+});
