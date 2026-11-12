@@ -6,6 +6,8 @@
 > **Versão:** 1.0 | **Área:** Web — Engenharia de Software  
 > **Data:** Abril de 2026
 
+> **Aplicação no ar:** [c4diagrams.com.br](https://c4diagrams.com.br)
+
 ---
 
 ## Sobre o Projeto
@@ -22,6 +24,18 @@ A solução proposta vai além da simples criação de diagramas — ela busca *
 - Validação automática da estrutura dos diagramas
 - Assistência inteligente baseada em IA para orientação e revisão dos diagramas
 - Suporte explícito aos 4 níveis: **Contexto → Container → Componente → Código**
+
+---
+
+## Telas
+
+| Página inicial | Editor (nível Container) |
+|---|---|
+| ![Página inicial](RFC/assets/tela-home.png) | ![Editor com o diagrama de containers do próprio C4Diagram](RFC/assets/tela-editor.png) |
+
+**Link de visualização (RF24):** quem recebe o link vê o diagrama sem editar; clicar num elemento abre os detalhes à esquerda.
+
+![Visualização compartilhada com os detalhes da Backend API](RFC/assets/tela-visualizacao.png)
 
 ---
 
