@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../services/api';
-import { saveSession } from '../../services/session';
+import { rememberReturnPath, saveSession, takeReturnPath } from '../../services/session';
 import Brand from '../../components/Brand/Brand';
 import FormInput from '../../components/FormInput/FormInput';
 import Button from '../../components/Button/Button';
@@ -9,10 +9,6 @@ import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 
-// Só caminhos do próprio site: "//site.com" e "https://..." levariam para fora (redirecionamento aberto)
-function returnPath(from) {
-  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/\\') ? from : '/projetos';
-}
 
 const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
@@ -26,6 +22,12 @@ function Login() {
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
+
+  // Quem chegou por um link (ex.: de visualização) volta para ele depois de entrar, mesmo passando pelo cadastro
+  const from = location.state?.from;
+  useEffect(() => {
+    rememberReturnPath(from);
+  }, [from]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -42,7 +44,7 @@ function Login() {
       }
 
       saveSession(token, user);
-      void navigate(returnPath(location.state?.from));
+      void navigate(takeReturnPath() ?? '/projetos');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';
       setErrorMessage(message);

@@ -98,6 +98,16 @@ describe('Register', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/projetos', { replace: true });
     });
 
+    it('deve voltar ao link de visualização de onde veio, quando houver um guardado', async () => {
+      localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
+      await registerAndWait();
+
+      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
+
+      expect(mockNavigate).toHaveBeenCalledWith('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', { replace: true });
+      expect(localStorage.getItem('returnTo')).toBeNull();
+    });
+
     it('não deve seguir quando outra conta entrar em outra aba', async () => {
       await registerAndWait();
 

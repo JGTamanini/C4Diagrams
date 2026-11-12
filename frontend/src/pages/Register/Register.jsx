@@ -8,6 +8,7 @@ import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailC
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
+import { takeReturnPath } from '../../services/session';
 
 function parseUser(value) {
   try {
@@ -37,7 +38,8 @@ function Register() {
 
     function handleStorage(event) {
       if (event.key !== 'user' || !event.newValue) return;
-      if (sameEmail(parseUser(event.newValue)?.email, email)) void navigate('/projetos', { replace: true });
+      // Quem veio por um link de visualização volta para ele
+      if (sameEmail(parseUser(event.newValue)?.email, email)) void navigate(takeReturnPath() ?? '/projetos', { replace: true });
     }
 
     window.addEventListener('storage', handleStorage);

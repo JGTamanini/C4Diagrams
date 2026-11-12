@@ -105,6 +105,13 @@ describe('Login', () => {
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith(expected));
   });
 
+  // Review da #80: quem chega pelo link e vai se cadastrar não pode perder a origem
+  it('deve guardar de onde veio ao abrir, para o cadastro também voltar ao link', () => {
+    renderWithRouter(<Login />, { from: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234' });
+
+    expect(JSON.parse(localStorage.getItem('returnTo')).path).toBe('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+  });
+
   it('deve oferecer reenviar o link quando o e-mail ainda não foi verificado (403)', async () => {
     const user = userEvent.setup();
     api.post.mockRejectedValue({

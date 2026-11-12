@@ -42,6 +42,15 @@ describe('VerifyEmail', () => {
     expect(JSON.parse(localStorage.getItem('user'))).toEqual({ name: 'João', email: 'joao@example.com' });
   });
 
+  it('deve oferecer abrir o diagrama compartilhado quando a pessoa chegou por um link de visualização', async () => {
+    localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
+    api.post.mockResolvedValue({ data: { message: 'E-mail verificado com sucesso.', ...session } });
+
+    renderWithToken('token-valido');
+
+    expect(await screen.findByRole('link', { name: 'Abrir o diagrama compartilhado' })).toHaveAttribute('href', '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234');
+  });
+
   it('deve verificar uma vez só, mesmo quando o efeito roda duas vezes (StrictMode): o link vale uma vez', async () => {
     api.post.mockResolvedValueOnce({ data: { message: 'E-mail verificado com sucesso.', ...session } });
     api.post.mockRejectedValue({ response: { status: 400, data: { message: 'Token inválido ou expirado.' } } });
