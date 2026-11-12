@@ -1,0 +1,384 @@
+{
+  "format": "c4diagrams",
+  "version": 1,
+  "project": {
+    "name": "C4Diagram",
+    "description": "A própria ferramenta, modelada nela mesma: figuras 7, 8 e 9 do RFC (capítulo 5.1)."
+  },
+  "diagrams": {
+    "context": {
+      "nodes": [
+        {
+          "id": "ctx-user",
+          "type": "c4-person",
+          "position": {
+            "x": 320,
+            "y": 0
+          },
+          "data": {
+            "label": "Usuário",
+            "description": "Estudante ou desenvolvedor que modela arquiteturas no padrão C4"
+          }
+        },
+        {
+          "id": "ctx-app",
+          "type": "c4-system",
+          "position": {
+            "x": 320,
+            "y": 280
+          },
+          "data": {
+            "label": "C4Diagram",
+            "description": "Editor de diagramas C4 com validação automática, assistente de IA e link de visualização"
+          }
+        },
+        {
+          "id": "ctx-ai",
+          "type": "c4-system-external",
+          "position": {
+            "x": 0,
+            "y": 560
+          },
+          "data": {
+            "label": "Anthropic Claude API",
+            "description": "Gera as sugestões do assistente de IA"
+          }
+        },
+        {
+          "id": "ctx-mail",
+          "type": "c4-system-external",
+          "position": {
+            "x": 640,
+            "y": 560
+          },
+          "data": {
+            "label": "Resend",
+            "description": "Entrega os e-mails de confirmação de cadastro e de redefinição de senha"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "ctx-e1",
+          "source": "ctx-user",
+          "target": "ctx-app",
+          "label": "Modela e compartilha diagramas em",
+          "technology": "HTTPS"
+        },
+        {
+          "id": "ctx-e2",
+          "source": "ctx-app",
+          "target": "ctx-ai",
+          "label": "Pede sugestões a",
+          "technology": "HTTPS"
+        },
+        {
+          "id": "ctx-e3",
+          "source": "ctx-app",
+          "target": "ctx-mail",
+          "label": "Envia e-mails por",
+          "technology": "HTTPS"
+        }
+      ]
+    },
+    "container": {
+      "scope": {
+        "nodeId": "ctx-app"
+      },
+      "nodes": [
+        {
+          "id": "ctn-user",
+          "type": "c4-person",
+          "position": {
+            "x": 340,
+            "y": 0
+          },
+          "data": {
+            "label": "Usuário",
+            "description": "Estudante ou desenvolvedor que modela arquiteturas no padrão C4"
+          }
+        },
+        {
+          "id": "ctn-front",
+          "type": "c4-container",
+          "position": {
+            "x": 340,
+            "y": 280
+          },
+          "data": {
+            "label": "Frontend",
+            "technology": "React + React Flow",
+            "description": "SPA do editor, compilada e servida pela própria API (mesma origem)"
+          }
+        },
+        {
+          "id": "ctn-api",
+          "type": "c4-container",
+          "position": {
+            "x": 340,
+            "y": 560
+          },
+          "data": {
+            "label": "Backend API",
+            "technology": "Node.js + Express",
+            "description": "API REST: contas, projetos, diagramas, validação C4, IA e link de visualização"
+          }
+        },
+        {
+          "id": "ctn-db",
+          "type": "c4-container-db",
+          "position": {
+            "x": 340,
+            "y": 840
+          },
+          "data": {
+            "label": "Banco de Dados",
+            "technology": "PostgreSQL",
+            "description": "Usuários, projetos e diagramas (documento em jsonb)"
+          }
+        },
+        {
+          "id": "ctn-ai",
+          "type": "c4-system-external",
+          "position": {
+            "x": -200,
+            "y": 560
+          },
+          "data": {
+            "label": "Anthropic Claude API",
+            "description": "Gera as sugestões do assistente de IA"
+          }
+        },
+        {
+          "id": "ctn-mail",
+          "type": "c4-system-external",
+          "position": {
+            "x": 880,
+            "y": 560
+          },
+          "data": {
+            "label": "Resend",
+            "description": "Entrega os e-mails de confirmação de cadastro e de redefinição de senha"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "ctn-e1",
+          "source": "ctn-user",
+          "target": "ctn-front",
+          "label": "Usa",
+          "technology": "HTTPS"
+        },
+        {
+          "id": "ctn-e2",
+          "source": "ctn-front",
+          "target": "ctn-api",
+          "label": "Chama",
+          "technology": "JSON/HTTPS"
+        },
+        {
+          "id": "ctn-e3",
+          "source": "ctn-api",
+          "target": "ctn-db",
+          "label": "Lê e grava em",
+          "technology": "SQL/TLS"
+        },
+        {
+          "id": "ctn-e4",
+          "source": "ctn-api",
+          "target": "ctn-ai",
+          "label": "Pede sugestões a",
+          "technology": "HTTPS"
+        },
+        {
+          "id": "ctn-e5",
+          "source": "ctn-api",
+          "target": "ctn-mail",
+          "label": "Envia e-mails por",
+          "technology": "HTTPS"
+        }
+      ]
+    },
+    "component": {
+      "scope": {
+        "nodeId": "ctn-api"
+      },
+      "nodes": [
+        {
+          "id": "cmp-front",
+          "type": "c4-container",
+          "position": {
+            "x": 340,
+            "y": 0
+          },
+          "data": {
+            "label": "Frontend",
+            "technology": "React + React Flow",
+            "description": "SPA do editor, compilada e servida pela própria API (mesma origem)"
+          }
+        },
+        {
+          "id": "cmp-router",
+          "type": "c4-component",
+          "position": {
+            "x": 340,
+            "y": 280
+          },
+          "data": {
+            "label": "Router / Routes",
+            "technology": "Express Router",
+            "description": "Agrupa os endpoints e aplica os middlewares"
+          }
+        },
+        {
+          "id": "cmp-auth",
+          "type": "c4-component",
+          "position": {
+            "x": 860,
+            "y": 280
+          },
+          "data": {
+            "label": "Auth Middleware",
+            "technology": "jsonwebtoken",
+            "description": "Valida o token JWT das rotas protegidas"
+          }
+        },
+        {
+          "id": "cmp-ctrl",
+          "type": "c4-component",
+          "position": {
+            "x": 340,
+            "y": 560
+          },
+          "data": {
+            "label": "Controllers",
+            "technology": "Express",
+            "description": "Auth, Project, Diagram, Share e AI: traduzem HTTP em chamadas aos serviços"
+          }
+        },
+        {
+          "id": "cmp-svc",
+          "type": "c4-component",
+          "position": {
+            "x": 340,
+            "y": 840
+          },
+          "data": {
+            "label": "Services",
+            "technology": "Node.js",
+            "description": "Regras de negócio, motor de validação C4 e abstração da IA e do e-mail"
+          }
+        },
+        {
+          "id": "cmp-repo",
+          "type": "c4-component",
+          "position": {
+            "x": 340,
+            "y": 1120
+          },
+          "data": {
+            "label": "Repositories",
+            "technology": "node-postgres",
+            "description": "Consultas SQL parametrizadas ao banco"
+          }
+        },
+        {
+          "id": "cmp-db",
+          "type": "c4-container-db",
+          "position": {
+            "x": 340,
+            "y": 1520
+          },
+          "data": {
+            "label": "Banco de Dados",
+            "technology": "PostgreSQL",
+            "description": "Usuários, projetos e diagramas (documento em jsonb)"
+          }
+        },
+        {
+          "id": "cmp-ai",
+          "type": "c4-system-external",
+          "position": {
+            "x": -220,
+            "y": 840
+          },
+          "data": {
+            "label": "Anthropic Claude API",
+            "description": "Gera as sugestões do assistente de IA"
+          }
+        },
+        {
+          "id": "cmp-mail",
+          "type": "c4-system-external",
+          "position": {
+            "x": 1300,
+            "y": 840
+          },
+          "data": {
+            "label": "Resend",
+            "description": "Entrega os e-mails de confirmação de cadastro e de redefinição de senha"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "cmp-e1",
+          "source": "cmp-front",
+          "target": "cmp-router",
+          "label": "Chama",
+          "technology": "JSON/HTTPS"
+        },
+        {
+          "id": "cmp-e2",
+          "source": "cmp-router",
+          "target": "cmp-auth",
+          "label": "Valida o token com",
+          "technology": "chamada de função"
+        },
+        {
+          "id": "cmp-e3",
+          "source": "cmp-router",
+          "target": "cmp-ctrl",
+          "label": "Encaminha para",
+          "technology": "chamada de função"
+        },
+        {
+          "id": "cmp-e4",
+          "source": "cmp-ctrl",
+          "target": "cmp-svc",
+          "label": "Usa",
+          "technology": "chamada de função"
+        },
+        {
+          "id": "cmp-e5",
+          "source": "cmp-svc",
+          "target": "cmp-repo",
+          "label": "Usa",
+          "technology": "chamada de função"
+        },
+        {
+          "id": "cmp-e6",
+          "source": "cmp-repo",
+          "target": "cmp-db",
+          "label": "Lê e grava em",
+          "technology": "SQL/TLS"
+        },
+        {
+          "id": "cmp-e7",
+          "source": "cmp-svc",
+          "target": "cmp-ai",
+          "label": "Pede sugestões a",
+          "technology": "HTTPS"
+        },
+        {
+          "id": "cmp-e8",
+          "source": "cmp-svc",
+          "target": "cmp-mail",
+          "label": "Envia e-mails por",
+          "technology": "HTTPS"
+        }
+      ]
+    }
+  }
+}
