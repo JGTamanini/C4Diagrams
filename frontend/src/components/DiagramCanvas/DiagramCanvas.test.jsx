@@ -106,17 +106,34 @@ describe('DiagramCanvas', () => {
       expect(zoomLabel()).toMatch(/^\d+%$/);
     });
 
-    it('deve travar o canvas: os elementos deixam de poder ser arrastados ou selecionados', async () => {
+    it('deve pedir ao editor para travar pela barra (o travamento é do editor, issue #75)', async () => {
       const user = userEvent.setup();
-      renderCanvas();
-      const element = (await screen.findByText('Cliente')).closest('.react-flow__node');
-      expect(element).toHaveClass('draggable');
+      const onToggleLock = vi.fn();
+      renderCanvas({ onToggleLock });
+      expect((await screen.findByText('Cliente')).closest('.react-flow__node')).toHaveClass('draggable');
 
       await user.click(controls().getByRole('button', { name: 'Travar o canvas' }));
+
+      expect(onToggleLock).toHaveBeenCalledTimes(1);
+    });
+
+    // Issue #75: travado, nenhum caminho do canvas altera o diagrama
+    it('travado: elementos sem arrastar nem selecionar, paleta desabilitada, sem soltar e sem menu de clique direito', async () => {
+      const handlers = renderCanvas({ locked: true });
+      const element = (await screen.findByText('Cliente')).closest('.react-flow__node');
 
       expect(controls().getByRole('button', { name: 'Travar o canvas' })).toHaveAttribute('aria-pressed', 'true');
       expect(element).not.toHaveClass('draggable');
       expect(element).not.toHaveClass('selectable');
+      expect(screen.getByRole('button', { name: 'Pessoa' })).toBeDisabled();
+
+      dropElement('c4-system');
+      fireEvent.contextMenu(element, { clientX: 120, clientY: 80 });
+      fireEvent.doubleClick(element);
+
+      expect(handlers.onAddNode).not.toHaveBeenCalled();
+      expect(handlers.onEditNode).not.toHaveBeenCalled();
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     });
 
     it('deve ligar e desligar o alinhamento à grade', async () => {

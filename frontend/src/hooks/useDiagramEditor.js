@@ -27,6 +27,8 @@ function changesDiagram(change) {
   return change.type === 'position' && change.dragging === false && Boolean(change.position);
 }
 
+export const LOCKED_NOTICE = 'O canvas está travado: destrave-o (cadeado na barra de baixo) para editar o diagrama.';
+
 function emptyDiagrams() {
   return Object.fromEntries(LEVEL_IDS.map((level) => [level, { nodes: [], edges: [] }]));
 }
@@ -90,6 +92,21 @@ export function useDiagramEditor(projectId) {
   // Aviso curto para o usuário quando uma ação é bloqueada (ex.: limite de elementos do diagrama)
   const [notice, setNotice] = useState(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
+
+  // Issue #75: com o canvas travado, nenhuma ação altera o diagrama. A guarda fica nos pontos por onde toda alteração
+  // passa (editActive, setScope, travel e updateActive): assim nenhum caminho novo de edição escapa por esquecimento
+  const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
+  const toggleLock = useCallback(() => {
+    lockedRef.current = !lockedRef.current;
+    setLocked(lockedRef.current);
+  }, []);
+  // true (e um aviso) quando a ação foi barrada pelo travamento
+  const blockedByLock = useCallback(() => {
+    if (!lockedRef.current) return false;
+    setNotice(LOCKED_NOTICE);
+    return true;
+  }, []);
 
   useEffect(() => {
     diagramsRef.current = diagrams;
@@ -259,7 +276,10 @@ export function useDiagramEditor(projectId) {
   }, []);
 
   const updateActive = useCallback(
-    (key, apply, changes) => {
+    (key, apply, allChanges) => {
+      // Travado: só passam as mudanças que não alteram o diagrama (medidas dos elementos, por exemplo)
+      const changes = lockedRef.current ? allChanges.filter((change) => !changesDiagram(change)) : allChanges;
+      if (changes.length === 0) return;
       const before = diagramsRef.current[activeLevel];
       // Mover é um passo só: guarda a posição de antes de começar a arrastar
       if (!dragSnapshotRef.current && changes.some(isDragStart)) dragSnapshotRef.current = before;
@@ -284,11 +304,12 @@ export function useDiagramEditor(projectId) {
   // Edições feitas pelo editor (paleta, conexões e modal): sempre alteram o diagrama do nível ativo
   const editActive = useCallback(
     (edit) => {
+      if (blockedByLock()) return;
       record(activeLevel, diagramsRef.current[activeLevel]);
       setDiagrams((current) => ({ ...current, [activeLevel]: edit(current[activeLevel]) }));
       markDirty(activeLevel);
     },
-    [activeLevel, markDirty, record]
+    [activeLevel, markDirty, record, blockedByLock]
   );
 
   const addNode = useCallback(
@@ -331,6 +352,7 @@ export function useDiagramEditor(projectId) {
   // nível na mesma ação, e a troca salva imediatamente lendo a referência (com o foco anterior, se ainda não mudou)
   const setScope = useCallback(
     (level, nodeId) => {
+      if (blockedByLock()) return;
       const current = diagramsRef.current;
       record(level, current[level]);
       const next = { ...current, [level]: { ...current[level], scope: { nodeId } } };
@@ -338,7 +360,7 @@ export function useDiagramEditor(projectId) {
       setDiagrams(next);
       markDirty(level);
     },
-    [markDirty, record]
+    [markDirty, record, blockedByLock]
   );
 
   const updateEdge = useCallback(
@@ -539,7 +561,7 @@ export function useDiagramEditor(projectId) {
   const travel = useCallback(
     (from) => {
       const steps = history[activeLevel][from];
-      if (steps.length === 0) return;
+      if (steps.length === 0 || blockedByLock()) return;
 
       const target = from === 'past' ? steps.at(-1) : steps[0];
       const current = diagramsRef.current[activeLevel];
@@ -556,7 +578,7 @@ export function useDiagramEditor(projectId) {
       setDiagrams((state) => ({ ...state, [activeLevel]: target }));
       markDirty(activeLevel);
     },
-    [activeLevel, history, markDirty]
+    [activeLevel, history, markDirty, blockedByLock]
   );
 
   const undo = useCallback(() => travel('past'), [travel]);
@@ -598,11 +620,14 @@ export function useDiagramEditor(projectId) {
     dismissNotice,
     showNotice: setNotice,
     hasSelection:
-      diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected),
+      !locked &&
+      (diagrams[activeLevel].nodes.some((node) => node.selected) || diagrams[activeLevel].edges.some((edge) => edge.selected)),
     undo,
     redo,
-    canUndo: history[activeLevel].past.length > 0,
-    canRedo: history[activeLevel].future.length > 0,
+    canUndo: !locked && history[activeLevel].past.length > 0,
+    canRedo: !locked && history[activeLevel].future.length > 0,
+    locked,
+    toggleLock,
     save,
     saveStatus,
     conflictLevels: LEVEL_IDS.filter((level) => level in conflicts),

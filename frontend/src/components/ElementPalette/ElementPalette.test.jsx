@@ -32,6 +32,21 @@ describe('ElementPalette', () => {
     expect(onAdd).toHaveBeenCalledWith('c4-container-db');
   });
 
+  // Issue #75: com o canvas travado, a paleta não adiciona elementos, e diz por quê
+  it('deve ficar desabilitada com o canvas travado, sem adicionar nem arrastar', async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    render(<ElementPalette level="context" onAdd={onAdd} disabled />);
+
+    const person = screen.getByRole('button', { name: 'Pessoa' });
+    expect(person).toBeDisabled();
+    expect(person).toHaveAttribute('draggable', 'false');
+    await user.click(person);
+
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(screen.getByText('Canvas travado: destrave para adicionar')).toBeInTheDocument();
+  });
+
   it('deve levar o tipo do elemento ao ser arrastado para o canvas', () => {
     render(<ElementPalette level="context" onAdd={vi.fn()} />);
     const dataTransfer = { setData: vi.fn(), effectAllowed: '' };

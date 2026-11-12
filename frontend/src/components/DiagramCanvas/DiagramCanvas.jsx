@@ -172,6 +172,8 @@ function DiagramWorkspace({
   nodesByLevel = null,
   scopeLabels,
   boundary = null,
+  locked = false,
+  onToggleLock,
   onSelectTreeElement,
   onTogglePalette,
   onCopyNodes,
@@ -297,7 +299,7 @@ function DiagramWorkspace({
 
   function handleDrop(event) {
     event.preventDefault();
-    if (isOverPalette(event)) return;
+    if (locked || isOverPalette(event)) return;
     const type = event.dataTransfer.getData(ELEMENT_DRAG_TYPE);
     if (!isAllowedInLevel(level, type)) return;
     addAt(type, { x: event.clientX, y: event.clientY });
@@ -315,6 +317,8 @@ function DiagramWorkspace({
 
   function openContextMenu(event, node) {
     event.preventDefault();
+    // Travado (issue #75): o menu só oferece edições (colar, editar, excluir)
+    if (locked) return;
     const point = { x: event.clientX, y: event.clientY };
     setContextMenu({ ...point, flowPosition: screenToFlowPosition(point), node });
   }
@@ -354,8 +358,7 @@ function DiagramWorkspace({
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [treeCollapsed, setTreeCollapsed] = useState(false);
   const bothExpanded = !paletteCollapsed && !treeCollapsed;
-  // Barra de controles: canvas travado e alinhamento à grade
-  const [locked, setLocked] = useState(false);
+  // Barra de controles: alinhamento à grade (o travamento é do editor: vale para toda ação que altera o diagrama)
   const [snapToGrid, setSnapToGrid] = useState(false);
   const maxPaletteHeight = () =>
     Math.max(PALETTE_MIN_HEIGHT, (paletteRef.current?.getBoundingClientRect().height ?? 0) - TREE_MIN_HEIGHT);
@@ -413,7 +416,7 @@ function DiagramWorkspace({
           <ScopeBoundary boundary={boundary} />
           <CanvasControls
             locked={locked}
-            onToggleLock={() => setLocked((current) => !current)}
+            onToggleLock={onToggleLock}
             snapToGrid={snapToGrid}
             onToggleSnap={() => setSnapToGrid((current) => !current)}
             onOpenShortcuts={onOpenShortcuts}
@@ -463,6 +466,7 @@ function DiagramWorkspace({
                 <ElementPalette
                   level={level}
                   onAdd={handlePaletteAdd}
+                  disabled={locked}
                   onCollapse={onTogglePalette}
                   collapsed={paletteCollapsed}
                   onToggleCollapsed={showTree ? () => setPaletteCollapsed((current) => !current) : undefined}

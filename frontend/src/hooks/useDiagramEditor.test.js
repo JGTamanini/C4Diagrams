@@ -544,6 +544,75 @@ describe('useDiagramEditor', () => {
     });
   });
 
+  // Issue #75: travado, nenhuma ação altera o diagrama (paleta, colar, modal, excluir, desfazer, foco, modo textual)
+  describe('travar o canvas', () => {
+    it('deve bloquear toda edição do diagrama enquanto travado, avisando, e voltar a editar ao destravar', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.updateNode('n1', { label: 'Antes de travar' }));
+      act(() => result.current.copy(['n1']));
+      await advanceAutosave();
+      saveDiagram.mockClear();
+
+      act(() => result.current.toggleLock());
+      expect(result.current.locked).toBe(true);
+      const before = { nodes: result.current.nodes, edges: result.current.edges };
+
+      act(() => result.current.addNode('c4-system', { x: 10, y: 10 }));
+      act(() => result.current.paste());
+      act(() => result.current.updateNode('n2', { label: 'Mudou' }));
+      act(() => result.current.removeNode('n2'));
+      act(() => result.current.connect({ source: 'n2', target: 'n1' }));
+      act(() => result.current.setScope('container', 'n2'));
+      act(() => result.current.undo());
+      await advanceAutosave();
+
+      expect(result.current.nodes).toBe(before.nodes);
+      expect(result.current.edges).toBe(before.edges);
+      expect(result.current.scopeByLevel.container).toBeNull();
+      expect(result.current.canUndo).toBe(false);
+      expect(result.current.notice).toMatch(/travado/i);
+      expect(saveDiagram).not.toHaveBeenCalled();
+
+      act(() => result.current.toggleLock());
+      expect(result.current.locked).toBe(false);
+      expect(result.current.canUndo).toBe(true);
+      act(() => result.current.addNode('c4-system', { x: 10, y: 10 }));
+      expect(result.current.nodes).toHaveLength(3);
+    });
+
+    it('deve barrar também o modo textual (RF19)', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.toggleLock());
+
+      act(() =>
+        result.current.applyTextChanges({
+          addNodes: [{ id: 'n3', type: 'c4-system-external', position: { x: 0, y: 0 }, data: { label: 'Gateway' } }],
+        })
+      );
+
+      expect(result.current.nodes.map((node) => node.id)).toEqual(['n1', 'n2']);
+    });
+
+    it('deve ignorar as mudanças do React Flow que alteram o diagrama, mas aplicar as medidas dos elementos', async () => {
+      const { result } = await renderLoadedEditor();
+      act(() => result.current.toggleLock());
+
+      act(() =>
+        result.current.onNodesChange([
+          { type: 'remove', id: 'n1' },
+          { type: 'dimensions', id: 'n2', dimensions: { width: 180, height: 90 } },
+        ])
+      );
+      act(() => result.current.onEdgesChange([{ type: 'remove', id: 'e1' }]));
+      await advanceAutosave();
+
+      expect(result.current.nodes.map((node) => node.id)).toEqual(['n1', 'n2']);
+      expect(result.current.nodes[1].measured).toEqual({ width: 180, height: 90 });
+      expect(result.current.edges).toHaveLength(1);
+      expect(saveDiagram).not.toHaveBeenCalled();
+    });
+  });
+
   // Issue #74: a aba grava só sobre a versão que conhece; se outra aba gravou antes, o usuário escolhe o que fica
   describe('conflito com outra aba ou dispositivo', () => {
     const conflict = (currentVersion) =>

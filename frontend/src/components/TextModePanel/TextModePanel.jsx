@@ -39,7 +39,8 @@ function resultMessage(plan) {
 // canvas" adiciona o que é novo e atualiza o que mudou, sem excluir nada (apagar uma linha não apaga o elemento). Com
 // erro em qualquer linha, nada é aplicado. Não há sincronização contínua (RFC 2.6): se o canvas mudar, o painel avisa
 // e oferece recarregar; depois de aplicar, o texto é gerado de novo a partir do resultado.
-function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose }) {
+// locked: canvas travado (issue #75) — o texto pode ser lido e editado, mas não aplicado
+function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose, locked = false }) {
   const [generated, setGenerated] = useState(() => generate(level, nodes, edges));
   const [text, setText] = useState(generated.text);
   const [errors, setErrors] = useState([]);
@@ -162,9 +163,12 @@ function TextModePanel({ level, levelLabel, nodes, edges, onApply, onClose }) {
                 </Button>
               )}
             </div>
-            <Button size="sm" onClick={apply}>
-              Aplicar ao canvas
-            </Button>
+            <div className="flex items-center gap-2">
+              {locked && <span className="text-xs text-text-muted">Canvas travado: destrave para aplicar.</span>}
+              <Button size="sm" onClick={apply} disabled={locked}>
+                Aplicar ao canvas
+              </Button>
+            </div>
           </div>
         )}
       </div>
