@@ -1,10 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, Link2, RefreshCw } from 'lucide-react';
 import Modal from '../Modal/Modal';
 import Button from '../Button/Button';
 import { createShareLink, getShareLink, revokeShareLink, shareUrl } from '../../services/share';
 
 const COPIED_FEEDBACK_MS = 2000;
+
+// Trocar e revogar derrubam o link de quem já o recebeu: pedem confirmação, como excluir a conta
+const CONFIRMATIONS = {
+  regenerate: {
+    label: 'Confirmar a troca do link',
+    message: 'Quem já recebeu o link atual não vai conseguir mais abrir o diagrama. Gerar um link novo?',
+    confirmLabel: 'Sim, gerar novo link',
+  },
+  revoke: {
+    label: 'Confirmar a revogação do link',
+    message: 'Quem já recebeu o link não vai conseguir mais abrir o diagrama. Revogar o link?',
+    confirmLabel: 'Sim, revogar',
+  },
+};
 
 function errorMessage(err) {
   return err?.response?.data?.message ?? 'Não foi possível concluir. Tente de novo.';
@@ -18,6 +32,8 @@ function ShareModal({ projectId, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [confirming, setConfirming] = useState(null);
+  const cancelButtonRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -28,6 +44,11 @@ function ShareModal({ projectId, onClose }) {
       active = false;
     };
   }, [projectId]);
+
+  // Foco em Cancelar: Enter por engano não derruba o link
+  useEffect(() => {
+    if (confirming) cancelButtonRef.current?.focus();
+  }, [confirming]);
 
   useEffect(() => {
     if (!copied) return undefined;
@@ -52,6 +73,11 @@ function ShareModal({ projectId, onClose }) {
     await revokeShareLink(projectId);
     setToken(null);
   });
+  const confirmed = () => {
+    const action = confirming === 'revoke' ? revoke : create;
+    setConfirming(null);
+    return action();
+  };
   const copy = () => run(async () => {
     await navigator.clipboard.writeText(shareUrl(token));
     setCopied(true);
@@ -86,17 +112,35 @@ function ShareModal({ projectId, onClose }) {
               {copied ? 'Copiado' : 'Copiar'}
             </Button>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-            <p className="text-xs text-text-muted">Ao gerar um novo link, o link anterior para de funcionar.</p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" icon={RefreshCw} onClick={create} disabled={busy}>
-                Gerar novo link
-              </Button>
-              <Button size="sm" variant="danger-outline" onClick={revoke} disabled={busy}>
-                Revogar link
-              </Button>
+          {confirming ? (
+            <div
+              role="group"
+              aria-label={CONFIRMATIONS[confirming].label}
+              className="flex flex-col gap-3 rounded-[var(--radius-control)] border border-danger/40 bg-danger/5 p-3"
+            >
+              <p className="text-sm text-text-secondary">{CONFIRMATIONS[confirming].message}</p>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setConfirming(null)} buttonRef={cancelButtonRef}>
+                  Cancelar
+                </Button>
+                <Button size="sm" variant="danger" onClick={confirmed}>
+                  {CONFIRMATIONS[confirming].confirmLabel}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+              <p className="text-xs text-text-muted">Ao gerar um novo link, o link anterior para de funcionar.</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => setConfirming('regenerate')} disabled={busy}>
+                  Gerar novo link
+                </Button>
+                <Button size="sm" variant="danger-outline" onClick={() => setConfirming('revoke')} disabled={busy}>
+                  Revogar link
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
