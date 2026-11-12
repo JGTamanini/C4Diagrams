@@ -14,7 +14,15 @@ import {
 const SMALL_INPUT =
   'min-w-0 rounded-[var(--radius-control)] border border-line bg-canvas px-2.5 py-1.5 text-sm text-text-primary outline-none transition-colors duration-150 focus:border-accent-text';
 
-// RF22: onde o elemento está no modelo — de que elemento do nível de cima ele faz parte e em qual nível é detalhado
+function remainingText(count) {
+  if (count === 0) return '';
+  return count === 1
+    ? ' Ao trocar o foco para este, o elemento que já está lá continua no nível.'
+    : ` Ao trocar o foco para este, os ${count} elementos que já estão lá continuam no nível.`;
+}
+
+// RF22: onde o elemento está no modelo — de que elemento do nível de cima ele faz parte e em qual nível é detalhado.
+// Cada nível detalha um elemento por vez (RN06): se o nível de baixo já detalha outro, o modal explica a troca
 function LevelInfo({ levelInfo, onDetail }) {
   const { partOf, detail } = levelInfo;
   if (!partOf && !detail) return null;
@@ -35,6 +43,16 @@ function LevelInfo({ levelInfo, onDetail }) {
               </p>
               <Button size="sm" variant="secondary" icon={Layers} onClick={onDetail}>
                 Abrir nível {detail.levelName}
+              </Button>
+            </>
+          ) : detail.currentFocusLabel ? (
+            <>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                O nível {detail.levelName} detalha "{detail.currentFocusLabel}". Cada nível detalha um elemento por vez — no C4,
+                só se detalha o que agrega valor.{remainingText(detail.count)}
+              </p>
+              <Button size="sm" variant="secondary" icon={Layers} onClick={onDetail}>
+                Trocar o foco para este
               </Button>
             </>
           ) : (

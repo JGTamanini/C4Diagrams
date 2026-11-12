@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertCircle, ChevronDown, Lightbulb, PanelRightClose, PanelRightOpen, TriangleAlert } from 'lucide-react';
 import IconButton from '../Button/IconButton';
+import { SCOPE_ISSUE_CODES } from '../../constants/levelScope';
 import AiSuggestions from '../AiSuggestions/AiSuggestions';
 
 const GROUPS = [
@@ -12,9 +13,10 @@ function plural(count, singular, pluralForm) {
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }
 
-// Item da lista: leva ao elemento ou à relação quando o problema aponta um; os do diagrama inteiro são só texto
+// Item da lista: leva ao elemento ou à relação quando o problema aponta um, e ao nível de cima nos avisos de foco
+// (é lá que se escolhe o que o nível detalha); os demais do diagrama inteiro são só texto
 function IssueItem({ issue, onSelectIssue }) {
-  if (!issue.nodeId && !issue.edgeId) {
+  if (!issue.nodeId && !issue.edgeId && !SCOPE_ISSUE_CODES.has(issue.code)) {
     return <li className="px-2 py-1.5 text-xs leading-relaxed text-text-secondary">{issue.message}</li>;
   }
   return (

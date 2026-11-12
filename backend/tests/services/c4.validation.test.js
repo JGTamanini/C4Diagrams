@@ -289,7 +289,8 @@ describe('Motor de validação C4', () => {
           {
             code: 'LEVEL_SCOPE_NOT_CHOSEN',
             severity: 'warning',
-            message: 'O diagrama de Contexto tem 2 sistemas de software: indique qual deles o de Containers detalha.',
+            message:
+              'O diagrama de Contexto tem 2 sistemas de software: indique qual deles o de Containers detalha (no diagrama de Contexto, abra o elemento e use "Detalhar").',
           },
         ]);
       });
@@ -310,9 +311,21 @@ describe('Motor de validação C4', () => {
           {
             code: 'LEVEL_SCOPE_NOT_FOUND',
             severity: 'warning',
-            message: 'O elemento que o diagrama de Containers detalhava não existe mais no de Contexto: indique qual sistema ele detalha.',
+            message:
+              'O elemento que o diagrama de Containers detalhava não existe mais no de Contexto: indique qual sistema ele detalha (no diagrama de Contexto, abra o elemento e use "Detalhar").',
           },
         ]);
+      });
+
+      // Review da #79: sem candidato, não há o que "Detalhar"; o aviso de nível de cima sem sistema já explica
+      it('não deve pedir para escolher o foco apagado quando o nível acima não tem nenhum candidato', () => {
+        const contextWithoutSystem = { ...completeContext, nodes: completeContext.nodes.filter((n) => n.type !== 'c4-system') };
+        const container = { ...completeContainer, scope: { nodeId: 's1' } };
+
+        const found = codes(validateDiagram('container', { context: contextWithoutSystem, container }));
+
+        expect(found).toContain('PARENT_LEVEL_WITHOUT_FOCUS');
+        expect(found).not.toContain('LEVEL_SCOPE_NOT_FOUND');
       });
 
       it('deve pedir o container que o nível de Componentes detalha quando há mais de um', () => {
