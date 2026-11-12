@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword/ForgotPassword';
 import ResetPassword from './pages/ResetPassword/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import ProjectPage from './pages/ProjectPage/ProjectPage';
+import SharedProjectPage from './pages/SharedProject/SharedProjectPage';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import PublicOnlyRoute from './components/PublicOnlyRoute/PublicOnlyRoute';
 import AuthLayout from './components/AuthLayout/AuthLayout';
@@ -45,6 +46,15 @@ function App() {
         element={
           <ProtectedRoute>
             <ProjectPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Link de visualização (só leitura): exige login; sem login, o usuário volta para cá depois de entrar */}
+      <Route
+        path="/compartilhado/:token"
+        element={
+          <ProtectedRoute>
+            <SharedProjectPage />
           </ProtectedRoute>
         }
       />

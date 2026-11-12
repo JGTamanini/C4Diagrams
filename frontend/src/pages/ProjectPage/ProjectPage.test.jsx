@@ -15,6 +15,17 @@ vi.mock('../../hooks/useDiagramValidation');
 const mockExporter = vi.fn();
 vi.mock('../../services/projectFile');
 vi.mock('../../hooks/useAiSuggestions');
+vi.mock('../../components/ShareModal/ShareModal', () => ({
+  default: function MockShareModal({ projectId, onClose }) {
+    return (
+      <div role="dialog" aria-label="Compartilhar para visualização" data-project={projectId}>
+        <button type="button" onClick={onClose}>
+          mock-fechar-compartilhar
+        </button>
+      </div>
+    );
+  },
+}));
 vi.mock('../../components/DiagramCanvas/DiagramCanvas', () => ({
   default: function MockCanvas({
     level,
@@ -458,6 +469,20 @@ describe('ProjectPage (editor de diagramas)', () => {
     });
   });
 
+  // Link de visualização: o dono gerencia o link pelo menu de configurações
+  it('deve abrir o compartilhamento do projeto pelo menu, desligando os atalhos do editor', async () => {
+    const user = userEvent.setup();
+    await renderLoaded();
+
+    await user.click(screen.getByRole('button', { name: 'Configurações' }));
+    await user.click(screen.getByRole('menuitem', { name: /Compartilhar/ }));
+
+    expect(screen.getByRole('dialog', { name: 'Compartilhar para visualização' })).toHaveAttribute('data-project', 'p1');
+    expect(screen.getByTestId('canvas')).toHaveAttribute('data-keyboard', 'false');
+    await user.click(screen.getByRole('button', { name: 'mock-fechar-compartilhar' }));
+    expect(screen.queryByRole('dialog', { name: 'Compartilhar para visualização' })).not.toBeInTheDocument();
+  });
+
   describe('salvamento (RNF08)', () => {
     it.each([
       ['saved', 'Todas as alterações salvas'],
@@ -533,14 +558,14 @@ describe('ProjectPage (editor de diagramas)', () => {
       expect(editor.save).toHaveBeenCalledTimes(1);
     });
 
-    it('deve oferecer no menu de configurações Salvar, Exportar imagem, Exportar projeto e Atalhos', async () => {
+    it('deve oferecer no menu de configurações Salvar, Compartilhar, Exportar imagem, Exportar projeto e Atalhos', async () => {
       const user = userEvent.setup();
       await renderLoaded();
 
       await user.click(screen.getByRole('button', { name: 'Configurações' }));
       const items = within(screen.getByRole('menu')).getAllByRole('menuitem');
 
-      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Exportar imagemPNG ou PDF', 'Exportar projeto.json', 'Atalhos']);
+      expect(items.map((item) => item.textContent)).toEqual(['SalvarCtrl+S', 'Compartilharlink', 'Exportar imagemPNG ou PDF', 'Exportar projeto.json', 'Atalhos']);
     });
 
     it('deve baixar o projeto inteiro (os três níveis, como estão no editor) pelo menu (RF21)', async () => {

@@ -22,13 +22,11 @@ import {
   Background,
   Controls,
   ConnectionMode,
-  MarkerType,
   useReactFlow,
   useViewport,
   ControlButton,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import C4Node from '../C4Node/C4Node';
 import ElementPalette, { ELEMENT_DRAG_TYPE, PALETTE_OFFSET } from '../ElementPalette/ElementPalette';
 import IconButton from '../Button/IconButton';
 import ContextMenu from '../ContextMenu/ContextMenu';
@@ -36,26 +34,11 @@ import ElementTree from '../ElementTree/ElementTree';
 import { exportDiagramImage } from '../../services/diagramImage';
 import ScopeBoundary from '../ScopeBoundary/ScopeBoundary';
 import ColumnSplitter from '../ColumnSplitter/ColumnSplitter';
-import FloatingEdge from '../FloatingEdge/FloatingEdge';
 import FloatingConnectionLine from '../FloatingEdge/FloatingConnectionLine';
-import { parallelOffsets } from '../FloatingEdge/edgeGeometry';
-import {
-  C4_ELEMENTS,
-  RELATIONSHIP_COLOR,
-  isAllowedInLevel,
-  isValidRelationship,
-  withTechnologyLabel,
-} from '../../constants/c4Notation';
-
-// Fora do componente: o React Flow recria tudo se o objeto de tipos mudar a cada render
-const NODE_TYPES = Object.fromEntries(Object.keys(C4_ELEMENTS).map((type) => [type, C4Node]));
-const EDGE_TYPES = { floating: FloatingEdge };
-
-// Notação oficial: relacionamento unidirecional, linha tracejada com seta no destino
-const RELATIONSHIP_STYLE = {
-  markerEnd: { type: MarkerType.ArrowClosed, color: RELATIONSHIP_COLOR },
-  style: { stroke: RELATIONSHIP_COLOR, strokeDasharray: '6 4' },
-};
+import { isAllowedInLevel, isValidRelationship } from '../../constants/c4Notation';
+// Desenho dos elementos e relações, o mesmo da visualização do link (fora do componente: o React Flow recria tudo se
+// o objeto de tipos mudar a cada render)
+import { EDGE_TYPES, FIT_VIEW_OPTIONS, GRID_GAP, NODE_TYPES, ZOOM_ANIMATION, displayEdges } from './diagramDisplay';
 
 // Metade do tamanho aproximado do elemento: ao soltar, o cursor fica no centro dele, não no canto
 const NODE_CENTER_OFFSET = { x: 100, y: 50 };
@@ -64,12 +47,6 @@ const DELETE_KEYS = ['Backspace', 'Delete'];
 
 const EASE_OUT_SOFT = [0.22, 1, 0.36, 1];
 
-// Enquadramento: mostra o diagrama inteiro, mas sem aproximar além do tamanho real quando há poucos elementos
-const FIT_VIEW_OPTIONS = { maxZoom: 1, padding: 0.25 };
-// Espaço entre os pontos da grade do fundo; o "alinhar à grade" encaixa os elementos nesses mesmos pontos
-const GRID_GAP = 22;
-// Zoom pelos botões da barra: animado, sem ser lento
-const ZOOM_ANIMATION = { duration: 200 };
 // Nome da barra de controles para leitores de tela (o padrão do React Flow é em inglês)
 const ARIA_LABELS = { 'controls.ariaLabel': 'Controles do canvas' };
 
@@ -256,15 +233,10 @@ function DiagramWorkspace({
   }, [nodes, issues]);
 
   const displayedEdges = useMemo(() => {
-    const offsets = parallelOffsets(edges);
     const severities = severityByTarget(issues, 'edgeId');
-    return edges.map((edge) => ({
-      ...withTechnologyLabel(edge),
-      ...RELATIONSHIP_STYLE,
-      ...(severities.has(edge.id) ? { labelBgStyle: { stroke: SEVERITY_COLOR[severities.get(edge.id)], strokeWidth: 1.5 } } : {}),
-      type: 'floating',
-      data: { ...edge.data, offset: offsets.get(edge.id) },
-    }));
+    return displayEdges(edges).map((edge) =>
+      severities.has(edge.id) ? { ...edge, labelBgStyle: { stroke: SEVERITY_COLOR[severities.get(edge.id)], strokeWidth: 1.5 } } : edge
+    );
   }, [edges, issues]);
 
   // Foco pedido pelo painel de validação ou pela árvore: centraliza o alvo. Se o nível ainda não foi enquadrado (acabou
