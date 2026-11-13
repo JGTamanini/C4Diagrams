@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowRight, Check, Redo2, Save, Undo2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { hasActiveSession } from '../../services/session';
 import Brand from '../../components/Brand/Brand';
 import { buttonClasses } from '../../components/Button/buttonStyles';
@@ -27,8 +27,23 @@ const FEATURES = [
   },
   {
     title: 'Salvo a cada alteração',
-    text: 'O diagrama é salvo automaticamente segundos depois de cada mudança. Errou? Desfaça e refaça com Ctrl+Z e Ctrl+Y.',
-    visual: 'toolbar',
+    text: 'O diagrama é salvo automaticamente segundos depois de cada mudança, e o check verde na barra confirma. Errou? Desfaça e refaça com Ctrl+Z e Ctrl+Y. Com o projeto aberto em duas abas, uma não apaga o que a outra salvou.',
+    image: {
+      src: '/screens/salvamento.jpg',
+      alt: 'Barra do editor com desfazer, refazer, o check de alterações salvas e o menu com Salvar, Compartilhar e exportações',
+      width: 940,
+      height: 420,
+    },
+  },
+  {
+    title: 'Assistente com validação e IA',
+    text: 'O assistente confere a estrutura do diagrama enquanto você modela e aponta o que corrigir. Quando quiser, peça sugestões à IA: cada uma passa pela mesma validação antes de aparecer, e nada entra no diagrama sem você.',
+    image: {
+      src: '/screens/assistente.jpg',
+      alt: 'Diagrama de containers com o assistente aberto na aba Sugestões, mostrando sugestões da IA',
+      width: 1260,
+      height: 780,
+    },
   },
 ];
 
@@ -82,35 +97,6 @@ function Screenshot({ image, className = '' }) {
 
 // Réplica nítida da barra do editor (mesmos ícones e estilos), só ilustrativa: uma captura de uma faixa tão larga
 // ficaria ilegível reduzida
-function ToolbarPreview() {
-  return (
-    <div
-      role="img"
-      aria-label="Barra do editor com desfazer, refazer e o aviso Todas as alterações salvas"
-      className="pointer-events-none flex select-none flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-line bg-canvas-deep px-6 py-8 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.9)]"
-    >
-      <div className="flex items-center gap-1 rounded-[var(--radius-control)] border border-line bg-surface p-1 text-text-secondary">
-        <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] bg-surface-raised text-text-primary">
-          <Undo2 aria-hidden="true" className="h-4 w-4" />
-        </span>
-        <span className="flex h-9 w-9 items-center justify-center">
-          <Redo2 aria-hidden="true" className="h-4 w-4" />
-        </span>
-      </div>
-      <div className="flex items-center gap-4">
-        <span className="inline-flex items-center gap-1.5 text-sm text-success">
-          <Check aria-hidden="true" className="h-4 w-4" />
-          Todas as alterações salvas
-        </span>
-        <span className={buttonClasses({ size: 'sm' })}>
-          <Save aria-hidden="true" className="h-4 w-4" />
-          Salvar
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // Nota: página de apresentação — mostra o produto real (capturas do editor) em vez de ilustrações e efeitos genéricos
 function Home() {
   const loggedIn = hasActiveSession();
@@ -183,19 +169,9 @@ function Home() {
                     <h3 className="text-2xl font-semibold tracking-tight text-text-primary">{feature.title}</h3>
                     <p className="mt-3 leading-relaxed text-text-secondary">{feature.text}</p>
                   </div>
-                  {feature.visual === 'toolbar' ? <ToolbarPreview /> : <Screenshot image={feature.image} />}
+                  <Screenshot image={feature.image} />
                 </Reveal>
               ))}
-
-              <Reveal className="border-t border-line pt-10">
-                <div className="flex flex-wrap items-baseline gap-3">
-                  <h3 className="text-2xl font-semibold tracking-tight text-text-primary">Assistência de IA</h3>
-                  <span className="text-sm font-medium text-highlight-text">Em breve</span>
-                </div>
-                <p className="mt-3 max-w-2xl leading-relaxed text-text-secondary">
-                  Sugestões de elementos e relações, e validação da estrutura enquanto você modela.
-                </p>
-              </Reveal>
             </div>
           </div>
         </section>

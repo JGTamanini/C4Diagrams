@@ -42,7 +42,7 @@ describe('Home', () => {
     renderHome();
 
     expect(screen.getByRole('img', { name: /paleta de elementos do nível container/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('img')).toHaveLength(3);
+    expect(screen.getAllByRole('img')).toHaveLength(4);
   });
 
   it('deve manter a barra de navegação fixa no topo ao rolar (sem contêiner que anule o sticky)', () => {
@@ -52,15 +52,20 @@ describe('Home', () => {
     expect(container.firstChild).not.toHaveClass('overflow-x-hidden');
   });
 
-  it('deve apresentar as funcionalidades, com a IA marcada como em breve', () => {
+  // A IA já existe (RF16): a home mostra as quatro funcionalidades com capturas reais, sem o "Em breve"
+  it('deve apresentar as quatro funcionalidades, cada uma com a captura do editor', () => {
     renderHome();
 
-    ['Os elementos certos em cada nível', 'Notação C4 oficial, com legenda', 'Salvo a cada alteração', 'Assistência de IA'].forEach(
-      (name) => {
-        expect(screen.getByRole('heading', { name })).toBeInTheDocument();
-      }
-    );
-    expect(screen.getByText('Em breve')).toBeInTheDocument();
+    [
+      ['Os elementos certos em cada nível', '/screens/paleta.jpg'],
+      ['Notação C4 oficial, com legenda', '/screens/notacao.jpg'],
+      ['Salvo a cada alteração', '/screens/salvamento.jpg'],
+      ['Assistente com validação e IA', '/screens/assistente.jpg'],
+    ].forEach(([name, src]) => {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument();
+      expect(document.querySelector(`img[src="${src}"]`)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Em breve')).not.toBeInTheDocument();
   });
 
   it('deve explicar como funciona, em três passos, com atalho a partir do topo', () => {
