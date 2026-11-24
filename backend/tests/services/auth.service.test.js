@@ -70,7 +70,8 @@ describe('AuthService', () => {
       expect(bcrypt.compare).toHaveBeenCalledWith(credentials.password, mockUser.password_hash);
       expect(userRepository.resetFailedAttempts).toHaveBeenCalledWith(mockUser.id);
       expect(jwt.sign).toHaveBeenCalledWith(
-        { id: mockUser.id, email: mockUser.email },
+        // O nome vai no token: o frontend lê nome e e-mail dele, sem gravar o usuário à parte no navegador
+        { id: mockUser.id, email: mockUser.email, name: mockUser.name },
         expect.any(String),
         expect.objectContaining({ expiresIn: expect.any(String) })
       );

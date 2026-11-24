@@ -50,7 +50,7 @@ function VerifyEmail() {
         const response = await api.post('/auth/verify-email', { token });
         // O link também entra na conta: a sessão fica salva no navegador, e a aba do cadastro (se ainda estiver
         // aberta) percebe e segue sozinha para os projetos — esta guia pode ser fechada
-        saveSession(response.data.token, response.data.user);
+        saveSession(response.data.token);
         setStatus('success');
       } catch (err) {
         const errorMessage = err.response?.data?.message || 'Erro ao verificar e-mail.';

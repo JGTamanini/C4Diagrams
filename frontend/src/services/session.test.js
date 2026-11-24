@@ -12,46 +12,60 @@ import {
 import { fakeJwt } from '../test/fakeJwt';
 
 describe('session', () => {
-  const user = { id: '1', name: 'João Tamanini', email: 'joao@example.com' };
-
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('deve salvar token e apenas nome e e-mail do usuário', () => {
-    saveSession('header.payload.signature', { ...user, email_verified: true });
+  // Sonar S8475: só o token vai para o navegador; nome e e-mail são lidos do próprio token (assinado pelo servidor)
+  it('deve salvar só o token e ler nome e e-mail dele, com acentos', () => {
+    const token = fakeJwt({ name: 'João Tamanini' });
 
-    expect(getToken()).toBe('header.payload.signature');
+    saveSession(token);
+
+    expect(getToken()).toBe(token);
     expect(getUser()).toEqual({ name: 'João Tamanini', email: 'joao@example.com' });
+    expect(Object.keys(localStorage)).toEqual(['token']);
   });
 
-  it('deve salvar só o token quando o usuário não vier, limpando um usuário anterior', () => {
+  it('deve apagar o usuário que versões anteriores gravavam à parte', () => {
     localStorage.setItem('user', JSON.stringify({ name: 'Sessão anterior', email: 'antigo@example.com' }));
 
-    saveSession('header.payload.signature', undefined);
+    saveSession(fakeJwt({ name: 'João Tamanini' }));
 
-    expect(getToken()).toBe('header.payload.signature');
-    expect(getUser()).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
   });
+
+  it.each([['sem pontos'], ['a.b'], ['a.b.c<script>'], [''], [undefined], [{ token: 'x' }]])(
+    'deve recusar um token fora do formato JWT sem gravar nada: %s',
+    (token) => {
+      expect(() => saveSession(token)).toThrow('Token inválido recebido do servidor.');
+
+      expect(getToken()).toBeNull();
+      expect(getUser()).toBeNull();
+    }
+  );
 
   it('deve retornar null quando não houver sessão', () => {
     expect(getToken()).toBeNull();
     expect(getUser()).toBeNull();
   });
 
-  it('deve retornar null quando o usuário salvo estiver corrompido', () => {
-    localStorage.setItem('user', '{json inválido');
+  // Tokens emitidos antes de o nome entrar no token, ou ilegíveis: sem usuário, e o cabeçalho mostra só o "Sair"
+  it.each([[fakeJwt()], ['header.payload.signature']])('deve retornar null quando o token não tiver nome e e-mail legíveis: %s', (token) => {
+    localStorage.setItem('token', token);
 
     expect(getUser()).toBeNull();
   });
 
-  it('deve limpar token e usuário juntos', () => {
-    saveSession('header.payload.signature', user);
+  it('deve limpar o token e o usuário antigo juntos', () => {
+    saveSession(fakeJwt({ name: 'João Tamanini' }));
+    localStorage.setItem('user', '{}');
 
     clearSession();
 
     expect(getToken()).toBeNull();
     expect(getUser()).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   describe('hasActiveSession', () => {

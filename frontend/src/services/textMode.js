@@ -83,7 +83,11 @@ function aliasFrom(label, used) {
   if (/^\d/.test(base)) base = `e_${base}`;
 
   let alias = base;
-  for (let index = 2; used.has(alias); index++) alias = `${base}_${index}`;
+  let suffix = 2;
+  while (used.has(alias)) {
+    alias = `${base}_${suffix}`;
+    suffix++;
+  }
   used.add(alias);
   return alias;
 }
@@ -121,34 +125,45 @@ export function diagramToText(level, nodes, edges) {
   return { text: blocks.join('\n\n'), aliases };
 }
 
+function skipBlanks(raw, start) {
+  let index = start;
+  while (raw[index] === ' ' || raw[index] === '\t') index++;
+  return index;
+}
+
+// Texto entre aspas, a partir da aspa de abertura (\" e \\ viram o caractere). end fica depois da aspa de fechamento;
+// null quando as aspas não fecham
+function readQuoted(raw, start) {
+  let value = '';
+  let index = start + 1;
+  while (index < raw.length && raw[index] !== '"') {
+    if (raw[index] === '\\' && index + 1 < raw.length) index++;
+    value += raw[index];
+    index++;
+  }
+  if (index >= raw.length) return null;
+  return { arg: { quoted: true, value }, end: index + 1 };
+}
+
+// Apelido sem aspas: vai até a próxima vírgula (ou o fim)
+function readBare(raw, start) {
+  const comma = raw.indexOf(',', start);
+  const end = comma === -1 ? raw.length : comma;
+  return { arg: { quoted: false, value: raw.slice(start, end).trim() }, end };
+}
+
 // Argumentos separados por vírgula: apelidos sem aspas ou textos entre aspas (com \" e \\ dentro)
 function splitArguments(raw) {
   const args = [];
-  let index = 0;
+  let index = skipBlanks(raw, 0);
   while (index < raw.length) {
-    while (raw[index] === ' ' || raw[index] === '\t') index++;
-    if (index >= raw.length) break;
+    const read = raw[index] === '"' ? readQuoted(raw, index) : readBare(raw, index);
+    if (!read) return { error: 'aspas sem fechar.' };
+    args.push(read.arg);
 
-    if (raw[index] === '"') {
-      let value = '';
-      index++;
-      while (index < raw.length && raw[index] !== '"') {
-        if (raw[index] === '\\' && index + 1 < raw.length) index++;
-        value += raw[index];
-        index++;
-      }
-      if (index >= raw.length) return { error: 'aspas sem fechar.' };
-      args.push({ quoted: true, value });
-      index++;
-    } else {
-      let value = '';
-      while (index < raw.length && raw[index] !== ',') value += raw[index++];
-      args.push({ quoted: false, value: value.trim() });
-    }
-
-    while (raw[index] === ' ' || raw[index] === '\t') index++;
+    index = skipBlanks(raw, read.end);
     if (index < raw.length && raw[index] !== ',') return { error: 'esperado uma vírgula entre os argumentos.' };
-    index++;
+    index = skipBlanks(raw, index + 1);
   }
   return { args };
 }
@@ -261,114 +276,130 @@ function emptyPlan(errors) {
   return { errors, addNodes: [], addEdges: [], updateNodes: [], updateEdges: [], untouched: 0 };
 }
 
+function lineError(line, text) {
+  return { line, message: `Linha ${line}: ${text}` };
+}
+
+// Elemento do texto → o nó do canvas que ele representa (pelo apelido gerado ou pelo mesmo tipo e nome), um erro,
+// ou nenhum dos dois (elemento novo)
+function matchElement(level, element, { aliases, nodesById, nodesByKey }) {
+  const linked = nodesById.get(aliases[element.alias]);
+  if (linked && linked.type !== element.type) {
+    const typeName = C4_ELEMENTS[linked.type].name;
+    return {
+      error: `"${linked.data.label}" já é ${ARTICLE[linked.type]} ${typeName}. Para trocar o tipo, exclua no canvas e crie de novo.`,
+    };
+  }
+
+  const existing = linked ?? nodesByKey.get(elementMatchKey({ type: element.type, data: { label: element.label } }));
+  if (existing) return { existing };
+  if (!isAllowedInLevel(level, element.type)) return { error: `${C4_ELEMENTS[element.type].name} não pertence ao nível ${levelLabel(level)}.` };
+  return {};
+}
+
+// Elementos do texto: quais nós adicionar e atualizar, e o id que cada apelido representa (usado pelas relações)
+function planNodes(level, elements, aliases, nodes) {
+  const lookup = {
+    aliases,
+    nodesById: new Map(nodes.map((node) => [node.id, node])),
+    nodesByKey: new Map(nodes.map((node) => [elementMatchKey(node), node])),
+  };
+  const placeNew = positionsFor(nodes);
+  const plan = { errors: [], addNodes: [], updateNodes: [], touched: new Set(), firstLineOfAlias: new Map(), idOfAlias: new Map() };
+
+  for (const element of elements) {
+    const firstLine = plan.firstLineOfAlias.get(element.alias);
+    if (firstLine !== undefined) {
+      plan.errors.push(lineError(element.line, `o apelido "${element.alias}" já foi usado na linha ${firstLine}.`));
+      continue;
+    }
+    plan.firstLineOfAlias.set(element.alias, element.line);
+
+    const { existing, error } = matchElement(level, element, lookup);
+    if (error) {
+      plan.errors.push(lineError(element.line, error));
+    } else if (existing) {
+      plan.idOfAlias.set(element.alias, existing.id);
+      plan.touched.add(existing.id);
+      if (!sameData(existing, element)) plan.updateNodes.push({ id: existing.id, data: nodeData(element) });
+    } else {
+      const added = { id: crypto.randomUUID(), type: element.type, position: placeNew(element.type), data: nodeData(element) };
+      plan.idOfAlias.set(element.alias, added.id);
+      plan.addNodes.push(added);
+    }
+  }
+
+  // Apelidos gerados ao abrir o painel continuam valendo nas relações mesmo sem a linha do elemento (que segue no canvas)
+  for (const [alias, nodeId] of Object.entries(aliases)) {
+    if (!plan.firstLineOfAlias.has(alias) && lookup.nodesById.has(nodeId)) plan.idOfAlias.set(alias, nodeId);
+  }
+
+  return plan;
+}
+
+// Relação do texto → os dois nós e a chave do par, um erro, ou skip (o apelido já teve erro na própria linha)
+function matchRelation(relation, { idOfAlias, firstLineOfAlias }, pairsInText) {
+  const missing = [relation.from, relation.to].find((alias) => !idOfAlias.has(alias));
+  if (missing) return firstLineOfAlias.has(missing) ? { skip: true } : { error: `"${missing}" não foi definido.` };
+
+  const source = idOfAlias.get(relation.from);
+  const target = idOfAlias.get(relation.to);
+  if (source === target) return { error: 'uma relação liga dois elementos diferentes.' };
+
+  const key = pairKey(source, target);
+  const first = pairsInText.get(key);
+  if (first) return { error: `já existe uma relação entre "${first.from}" e "${first.to}" no texto (uma por par).` };
+  return { source, target, key };
+}
+
+// Mudança numa relação que já existe (rótulo, tecnologia ou sentido); null quando nada mudou
+function edgeUpdate(existing, relation, { source, target }) {
+  const reversed = existing.source !== source;
+  const changed = reversed || existing.label !== relation.label || (existing.data?.technology ?? null) !== relation.technology;
+  if (!changed) return null;
+  return { id: existing.id, label: relation.label, technology: relation.technology ?? '', ...(reversed ? { source, target } : {}) };
+}
+
+function planEdges(relations, nodePlan, edges) {
+  const edgesByPair = new Map(edges.map((edge) => [pairKey(edge.source, edge.target), edge]));
+  const pairsInText = new Map();
+  const plan = { errors: [], addEdges: [], updateEdges: [] };
+
+  for (const relation of relations) {
+    const match = matchRelation(relation, nodePlan, pairsInText);
+    if (match.error) {
+      plan.errors.push(lineError(relation.line, match.error));
+      continue;
+    }
+    if (match.skip) continue;
+    pairsInText.set(match.key, relation);
+
+    const existing = edgesByPair.get(match.key);
+    const update = existing && edgeUpdate(existing, relation, match);
+    if (update) plan.updateEdges.push(update);
+    if (!existing) {
+      const data = relation.technology ? { technology: relation.technology } : {};
+      plan.addEdges.push({ id: crypto.randomUUID(), source: match.source, target: match.target, label: relation.label, data });
+    }
+  }
+
+  return plan;
+}
+
 // Nota: RF19 — o que aplicar o texto faz no nível aberto: linha nova adiciona; linha de um elemento ou relação que já
 // existe e foi alterada atualiza; linha apagada não exclui nada (só conta o que ficou de fora). Com qualquer erro,
 // nada é aplicado. Elemento com o mesmo tipo e nome de um existente é reaproveitado, não duplicado.
 export function planTextChanges({ level, text, aliases, nodes, edges }) {
   const parsed = parseText(text);
-  const errors = [...parsed.errors];
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
-  const nodesByKey = new Map(nodes.map((node) => [elementMatchKey(node), node]));
-  const firstLineOfAlias = new Map();
-  const idOfAlias = new Map();
-  const placeNew = positionsFor(nodes);
-  const addNodes = [];
-  const updateNodes = [];
-  const touched = new Set();
+  const nodePlan = planNodes(level, parsed.elements, aliases, nodes);
+  const edgePlan = planEdges(parsed.relations, nodePlan, edges);
+  const { addNodes, updateNodes, touched } = nodePlan;
+  const { addEdges, updateEdges } = edgePlan;
 
-  for (const element of parsed.elements) {
-    if (firstLineOfAlias.has(element.alias)) {
-      errors.push({ line: element.line, message: `Linha ${element.line}: o apelido "${element.alias}" já foi usado na linha ${firstLineOfAlias.get(element.alias)}.` });
-      continue;
-    }
-    firstLineOfAlias.set(element.alias, element.line);
-
-    const linked = nodesById.get(aliases[element.alias]);
-    const existing = linked ?? nodesByKey.get(elementMatchKey({ type: element.type, data: { label: element.label } }));
-    if (linked && linked.type !== element.type) {
-      const typeName = C4_ELEMENTS[linked.type].name;
-      errors.push({
-        line: element.line,
-        message: `Linha ${element.line}: "${linked.data.label}" já é ${ARTICLE[linked.type]} ${typeName}. Para trocar o tipo, exclua no canvas e crie de novo.`,
-      });
-      continue;
-    }
-    if (existing) {
-      idOfAlias.set(element.alias, existing.id);
-      touched.add(existing.id);
-      if (!sameData(existing, element)) updateNodes.push({ id: existing.id, data: nodeData(element) });
-      continue;
-    }
-    if (!isAllowedInLevel(level, element.type)) {
-      errors.push({ line: element.line, message: `Linha ${element.line}: ${C4_ELEMENTS[element.type].name} não pertence ao nível ${levelLabel(level)}.` });
-      continue;
-    }
-
-    const added = { id: crypto.randomUUID(), type: element.type, position: placeNew(element.type), data: nodeData(element) };
-    idOfAlias.set(element.alias, added.id);
-    addNodes.push(added);
-  }
-
-  const edgesByPair = new Map(edges.map((edge) => [pairKey(edge.source, edge.target), edge]));
-  const pairsInText = new Map();
-  const addEdges = [];
-  const updateEdges = [];
-
-  // Apelidos gerados ao abrir o painel continuam valendo nas relações mesmo sem a linha do elemento (que segue no canvas)
-  for (const [alias, nodeId] of Object.entries(aliases)) {
-    if (!firstLineOfAlias.has(alias) && nodesById.has(nodeId)) idOfAlias.set(alias, nodeId);
-  }
-
-  for (const relation of parsed.relations) {
-    const missing = [relation.from, relation.to].find((alias) => !idOfAlias.has(alias));
-    if (missing) {
-      // Apelido com erro na própria linha já foi apontado; os demais não foram definidos
-      if (!firstLineOfAlias.has(missing)) errors.push({ line: relation.line, message: `Linha ${relation.line}: "${missing}" não foi definido.` });
-      continue;
-    }
-    const source = idOfAlias.get(relation.from);
-    const target = idOfAlias.get(relation.to);
-    if (source === target) {
-      errors.push({ line: relation.line, message: `Linha ${relation.line}: uma relação liga dois elementos diferentes.` });
-      continue;
-    }
-
-    const key = pairKey(source, target);
-    if (pairsInText.has(key)) {
-      const first = pairsInText.get(key);
-      errors.push({
-        line: relation.line,
-        message: `Linha ${relation.line}: já existe uma relação entre "${first.from}" e "${first.to}" no texto (uma por par).`,
-      });
-      continue;
-    }
-    pairsInText.set(key, relation);
-
-    const existing = edgesByPair.get(key);
-    if (existing) {
-      const reversed = existing.source !== source;
-      if (reversed || existing.label !== relation.label || (existing.data?.technology ?? null) !== relation.technology) {
-        updateEdges.push({
-          id: existing.id,
-          label: relation.label,
-          technology: relation.technology ?? '',
-          ...(reversed ? { source, target } : {}),
-        });
-      }
-      continue;
-    }
-    addEdges.push({
-      id: crypto.randomUUID(),
-      source,
-      target,
-      label: relation.label,
-      data: relation.technology ? { technology: relation.technology } : {},
-    });
-  }
-
+  const errors = [...parsed.errors, ...nodePlan.errors, ...edgePlan.errors];
   if (nodes.length + addNodes.length > MAX_NODES) errors.push({ line: 0, message: `O diagrama pode ter no máximo ${MAX_NODES} elementos.` });
   if (edges.length + addEdges.length > MAX_EDGES) errors.push({ line: 0, message: `O diagrama pode ter no máximo ${MAX_EDGES} relações.` });
-  if (errors.length > 0) return emptyPlan(errors.sort((a, b) => a.line - b.line));
+  if (errors.length > 0) return emptyPlan(errors.toSorted((a, b) => a.line - b.line));
 
   return { errors, addNodes, addEdges, updateNodes, updateEdges, untouched: nodes.filter((node) => !touched.has(node.id)).length };
 }

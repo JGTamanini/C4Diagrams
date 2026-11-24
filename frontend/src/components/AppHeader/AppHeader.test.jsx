@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import AppHeader from './AppHeader';
 import { deleteAccount } from '../../services/users';
+import { fakeJwt } from '../../test/fakeJwt';
 
 vi.mock('../../services/users');
 
@@ -28,7 +29,7 @@ describe('AppHeader', () => {
   });
 
   it('deve exibir o nome do usuário e as iniciais do primeiro e último nome', () => {
-    localStorage.setItem('user', JSON.stringify({ name: 'João Gabriel Tamanini', email: 'joao@example.com' }));
+    localStorage.setItem('token', fakeJwt({ name: 'João Gabriel Tamanini' }));
 
     renderHeader();
 
@@ -37,7 +38,7 @@ describe('AppHeader', () => {
   });
 
   it('deve exibir apenas uma inicial quando o nome tiver uma palavra', () => {
-    localStorage.setItem('user', JSON.stringify({ name: 'joão', email: 'joao@example.com' }));
+    localStorage.setItem('token', fakeJwt({ name: 'joão' }));
 
     renderHeader();
 
@@ -52,8 +53,7 @@ describe('AppHeader', () => {
 
   describe('menu da conta', () => {
     function loggedIn() {
-      localStorage.setItem('token', 'header.payload.signature');
-      localStorage.setItem('user', JSON.stringify({ name: 'João Tamanini', email: 'joao@example.com' }));
+      localStorage.setItem('token', fakeJwt({ name: 'João Tamanini' }));
     }
 
     async function openMenu(user) {

@@ -39,7 +39,7 @@ describe('VerifyEmail', () => {
     expect(await screen.findByText('E-mail verificado! Pode fechar esta guia: a aba do cadastro já entrou na sua conta.')).toBeInTheDocument();
     expect(api.post).toHaveBeenCalledWith('/auth/verify-email', { token: 'token-valido' });
     expect(localStorage.getItem('token')).toBe(session.token);
-    expect(JSON.parse(localStorage.getItem('user'))).toEqual({ name: 'João', email: 'joao@example.com' });
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   it('deve oferecer abrir o diagrama compartilhado quando a pessoa chegou por um link de visualização', async () => {
@@ -76,6 +76,16 @@ describe('VerifyEmail', () => {
     expect(await screen.findByRole('link', { name: 'Ir para meus projetos' })).toHaveAttribute('href', '/projetos');
     expect(screen.getByText('Abriu o link em outro aparelho?')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Ir para o login' })).not.toBeInTheDocument();
+  });
+
+  it('não deve gravar a sessão quando a resposta traz um token fora do formato JWT', async () => {
+    api.post.mockResolvedValue({ data: { message: 'E-mail verificado com sucesso.', ...session, token: '<script>' } });
+
+    renderWithToken('token-valido');
+
+    expect(await screen.findByText('Erro ao verificar e-mail.')).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   it('deve exibir mensagem de erro quando o token é inválido ou expirado', async () => {
