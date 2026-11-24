@@ -1,13 +1,33 @@
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
 
-// Nota: único ponto que conhece as chaves do localStorage — login, logout e 401 passam por aqui
+// Três partes em base64url separadas por ponto: o formato de um JWT (a assinatura é conferida pelo servidor)
+const JWT_FORMAT_REGEX = /^[\w-]+\.[\w-]+\.[\w-]+$/;
+// Mesmo tamanho das colunas name e email da tabela users
+const USER_FIELD_MAX_LENGTH = 255;
+
+function isUserField(value) {
+  return typeof value === 'string' && value.length <= USER_FIELD_MAX_LENGTH;
+}
+
+// Só nome e e-mail, e só quando são textos do tamanho esperado; qualquer outra coisa não vai para o navegador
+function storableUser(user) {
+  if (!isUserField(user?.name) || !isUserField(user?.email)) return null;
+  return { name: user.name, email: user.email };
+}
+
+// Nota: único ponto que conhece as chaves do localStorage — login, verificação de e-mail, logout e 401 passam por aqui.
+// O que vem da API é conferido antes de ser gravado (Sonar S8475): token fora do formato JWT é recusado sem gravar nada
 export function saveSession(token, user) {
+  if (typeof token !== 'string' || !JWT_FORMAT_REGEX.test(token)) {
+    throw new Error('Token inválido recebido do servidor.');
+  }
   localStorage.setItem(TOKEN_KEY, token);
 
-  // Nota: sem usuário na resposta, o login segue válido; remove o de uma sessão anterior para não exibir dados alheios
-  if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify({ name: user.name, email: user.email }));
+  // Nota: sem usuário válido na resposta, o login segue válido; remove o de uma sessão anterior para não exibir dados alheios
+  const safeUser = storableUser(user);
+  if (safeUser) {
+    localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
   } else {
     localStorage.removeItem(USER_KEY);
   }

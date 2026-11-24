@@ -78,6 +78,16 @@ describe('VerifyEmail', () => {
     expect(screen.queryByRole('link', { name: 'Ir para o login' })).not.toBeInTheDocument();
   });
 
+  it('não deve gravar a sessão quando a resposta traz um token fora do formato JWT', async () => {
+    api.post.mockResolvedValue({ data: { message: 'E-mail verificado com sucesso.', ...session, token: '<script>' } });
+
+    renderWithToken('token-valido');
+
+    expect(await screen.findByText('Erro ao verificar e-mail.')).toBeInTheDocument();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('user')).toBeNull();
+  });
+
   it('deve exibir mensagem de erro quando o token é inválido ou expirado', async () => {
     api.post.mockRejectedValue({
       response: { status: 400, data: { message: 'Token inválido ou expirado.' } },

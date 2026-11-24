@@ -34,6 +34,30 @@ describe('session', () => {
     expect(getUser()).toBeNull();
   });
 
+  // Sonar S8475: o que vem da API só entra no localStorage depois de conferido, venha do login ou da verificação de e-mail
+  it.each([['sem pontos'], ['a.b'], ['a.b.c<script>'], [''], [undefined], [{ token: 'x' }]])(
+    'deve recusar um token fora do formato JWT sem gravar nada: %s',
+    (token) => {
+      expect(() => saveSession(token, user)).toThrow('Token inválido recebido do servidor.');
+
+      expect(getToken()).toBeNull();
+      expect(getUser()).toBeNull();
+    }
+  );
+
+  it.each([
+    [{ name: 42, email: 'joao@example.com' }],
+    [{ name: 'João', email: { $gt: '' } }],
+    [{ name: 'x'.repeat(256), email: 'joao@example.com' }],
+  ])('deve gravar só o token quando o usuário vier com campos inválidos: %o', (badUser) => {
+    localStorage.setItem('user', JSON.stringify({ name: 'Sessão anterior', email: 'antigo@example.com' }));
+
+    saveSession('header.payload.signature', badUser);
+
+    expect(getToken()).toBe('header.payload.signature');
+    expect(getUser()).toBeNull();
+  });
+
   it('deve retornar null quando não houver sessão', () => {
     expect(getToken()).toBeNull();
     expect(getUser()).toBeNull();

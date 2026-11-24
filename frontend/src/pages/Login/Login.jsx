@@ -10,8 +10,6 @@ import { useAuthIllustration } from '../../components/AuthLayout/authIllustratio
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 
 
-const JWT_FORMAT_REGEX = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-
 function Login() {
   useAuthIllustration('login');
   const navigate = useNavigate();
@@ -42,11 +40,7 @@ function Login() {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
-
-      if (!JWT_FORMAT_REGEX.test(token)) {
-        throw new Error('Token inválido recebido do servidor.');
-      }
-
+      // Confere o formato do token antes de gravar; fora do formato, lança e a mensagem aparece abaixo
       saveSession(token, user);
       void navigate(takeReturnPath() ?? '/projetos');
     } catch (err) {
