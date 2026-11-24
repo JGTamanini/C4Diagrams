@@ -71,7 +71,8 @@ describe('Login', () => {
     await waitFor(() => {
       expect(localStorage.getItem('token')).toBe('header.payload.signature');
     });
-    expect(JSON.parse(localStorage.getItem('user'))).toEqual({ name: 'João Tamanini', email: 'joao@example.com' });
+    // Nome e e-mail ficam no próprio token: nada de usuário gravado à parte
+    expect(localStorage.getItem('user')).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith('/projetos');
   });
 

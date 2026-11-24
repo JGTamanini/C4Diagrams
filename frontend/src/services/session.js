@@ -1,46 +1,44 @@
-const TOKEN_KEY = 'token';
-const USER_KEY = 'user';
+export const TOKEN_KEY = 'token';
+// Versões anteriores gravavam nome e e-mail nesta chave; hoje eles são lidos do token, e a chave só é apagada
+const LEGACY_USER_KEY = 'user';
 
 // Três partes em base64url separadas por ponto: o formato de um JWT (a assinatura é conferida pelo servidor)
 const JWT_FORMAT_REGEX = /^[\w-]+\.[\w-]+\.[\w-]+$/;
-// Nome e e-mail com até 255 caracteres (o tamanho das colunas da tabela users) e sem < ou >, que não aparecem em nenhum
-// dos dois e só serviriam para montar HTML
-const USER_NAME_REGEX = /^[^<>]{1,255}$/;
-const USER_EMAIL_REGEX = /^(?=.{3,255}$)[^\s<>@]+@[^\s<>@]+$/;
 
-// Só nome e e-mail, e só no formato esperado; qualquer outra coisa não vai para o navegador
-function storableUser(user) {
-  const { name, email } = user ?? {};
-  if (typeof name !== 'string' || typeof email !== 'string') return null;
-  if (!USER_NAME_REGEX.test(name) || !USER_EMAIL_REGEX.test(email)) return null;
-  return { name, email };
-}
-
-// Nota: único ponto que conhece as chaves do localStorage — login, verificação de e-mail, logout e 401 passam por aqui.
-// O que vem da API é conferido antes de ser gravado (Sonar S8475): token fora do formato JWT é recusado sem gravar nada
-export function saveSession(token, user) {
+// Nota: único ponto que grava a sessão — login, verificação de e-mail, logout e 401 passam por aqui. Só o token vai
+// para o navegador, e só no formato de um JWT (Sonar S8475): fora dele, é recusado sem gravar nada. Nome e e-mail
+// vêm do próprio token (getUser), então não há um segundo dado da resposta gravado à parte.
+export function saveSession(token) {
   if (typeof token !== 'string' || !JWT_FORMAT_REGEX.test(token)) {
     throw new Error('Token inválido recebido do servidor.');
   }
   localStorage.setItem(TOKEN_KEY, token);
-
-  // Nota: sem usuário válido na resposta, o login segue válido; remove o de uma sessão anterior para não exibir dados alheios
-  const safeUser = storableUser(user);
-  if (safeUser) {
-    localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
-  } else {
-    localStorage.removeItem(USER_KEY);
-  }
+  localStorage.removeItem(LEGACY_USER_KEY);
 }
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+// Payload do JWT: base64url com o JSON em UTF-8 (o atob devolve bytes; o TextDecoder monta os acentos)
+function readPayload(token) {
+  const base64 = token.split('.')[1].replaceAll('-', '+').replaceAll('_', '/');
+  const bytes = Uint8Array.from(atob(base64), (char) => char.codePointAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 function readExpiration(token) {
-  const payload = token.split('.')[1];
-  const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-  return JSON.parse(json).exp;
+  return readPayload(token).exp;
+}
+
+// Nome e e-mail de um token; null quando não dá para ler os dois (token antigo, sem o nome, ou ilegível)
+export function userFromToken(token) {
+  try {
+    const { name, email } = readPayload(token);
+    return typeof name === 'string' && typeof email === 'string' ? { name, email } : null;
+  } catch {
+    return null;
+  }
 }
 
 // Nota: só lê o exp para a navegação não depender de um 401 — a assinatura continua sendo validada pelo servidor.
@@ -57,18 +55,16 @@ export function hasActiveSession() {
   }
 }
 
+// Só para exibir (cabeçalho): quem confere a assinatura e decide o acesso é o servidor
 export function getUser() {
-  try {
-    return JSON.parse(localStorage.getItem(USER_KEY));
-  } catch {
-    return null;
-  }
+  const token = getToken();
+  return token ? userFromToken(token) : null;
 }
 
 // Sair também esquece o caminho de volta: a próxima pessoa neste navegador não cai no link de quem saiu
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LEGACY_USER_KEY);
   forgetReturnPath();
 }
 

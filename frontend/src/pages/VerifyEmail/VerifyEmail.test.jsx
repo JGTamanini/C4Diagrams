@@ -39,7 +39,7 @@ describe('VerifyEmail', () => {
     expect(await screen.findByText('E-mail verificado! Pode fechar esta guia: a aba do cadastro já entrou na sua conta.')).toBeInTheDocument();
     expect(api.post).toHaveBeenCalledWith('/auth/verify-email', { token: 'token-valido' });
     expect(localStorage.getItem('token')).toBe(session.token);
-    expect(JSON.parse(localStorage.getItem('user'))).toEqual({ name: 'João', email: 'joao@example.com' });
+    expect(localStorage.getItem('user')).toBeNull();
   });
 
   it('deve oferecer abrir o diagrama compartilhado quando a pessoa chegou por um link de visualização', async () => {

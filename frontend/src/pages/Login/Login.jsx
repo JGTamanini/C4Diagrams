@@ -39,9 +39,8 @@ function Login() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
       // Confere o formato do token antes de gravar; fora do formato, lança e a mensagem aparece abaixo
-      saveSession(token, user);
+      saveSession(response.data.token);
       void navigate(takeReturnPath() ?? '/projetos');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erro ao entrar. Tente novamente.';

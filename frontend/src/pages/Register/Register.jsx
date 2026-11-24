@@ -8,15 +8,7 @@ import EmailConfirmationCard from '../../components/EmailConfirmationCard/EmailC
 import ResendVerification from '../../components/ResendVerification/ResendVerification';
 import AuthItem from '../../components/AuthLayout/AuthItem';
 import { useAuthIllustration } from '../../components/AuthLayout/authIllustration';
-import { peekReturnPath, takeReturnPath } from '../../services/session';
-
-function parseUser(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
+import { TOKEN_KEY, peekReturnPath, takeReturnPath, userFromToken } from '../../services/session';
 
 const sameEmail = (a, b) => Boolean(a) && a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -32,14 +24,14 @@ function Register() {
 
   // Nota: enquanto espera a verificação, esta aba escuta o login feito pelo link do e-mail em outra aba do mesmo
   // navegador (o evento "storage" avisa as outras abas quando a sessão é salva) e segue sozinha para os projetos.
-  // Só segue se a sessão salva for desta conta: o usuário é gravado depois do token, então é ele que é observado
+  // Só segue se a sessão salva for desta conta: o e-mail é lido do próprio token gravado
   useEffect(() => {
     if (!successMessage) return undefined;
 
     function handleStorage(event) {
-      if (event.key !== 'user' || !event.newValue) return;
+      if (event.key !== TOKEN_KEY || !event.newValue) return;
       // Quem veio por um link de visualização volta para ele
-      if (sameEmail(parseUser(event.newValue)?.email, email)) void navigate(takeReturnPath() ?? '/projetos', { replace: true });
+      if (sameEmail(userFromToken(event.newValue)?.email, email)) void navigate(takeReturnPath() ?? '/projetos', { replace: true });
     }
 
     window.addEventListener('storage', handleStorage);

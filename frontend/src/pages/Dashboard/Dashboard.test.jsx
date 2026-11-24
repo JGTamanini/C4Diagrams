@@ -6,6 +6,7 @@ import Dashboard from './Dashboard';
 import { listProjects, createProject, updateProject, deleteProject, importProject } from '../../services/projects';
 import EXAMPLE_PROJECT from '../../constants/exampleProject.json';
 import { listDiagrams } from '../../services/diagrams';
+import { fakeJwt } from '../../test/fakeJwt';
 
 vi.mock('../../services/projects');
 vi.mock('../../services/diagrams');
@@ -50,7 +51,7 @@ describe('Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem('user', JSON.stringify({ name: 'João Tamanini', email: 'joao@example.com' }));
+    localStorage.setItem('token', fakeJwt({ name: 'João Tamanini' }));
     listDiagrams.mockResolvedValue([]);
   });
 

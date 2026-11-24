@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { vi } from 'vitest';
 import Register from './Register';
 import api from '../../services/api';
+import { fakeJwt } from '../../test/fakeJwt';
 
 vi.mock('../../services/api');
 
@@ -91,8 +92,7 @@ describe('Register', () => {
     it('deve ir para os projetos quando o link do e-mail entrar nesta conta em outra aba', async () => {
       await registerAndWait();
 
-      storageFromOtherTab('token', 'header.payload.signature');
-      storageFromOtherTab('user', '{"name":"João","email":"Joao@Example.com"}');
+      storageFromOtherTab('token', fakeJwt({ name: 'João', email: 'Joao@Example.com' }));
 
       expect(mockNavigate).toHaveBeenCalledTimes(1);
       expect(mockNavigate).toHaveBeenCalledWith('/projetos', { replace: true });
@@ -102,7 +102,7 @@ describe('Register', () => {
       localStorage.setItem('returnTo', JSON.stringify({ path: '/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', at: Date.now() }));
       await registerAndWait();
 
-      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
+      storageFromOtherTab('token', fakeJwt({ name: 'João' }));
 
       expect(mockNavigate).toHaveBeenCalledWith('/compartilhado/abcDEF123_-abcDEF123_-abcDEF1234', { replace: true });
       expect(localStorage.getItem('returnTo')).toBeNull();
@@ -111,8 +111,7 @@ describe('Register', () => {
     it('não deve seguir quando outra conta entrar em outra aba', async () => {
       await registerAndWait();
 
-      storageFromOtherTab('token', 'header.payload.signature');
-      storageFromOtherTab('user', '{"name":"Maria","email":"maria@example.com"}');
+      storageFromOtherTab('token', fakeJwt({ name: 'Maria', email: 'maria@example.com' }));
 
       expect(mockNavigate).not.toHaveBeenCalled();
     });
@@ -121,9 +120,10 @@ describe('Register', () => {
       await registerAndWait();
 
       storageFromOtherTab('token', null);
-      storageFromOtherTab('user', null);
-      storageFromOtherTab('user', 'não é json');
-      storageFromOtherTab('user', '{"name":"João"}');
+      storageFromOtherTab('token', 'não é um token');
+      storageFromOtherTab('token', 'header.payload.signature');
+      // A chave que versões anteriores gravavam não conta mais
+      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
 
       expect(mockNavigate).not.toHaveBeenCalled();
     });
@@ -131,7 +131,7 @@ describe('Register', () => {
     it('não deve reagir antes de terminar o cadastro', () => {
       renderWithRouter(<Register />);
 
-      storageFromOtherTab('user', '{"name":"João","email":"joao@example.com"}');
+      storageFromOtherTab('token', fakeJwt({ name: 'João' }));
 
       expect(mockNavigate).not.toHaveBeenCalled();
     });
