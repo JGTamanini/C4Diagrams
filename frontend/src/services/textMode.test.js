@@ -94,8 +94,18 @@ describe('modo textual (RF19)', () => {
       ['Rel(cliente, loja)', 'Linha 1: a relação precisa de um rótulo entre aspas.'],
       ['System_Boundary(b, "Loja") {', 'Linha 1: fronteiras não são escritas no texto — o foco do nível é escolhido no editor.'],
       [`Pessoa(cliente, "${'x'.repeat(61)}")`, 'Linha 1: o nome pode ter no máximo 60 caracteres.'],
+      ['Pessoa(cliente, "Cliente" "Compra")', 'Linha 1: esperado uma vírgula entre os argumentos.'],
     ])('deve apontar o erro da linha: %s', (text, message) => {
       expect(parseText(text).errors).toEqual([{ line: 1, message }]);
+    });
+
+    it('deve aceitar uma vírgula sobrando no fim e espaços ou tabs entre os argumentos', () => {
+      const { elements, errors } = parseText('Pessoa(\tcliente ,  "Cliente" ,)');
+
+      expect(errors).toEqual([]);
+      expect(elements).toEqual([
+        { line: 1, alias: 'cliente', type: 'c4-person', label: 'Cliente', description: null, technology: null },
+      ]);
     });
   });
 
@@ -175,6 +185,19 @@ describe('modo textual (RF19)', () => {
       expect(result.errors).toContainEqual({ line: Number(message.match(/Linha (\d+)/)[1]), message });
       expect(result.addNodes).toEqual([]);
       expect(result.updateNodes).toEqual([]);
+    });
+
+    it('não deve repetir na relação o erro de um elemento já apontado na própria linha', () => {
+      expect(plan('Container(api, "API")\nRel(cliente, api, "Usa")').errors).toEqual([
+        { line: 1, message: 'Linha 1: Container não pertence ao nível Contexto.' },
+      ]);
+    });
+
+    it('deve listar os erros na ordem das linhas, mesmo os das relações antes dos elementos', () => {
+      expect(plan('Rel(cliente, pagamento, "Paga")\nContainer(api, "API")').errors).toEqual([
+        { line: 1, message: 'Linha 1: "pagamento" não foi definido.' },
+        { line: 2, message: 'Linha 2: Container não pertence ao nível Contexto.' },
+      ]);
     });
 
     it('deve tratar como novo um apelido cujo elemento foi excluído do canvas depois de gerar o texto', () => {
