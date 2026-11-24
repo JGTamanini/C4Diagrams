@@ -49,6 +49,9 @@ describe('session', () => {
     [{ name: 42, email: 'joao@example.com' }],
     [{ name: 'João', email: { $gt: '' } }],
     [{ name: 'x'.repeat(256), email: 'joao@example.com' }],
+    [{ name: '<img src=x onerror=alert(1)>', email: 'joao@example.com' }],
+    [{ name: 'João', email: 'sem-arroba' }],
+    [{ name: '', email: 'joao@example.com' }],
   ])('deve gravar só o token quando o usuário vier com campos inválidos: %o', (badUser) => {
     localStorage.setItem('user', JSON.stringify({ name: 'Sessão anterior', email: 'antigo@example.com' }));
 

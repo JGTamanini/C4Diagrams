@@ -3,17 +3,17 @@ const USER_KEY = 'user';
 
 // Três partes em base64url separadas por ponto: o formato de um JWT (a assinatura é conferida pelo servidor)
 const JWT_FORMAT_REGEX = /^[\w-]+\.[\w-]+\.[\w-]+$/;
-// Mesmo tamanho das colunas name e email da tabela users
-const USER_FIELD_MAX_LENGTH = 255;
+// Nome e e-mail com até 255 caracteres (o tamanho das colunas da tabela users) e sem < ou >, que não aparecem em nenhum
+// dos dois e só serviriam para montar HTML
+const USER_NAME_REGEX = /^[^<>]{1,255}$/;
+const USER_EMAIL_REGEX = /^(?=.{3,255}$)[^\s<>@]+@[^\s<>@]+$/;
 
-function isUserField(value) {
-  return typeof value === 'string' && value.length <= USER_FIELD_MAX_LENGTH;
-}
-
-// Só nome e e-mail, e só quando são textos do tamanho esperado; qualquer outra coisa não vai para o navegador
+// Só nome e e-mail, e só no formato esperado; qualquer outra coisa não vai para o navegador
 function storableUser(user) {
-  if (!isUserField(user?.name) || !isUserField(user?.email)) return null;
-  return { name: user.name, email: user.email };
+  const { name, email } = user ?? {};
+  if (typeof name !== 'string' || typeof email !== 'string') return null;
+  if (!USER_NAME_REGEX.test(name) || !USER_EMAIL_REGEX.test(email)) return null;
+  return { name, email };
 }
 
 // Nota: único ponto que conhece as chaves do localStorage — login, verificação de e-mail, logout e 401 passam por aqui.
