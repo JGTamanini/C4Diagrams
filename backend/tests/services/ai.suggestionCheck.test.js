@@ -140,6 +140,19 @@ describe('checkSuggestions (motor do RF17 conferindo as sugestões da IA)', () =
     expect(checkSuggestions('context', contextData, many).kept).toHaveLength(MAX_SUGGESTIONS);
   });
 
+  it.each([
+    [suggestion({ kind: 'remove_element' }), 'Tipo de sugestão desconhecido.'],
+    [suggestion({ kind: 'toString' }), 'Tipo de sugestão desconhecido.'],
+    [suggestion({ kind: 'add_element', elementType: 'c4-system-external', name: null }), 'Elemento sem tipo ou sem nome.'],
+    [suggestion({ kind: 'add_element', elementType: null, name: 'Gateway' }), 'Elemento sem tipo ou sem nome.'],
+    [null, 'Sugestão sem conteúdo.'],
+  ])('deve descartar com o motivo: %o', (raw, problem) => {
+    const { kept, discarded } = checkSuggestions('context', contextData, [raw]);
+
+    expect(kept).toEqual([]);
+    expect(discarded).toEqual([expect.objectContaining({ problem })]);
+  });
+
   it('deve tratar resposta sem lista como nenhuma sugestão', () => {
     expect(checkSuggestions('context', contextData, undefined)).toEqual({ kept: [], discarded: [] });
   });
